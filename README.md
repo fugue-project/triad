@@ -1,2 +1,2 @@
-# triad
-A collection of python utility functions
+# Triad
+A collection of python utils functions
