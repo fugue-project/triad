@@ -95,7 +95,6 @@ def to_type(
     """Convert an object `s` to `type`
     * if `s` is `str`: see :func:'~triad.utils.convert.str_to_type'
     * if `s` is `type`: check `expected_base_type` and return itself
-    * if `s` is `None`: check `expected_base_type` and return `None`
     * else: check `expected_base_type` and return itself
 
     :param s: see :func:'~triad.utils.convert.str_to_type'

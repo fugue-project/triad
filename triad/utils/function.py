@@ -27,7 +27,7 @@ def extract_function_io_types(
     otype: Optional[type] = None
     try:
         t = to_type(sig.return_annotation)
-        if t != inspect._empty and not isinstance(t, type(None)):  # type: ignore
+        if t != inspect._empty and not (t == type(None)):  # type: ignore # noqa E721
             otype = t
     except Exception:
         if not ignore_unknown_type:
