@@ -1,7 +1,9 @@
 import itertools
-from triad.iter import (
-    slice_iterable, EmptyAwareIterable, Slicer, make_empty_aware)
+
 from pytest import raises
+
+from triad.iter import (EmptyAwareIterable, Slicer, make_empty_aware,
+                        slice_iterable)
 
 
 def test__empty_aware_iterable():
