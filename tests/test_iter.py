@@ -5,13 +5,13 @@ from pytest import raises
 
 
 def test__empty_aware_iterable():
-    i = get_iterable("1,2,3")
+    i = _get_iterable("1,2,3")
     e = make_empty_aware(i)
     assert not e.empty()
     assert "1,2,3" == ",".join(e)
     assert e.empty()
 
-    i = get_iterable("1")
+    i = _get_iterable("1")
     e = EmptyAwareIterable(i)
     assert not e.empty()
     assert not e.empty()
@@ -24,7 +24,7 @@ def test__empty_aware_iterable():
     assert e.empty()
     raises(StopIteration, lambda: e.peek())
 
-    i = get_iterable("1,2,3")
+    i = _get_iterable("1,2,3")
     e = EmptyAwareIterable(i)
     assert not e.empty()
     assert "1,2" == ",".join(itertools.islice(e, 2))
@@ -32,7 +32,7 @@ def test__empty_aware_iterable():
     assert "3" == ",".join(itertools.islice(e, 2))
     assert e.empty()
 
-    i = get_iterable("1,2,3")
+    i = _get_iterable("1,2,3")
     e = EmptyAwareIterable(iter(i))
     assert not e.empty()
     assert "1" == e.peek()
@@ -41,19 +41,6 @@ def test__empty_aware_iterable():
     assert "3" == e.peek()
     assert "3" == ",".join(itertools.islice(e, 2))
     assert e.empty()
-    '''
-    print(datetime.datetime.now())
-    n = 0
-    for x in make_iterable(1024 * 1024):
-        n += x / x
-    print(n)
-    print(datetime.datetime.now())
-    n = 0
-    for x in EmptyAwareIterable(make_iterable(1024 * 1024)):
-        n += x / x
-    print(n)
-    print(datetime.datetime.now())
-    '''
 
 
 def test__slice_iterable():
@@ -77,12 +64,12 @@ def test__slice_iterable():
                  c, l: n % 2 == 0, lambda x: itertools.islice(x, 0))
     n = -1
 
-    def ii(it):
+    def sl(it):
         nonlocal n
         n += 1
         return itertools.islice(it, n)
     assert_slice('-3-5', range(1, 6), lambda n,
-                 c, l: n % 2 == 0, ii)
+                 c, l: n % 2 == 0, sl)
 
 
 def test__slicer():
@@ -169,12 +156,12 @@ def assert_slicer(expected, arr, max_row, max_size, sizer, slicer=None):
     assert expected == ''.join(r)
 
 
-def get_iterable(s):
+def _get_iterable(s):
     for ss in s.split(','):
         yield ss
 
 
-def make_iterable(n):
+def _make_iterable(n):
     while n > 0:
         yield n
         n -= 1
