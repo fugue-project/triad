@@ -17,7 +17,7 @@ setup(
     author_email="goodwanghan@gmail.com",
     keywords="util utils utility utilities",
     url="http://github.com/goodwanghan/triad",
-    install_requires=["pandas"],
+    install_requires=["pandas", "ciso8601"],
     extras_require={},
     classifiers=[
         # "3 - Alpha", "4 - Beta" or "5 - Production/Stable"
