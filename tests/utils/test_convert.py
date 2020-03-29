@@ -1,4 +1,4 @@
-from triad.convert import _parse_value_and_unit, to_size
+from triad.utils.convert import _parse_value_and_unit, to_size
 import numpy as np
 from pytest import raises
 

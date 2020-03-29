@@ -2,8 +2,8 @@ import itertools
 
 from pytest import raises
 
-from triad.iter import (EmptyAwareIterable, Slicer, make_empty_aware,
-                        slice_iterable)
+from triad.utils.iter import (EmptyAwareIterable, Slicer, make_empty_aware,
+                              slice_iterable)
 
 
 def test__empty_aware_iterable():
@@ -149,7 +149,7 @@ def assert_slicer(expected, arr, max_row, max_size, sizer, slicer=None):
     r = []
     n = 0
     c = Slicer(sizer, max_row, max_size, slicer=slicer)
-    for chunk in c.split(arr):
+    for chunk in c.slice(arr):
         assert isinstance(chunk, EmptyAwareIterable)
         r.append(".")
         for x in chunk:
