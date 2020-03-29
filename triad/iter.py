@@ -78,21 +78,20 @@ def make_empty_aware(it: Union[Iterable[T], Iterator[T]]) -> EmptyAwareIterable[
 
 
 def slice_iterable(
-        it: Union[Iterable[T], Iterator[T]],
-        slicer: Callable[[int, T, Optional[T]], bool]
+    it: Union[Iterable[T], Iterator[T]], slicer: Callable[[int, T, Optional[T]], bool]
 ) -> "Iterable[_SliceIterable[T]]":
     """Slice the original iterable into slices by slicer
 
     Args:
         it (Union[Iterable[T], Iterator[T]]): underlying iterable
-        slicer (Callable[[int, T, Optional[T]], bool]): taking in current number, 
+        slicer (Callable[[int, T, Optional[T]], bool]): taking in current number,
         current value, last value, it decides if it's a new slice
 
     Yields:
         Iterable[_SliceIterable[T]]: an iterable of iterables
     """
     si = _SliceIterable(it, slicer)
-    while si.state < 3:
+    while si._state < 3:
         yield si
         si.recycle()
 
@@ -137,7 +136,7 @@ class Slicer(object):
         self._current_row = 1
         self._current_size = 0
 
-    def split(self, orig_it: Iterable[Any]) -> Any:  # noqa C901
+    def split(self, orig_it: Iterable[T]) -> Iterable[Iterable[T]]:  # noqa C901
         it = make_empty_aware(orig_it)
         if it.empty():
             pass
@@ -145,24 +144,24 @@ class Slicer(object):
             if self._slicer is None:
                 yield it
             else:
-                for slice in slice_iterable(it, self._slicer):
-                    yield slice
+                for _slice in slice_iterable(it, self._slicer):
+                    yield _slice
         elif self._row_limit > 0 and self._size_limit <= 0:
             if self._slicer is None:
-                for slice in slice_iterable(it, self._is_boundary_row_only):
-                    yield slice
+                for _slice in slice_iterable(it, self._is_boundary_row_only):
+                    yield _slice
             else:
-                for slice in slice_iterable(it, self._is_boundary_row_only_w_slicer):
-                    yield slice
+                for _slice in slice_iterable(it, self._is_boundary_row_only_w_slicer):
+                    yield _slice
         else:
             self._current_size = self._sizer(it.peek())
             self._current_row = 1
             if self._row_limit <= 0 and self._size_limit > 0:
-                for slice in slice_iterable(it, self._is_boundary_size_only):
-                    yield slice
+                for _slice in slice_iterable(it, self._is_boundary_size_only):
+                    yield _slice
             else:
-                for slice in slice_iterable(it, self._is_boundary):
-                    yield slice
+                for _slice in slice_iterable(it, self._is_boundary):
+                    yield _slice
 
     def _is_boundary_row_only(self, no: int, current: Any, last: Any) -> bool:
         return no % self._row_limit == 0
