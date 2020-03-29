@@ -4,7 +4,7 @@ from triad.utils.convert import to_type, to_function
 
 
 def extract_function_io_types(
-    func: Any,
+    func: Any, ignore_unknown_type: bool = False
 ) -> Tuple[List[Tuple[str, Optional[type]]], Optional[type]]:
     """Inspect the function and return input output specs
 
@@ -21,15 +21,17 @@ def extract_function_io_types(
             if t != inspect._empty:  # type: ignore
                 ktype = t
         except Exception:
-            pass
+            if not ignore_unknown_type:
+                raise
         inputs.append((k, ktype))
     otype: Optional[type] = None
     try:
         t = to_type(sig.return_annotation)
-        if t != inspect._empty:  # type: ignore
+        if t != inspect._empty and not isinstance(t, type(None)):  # type: ignore
             otype = t
     except Exception:
-        pass
+        if not ignore_unknown_type:
+            raise
     return inputs, otype
 
 

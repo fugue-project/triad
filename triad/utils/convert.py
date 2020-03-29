@@ -81,7 +81,7 @@ def str_to_instance(
     :param expected_base_type: see :func:'~triad.utils.convert.str_to_type'
     :param first: see :func:'~triad.utils.convert.str_to_type'
     :param args: args to instantiate the type
-    :param kwargs: [description], kwargs to instantiate the type
+    :param kwargs: kwargs to instantiate the type
 
     :return: the instantiated the object
     """
@@ -92,8 +92,11 @@ def str_to_instance(
 def to_type(
     s: Any, expected_base_type: Optional[type] = None, first: bool = False
 ) -> type:
-    """Convert a string expression or a type into type with given constraints.
-    See :func:'~triad.utils.convert.str_to_type'
+    """Convert an object `s` to `type`
+    * if `s` is `str`: see :func:'~triad.utils.convert.str_to_type'
+    * if `s` is `type`: check `expected_base_type` and return itself
+    * if `s` is `None`: check `expected_base_type` and return `None`
+    * else: check `expected_base_type` and return itself
 
     :param s: see :func:'~triad.utils.convert.str_to_type'
     :param expected_base_type: see :func:'~triad.utils.convert.str_to_type'
@@ -109,8 +112,10 @@ def to_type(
         if expected_base_type is None or issubclass(s, expected_base_type):
             return s
         raise TypeError(f"Type mismatch {s} expected {expected_base_type}")
-    else:
-        raise TypeError(f"{s} can't be converted to type")
+    t = type(s)
+    if expected_base_type is None or issubclass(t, expected_base_type):
+        return t
+    raise TypeError(f"Type mismatch {s} expected {expected_base_type}")
 
 
 def to_instance(
