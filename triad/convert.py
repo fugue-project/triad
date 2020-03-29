@@ -2,6 +2,22 @@ from typing import Tuple, Any
 
 
 def to_size(exp: Any) -> int:
+    """Convert input value or expression to size
+    For expression string, it must be in the format of
+    `<value>` or `<value><unit>`. Value must be 0 or positive,
+    default unit is byte if not provided. Unit can be `b`, `byte`,
+    `k`, `kb`, `m`, `mb`, `g`, `gb`, `t`, `tb`.
+
+    Args:
+        exp (Any): expression string or numerical value
+
+    Raises:
+        ValueError: for invalid expression
+        ValueError: for negative values
+
+    Returns:
+        int: size in byte
+    """
     n, u = _parse_value_and_unit(exp)
     assert n >= 0.0, "Size can't be negative"
     if u in ["", "b", "byte", "bytes"]:
