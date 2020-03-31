@@ -1,12 +1,12 @@
 import itertools
+from collections import OrderedDict
 
 from pytest import raises
-
 from triad.utils.iter import (EmptyAwareIterable, Slicer, make_empty_aware,
-                              slice_iterable)
+                              slice_iterable, to_kv_iterable)
 
 
-def test__empty_aware_iterable():
+def test_empty_aware_iterable():
     i = _get_iterable("1,2,3")
     e = make_empty_aware(i)
     assert not e.empty()
@@ -45,7 +45,28 @@ def test__empty_aware_iterable():
     assert e.empty()
 
 
-def test__slice_iterable():
+def test_to_kv_iterable():
+    data1 = [(1, 1), (2, 2)]
+    data2 = OrderedDict(data1)
+    data3 = [[1, 1], (2, 2)]
+    data4 = [[1, 1, 3], (2, 2)]
+    data5 = [1, (2, 2)]
+    data6 = [(1, 1), (2, 2, 3)]
+
+    assert [] == list(to_kv_iterable(None, none_as_empty=True))
+    assert [] == list(to_kv_iterable(None))
+    assert [] == list(to_kv_iterable([]))
+    raises(ValueError, lambda: list(to_kv_iterable(None, none_as_empty=False)))
+    assert data1 == list(to_kv_iterable(data1))
+    assert data1 == list(to_kv_iterable(data2))
+    assert data1 == list(to_kv_iterable(data3))
+    raises(TypeError, lambda: list(to_kv_iterable(data4)))
+    raises(TypeError, lambda: list(to_kv_iterable(data5)))
+    raises(TypeError, lambda: list(to_kv_iterable(123)))
+    raises(ValueError, lambda: list(to_kv_iterable(data6)))
+
+
+def test_slice_iterable():
     # make sure empty iterable will yield no slice
     ll = list(slice_iterable([], lambda n, c, l: n % 2 == 0))
     assert 0 == len(ll)
@@ -74,7 +95,7 @@ def test__slice_iterable():
                  c, l: n % 2 == 0, sl)
 
 
-def test__slicer():
+def test_slicer():
     assert_slicer('', [], 1, 0, lambda x: 1)
     assert_slicer('', [], 0, 0, lambda x: 1)
     assert_slicer('', [], 0, 1, lambda x: 1)
