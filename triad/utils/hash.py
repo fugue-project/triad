@@ -5,6 +5,10 @@ from typing import Any, Iterable, List
 
 
 def to_uuid(*args: List[Any]) -> str:
+    """Determine the uuid by input arguments
+
+    :return: uuid string
+    """
     s = str(uuid.uuid5(uuid.NAMESPACE_DNS, ""))
     for a in args:
         for x in _get_strs(a):
