@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
 import pyarrow as pa
@@ -59,11 +59,7 @@ class Schema(IndexedOrderedDict):
         return self._remove(obj, require_type_match=True, ignore_type_mismatch=False)
 
     def __setitem__(  # type: ignore
-        self,
-        name: str,
-        value: Union[pa.DataType, pa.Field, str],
-        *args: List[Any],
-        **kwds: Dict[str, Any],
+        self, name: str, value: Any, *args: List[Any], **kwds: Dict[str, Any]
     ) -> None:
         assert_arg_not_none(value, "value")
         if not validate_column_name(name):
@@ -93,19 +89,7 @@ class Schema(IndexedOrderedDict):
             raise Exception(f"what is this {other}")
         return False
 
-    def _append(  # noqa: C901
-        self,
-        obj: Union[
-            None,
-            pa.Field,
-            pa.Schema,
-            str,
-            OrderedDict,
-            pd.DataFrame,
-            Tuple[str, Any],
-            List,
-        ],
-    ) -> "Schema":
+    def _append(self, obj: Any) -> "Schema":  # noqa: C901
         if obj is None:
             return self
         elif isinstance(obj, pa.Field):
@@ -130,16 +114,7 @@ class Schema(IndexedOrderedDict):
 
     def _remove(
         self,
-        obj: Union[
-            None,
-            pa.Field,
-            pa.Schema,
-            str,
-            OrderedDict,
-            pd.DataFrame,
-            Tuple[str, Any],
-            List,
-        ],
+        obj: Any,
         require_type_match: bool = True,
         ignore_type_mismatch: bool = False,
     ) -> "Schema":
