@@ -129,9 +129,7 @@ class Schema(IndexedOrderedDict):
         elif isinstance(obj, (pa.Schema, Schema)):
             pairs = list(zip(ps.names, ps.types))
         else:
-            return self._remove(
-                Schema(obj), require_type_match, ignore_type_mismatch  # type: ignore
-            )
+            return self._remove(Schema(obj), require_type_match, ignore_type_mismatch)
         od = OrderedDict(self)
         for k, v in pairs:
             if v is None:
