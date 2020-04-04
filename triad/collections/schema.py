@@ -1,28 +1,43 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Set, Optional
 
 import pandas as pd
 import pyarrow as pa
 from triad.collections.dict import IndexedOrderedDict
-from triad.exceptions import InvalidOperationError
 from triad.utils.assertion import assert_arg_not_none, assert_or_throw
 from triad.utils.pyarrow import (
-    _parse_type,
     expression_to_schema,
+    is_supported,
     schema_to_expression,
+    to_pa_datatype,
     validate_column_name,
 )
 
 
-class SchemaException(Exception):
+class SchemaError(Exception):
     def __init__(self, message: str):
         super().__init__(message)
 
 
 class Schema(IndexedOrderedDict):
     def __init__(self, *args: Any):
+        if len(args) == 1:  # duplicate code for better performance
+            if isinstance(args[0], Schema):
+                super().__init__(args[0])  # type: ignore
+                return
+            fields: Optional[List[pa.Field]] = None
+            if isinstance(args[0], str):
+                fields = list(expression_to_schema(args[0]))
+            if isinstance(args[0], pa.Schema):
+                fields = list(args[0])
+            if isinstance(args[0], pa.Field):
+                fields = [args[0]]
+            if fields is not None:
+                fields = [self._validate_field(f) for f in fields]
+                super().__init__([(x.name, x) for x in fields])
+                return
         super().__init__()
-        self._append(list(args))
+        self.append(list(args))
 
     @property
     def names(self) -> List[str]:
@@ -35,11 +50,15 @@ class Schema(IndexedOrderedDict):
 
     @property
     def types(self) -> List[pa.DataType]:
-        return [v.value_type for v in self.values()]
+        return [v.type for v in self.values()]
 
     @property
     def pyarrow_schema(self) -> pa.Schema:
         return pa.schema(self.fields)
+
+    @property
+    def pa_schema(self) -> pa.Schema:
+        return self.pyarrow_schema
 
     def copy(self) -> "Schema":
         other = super().copy()
@@ -50,30 +69,41 @@ class Schema(IndexedOrderedDict):
         return schema_to_expression(self.pyarrow_schema)
 
     def __iadd__(self, obj: Any) -> "Schema":
-        return self._append(obj)
+        return self.append(obj)
+
+    def __isub__(self, obj: Any) -> "Schema":
+        raise SchemaError("'-=' is not allowed for Schema")
 
     def __add__(self, obj: Any) -> "Schema":
-        return self.copy()._append(obj)
+        return self.copy().append(obj)
 
     def __sub__(self, obj: Any) -> "Schema":
-        return self._remove(obj, require_type_match=True, ignore_type_mismatch=False)
+        return self.remove(
+            obj,
+            ignore_key_mismatch=False,
+            require_type_match=True,
+            ignore_type_mismatch=False,
+        )
 
     def __setitem__(  # type: ignore
         self, name: str, value: Any, *args: List[Any], **kwds: Dict[str, Any]
     ) -> None:
         assert_arg_not_none(value, "value")
         if not validate_column_name(name):
-            raise SchemaException(f"Invalid column name {name}")
+            raise SchemaError(f"Invalid column name {name}")
         if name in self:  # update existing value is not allowed
-            raise SchemaException(f"{name} already exists in {self}")
+            raise SchemaError(f"{name} already exists in {self}")
         if isinstance(value, pa.Field):
             assert_or_throw(
-                name == value.name, SchemaException(f"{name} doesn't match {value}")
+                name == value.name, SchemaError(f"{name} doesn't match {value}")
             )
         elif isinstance(value, pa.DataType):
             value = pa.field(name, value)
-        elif isinstance(value, str):
-            value = pa.field(name, _parse_type(value))
+        else:
+            value = pa.field(name, to_pa_datatype(value))
+        assert_or_throw(
+            is_supported(value.type), SchemaError(f"{value} is not supported")
+        )
         super().__setitem__(name, value, *args, **kwds)  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
@@ -83,43 +113,69 @@ class Schema(IndexedOrderedDict):
             return super().__eq__(other)
         if isinstance(other, str):
             return self.__repr__() == other
-        if isinstance(other, (pa.Schema, pa.Field, pd.DataFrame, OrderedDict, List)):
-            return self == Schema(other)
-        else:
-            raise Exception(f"what is this {other}")
-        return False
+        return self == Schema(other)
 
-    def _append(self, obj: Any) -> "Schema":  # noqa: C901
-        if obj is None:
+    def __contains__(self, key: Any) -> bool:  # noqa: C901
+        if key is None:
+            return False
+        if isinstance(key, str):
+            if ":" not in key:
+                return super().__contains__(key)
+        elif isinstance(key, pa.Field):
+            res = super().get(key.name, None)
+            if res is None:
+                return False
+            return key.type == res.type
+        elif isinstance(key, Schema):
+            for f in key.values():
+                if f not in self:
+                    return False
+            return True
+        elif isinstance(key, List):
+            for f in key:
+                if f not in self:
+                    return False
+            return True
+        return Schema(key) in self
+
+    def append(self, obj: Any) -> "Schema":  # noqa: C901
+        try:
+            if obj is None:
+                return self
+            elif isinstance(obj, pa.Field):
+                self[obj.name] = obj.type
+            elif isinstance(obj, str):
+                self._append_pa_schema(expression_to_schema(obj))
+            elif isinstance(obj, Dict):
+                for k, v in obj.items():
+                    self[k] = v
+            elif isinstance(obj, pa.Schema):
+                self._append_pa_schema(obj)
+            elif isinstance(obj, pd.DataFrame):
+                self._append_pa_schema(pa.Schema.from_pandas(obj))
+            elif isinstance(obj, Tuple):  # type: ignore
+                self[obj[0]] = obj[1]
+            elif isinstance(obj, List):
+                for x in obj:
+                    self.append(x)
+            else:
+                raise SchemaError(f"Invalid schema to add {obj}")
             return self
-        elif isinstance(obj, pa.Field):
-            self[obj.name] = obj.type
-        elif isinstance(obj, str):
-            self._append_expression(obj)
-        elif isinstance(obj, Dict):
-            for k, v in obj.items():
-                self[k] = v
-        elif isinstance(obj, pa.Schema):
-            self._append_pa_schema(obj)
-        elif isinstance(obj, pd.DataFrame):
-            self._append_pd_df_schema(obj)
-        elif isinstance(obj, tuple):
-            self[obj[0]] = obj[1]
-        elif isinstance(obj, List):
-            for x in obj:
-                self._append(x)
-        else:
-            raise ValueError(f"Invalid schema to add {obj}")
-        return self
+        except SchemaError:
+            raise
+        except Exception as e:
+            raise SchemaError(str(e))
 
-    def _remove(
+    def remove(  # noqa: C901
         self,
         obj: Any,
+        ignore_key_mismatch: bool = False,
         require_type_match: bool = True,
         ignore_type_mismatch: bool = False,
     ) -> "Schema":
         if obj is None:
             return self.copy()
+        target = self
         if isinstance(obj, str):
             if ":" in obj:  # expression
                 ps = expression_to_schema(obj)
@@ -127,38 +183,178 @@ class Schema(IndexedOrderedDict):
             else:
                 pairs = [(obj, None)]  # single key
         elif isinstance(obj, (pa.Schema, Schema)):
-            pairs = list(zip(ps.names, ps.types))
+            pairs = list(zip(obj.names, obj.types))
+        elif isinstance(obj, (List, Set)):
+            keys: List[str] = []
+            other: List[Any] = []
+            for x in obj:
+                if isinstance(x, str) and ":" not in x:
+                    keys.append(x)
+                else:
+                    other.append(x)
+            pairs = [(x, None) for x in keys]
+            for o in other:
+                target = target.remove(
+                    o,
+                    ignore_key_mismatch=ignore_key_mismatch,
+                    require_type_match=require_type_match,
+                    ignore_type_mismatch=ignore_type_mismatch,
+                )
         else:
-            return self._remove(Schema(obj), require_type_match, ignore_type_mismatch)
-        od = OrderedDict(self)
+            return self.remove(
+                Schema(obj),
+                ignore_key_mismatch=ignore_key_mismatch,
+                require_type_match=require_type_match,
+                ignore_type_mismatch=ignore_type_mismatch,
+            )
+        od = OrderedDict(target)
         for k, v in pairs:
+            k = k.strip()
+            if k == "":
+                continue
+            if k not in od:
+                if ignore_key_mismatch:
+                    continue
+                raise SchemaError(f"Can't remove {k} from {target}")
             if v is None:
                 del od[k]
             else:
                 tp = od[k].type
-                if tp == v:
+                if not require_type_match or tp == v:
                     del od[k]
                 elif not ignore_type_mismatch:
-                    raise SchemaException(
+                    raise SchemaError(
                         f"Unable to remove {k}:{v} from {self}, type mismatch"
                     )
         return Schema(od)
+
+    def extract(  # noqa: C901
+        self,
+        obj: Any,
+        ignore_key_mismatch: bool = False,
+        require_type_match: bool = True,
+        ignore_type_mismatch: bool = False,
+    ) -> "Schema":
+        if obj is None:
+            return Schema()
+        if isinstance(obj, str):
+            if ":" in obj:  # expression
+                ps = expression_to_schema(obj)
+                pairs: List[Tuple[str, pa.DataType]] = list(zip(ps.names, ps.types))
+            else:
+                pairs = [(obj, None)]  # single key
+        elif isinstance(obj, (pa.Schema, Schema)):
+            pairs = list(zip(obj.names, obj.types))
+        elif isinstance(obj, List):
+            fields: List[pa.Field] = []
+            for x in obj:
+                if isinstance(x, str) and ":" not in x:
+                    if x not in self:
+                        if not ignore_key_mismatch:
+                            raise SchemaError(f"Can't extract {x} from {self}")
+                    else:
+                        fields.append(self[x])
+                else:
+                    fields += self.extract(
+                        x,
+                        ignore_key_mismatch=ignore_key_mismatch,
+                        require_type_match=require_type_match,
+                        ignore_type_mismatch=ignore_type_mismatch,
+                    ).fields
+            return Schema(pa.schema(fields))
+        else:
+            return self.extract(
+                Schema(obj),
+                ignore_key_mismatch=ignore_key_mismatch,
+                require_type_match=require_type_match,
+                ignore_type_mismatch=ignore_type_mismatch,
+            )
+        fields = []
+        for k, v in pairs:
+            k = k.strip()
+            if k == "":
+                continue
+            if k not in self:
+                if ignore_key_mismatch:
+                    continue
+                raise SchemaError(f"Can't extract {k} from {self}")
+            if v is None:
+                fields.append(self[k])
+            else:
+                tp = self[k].type
+                if not require_type_match or tp == v:
+                    fields.append(self[k])
+                elif not ignore_type_mismatch:
+                    raise SchemaError(
+                        f"Unable to extract {k}:{v} from {self}, type mismatch"
+                    )
+        return Schema(pa.schema(fields))
+
+    def exclude(
+        self,
+        other: Any,
+        require_type_match: bool = True,
+        ignore_type_mismatch: bool = False,
+    ) -> "Schema":
+        return self.remove(
+            other,
+            ignore_key_mismatch=True,
+            require_type_match=require_type_match,
+            ignore_type_mismatch=ignore_type_mismatch,
+        )
+
+    def intersect(
+        self,
+        other: Any,
+        require_type_match: bool = True,
+        ignore_type_mismatch: bool = True,
+        use_other_order: bool = False,
+    ) -> "Schema":
+        if not use_other_order:
+            diff = self.exclude(
+                other,
+                require_type_match=require_type_match,
+                ignore_type_mismatch=ignore_type_mismatch,
+            )
+            return self - diff
+        else:
+            return self.extract(
+                other,
+                require_type_match=require_type_match,
+                ignore_type_mismatch=ignore_type_mismatch,
+            )
+
+    def union(self, other: Any, require_type_match: bool = False) -> "Schema":
+        return self.copy().union_with(other, require_type_match=require_type_match)
+
+    def union_with(self, other: Any, require_type_match: bool = False) -> "Schema":
+        if not isinstance(other, Schema):
+            other = Schema(other)
+        try:
+            other = other.exclude(
+                self, require_type_match=require_type_match, ignore_type_mismatch=False
+            )
+            self += other
+            return self
+        except Exception as e:
+            raise SchemaError(f"Unable to union {self} with {other}: {str(e)}")
 
     def _pre_update(self, op: str, need_reindex: bool = True) -> None:
         if op == "__setitem__":
             super()._pre_update(op, need_reindex)
         else:
-            raise InvalidOperationError(f"{op} is not allowed in Schema")
+            raise SchemaError(f"{op} is not allowed in Schema")
 
     def _append_pa_schema(self, other: pa.Schema) -> "Schema":
         for k, v in zip(other.names, other.types):
             self[k] = v
         return self
 
-    def _append_expression(self, other: str) -> "Schema":
-        o = expression_to_schema(other)
-        return self._append_pa_schema(o)
-
-    def _append_pd_df_schema(self, df: pd.DataFrame) -> "Schema":
-        o = pa.Schema.from_pandas(df)
-        return self._append_pa_schema(o)
+    def _validate_field(self, field: pa.Field) -> pa.Field:
+        assert_or_throw(
+            validate_column_name(field.name), SchemaError(f"{field} name is invalid")
+        )
+        assert_or_throw(
+            is_supported(field.type), SchemaError(f"{field} type is not supported")
+        )
+        return field

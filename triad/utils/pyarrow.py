@@ -1,5 +1,7 @@
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
+import numpy as np
 import pyarrow as pa
 from triad.utils.assertion import assert_or_throw
 from triad.utils.json import loads_no_dup
@@ -89,7 +91,6 @@ def expression_to_schema(expr: str) -> pa.Schema:
     try:
         json_str = "{" + "".join(list(_parse_tokens(expr))[:-1]) + "}"
         obj = loads_no_dup(json_str)
-        print(obj)
         return pa.schema(_construct_struct(obj))
     except SyntaxError:
         raise
@@ -106,6 +107,35 @@ def schema_to_expression(schema: pa.Schema) -> pa.Schema:
     :return: schema string expression
     """
     return ",".join(_field_to_expression(x) for x in list(schema))
+
+
+def to_pa_datatype(obj: Any) -> pa.DataType:
+    """Convert an object to pyarrow DataType
+
+    :param obj: any object
+    :raises TypeError: if unable to convert
+    :return: an instance of pd.DataType
+    """
+    if isinstance(obj, pa.DataType):
+        return obj
+    if isinstance(obj, str):
+        return _parse_type(obj)
+    if issubclass(obj, datetime):
+        return pa.timestamp("ns")
+    return pa.from_numpy_dtype(np.dtype(obj))
+
+
+def is_supported(data_type: pa.DataType) -> bool:
+    """Whether `data_type` is currently supported by Triad
+
+    :param data_type: instance of pa.DataType
+    :return: if it is supported
+    """
+    if data_type in _TYPE_EXPRESSION_R_MAPPING:
+        return True
+    return isinstance(
+        data_type, (pa.Decimal128Type, pa.TimestampType, pa.StructType, pa.ListType)
+    )
 
 
 def _field_to_expression(field: pa.Field) -> str:

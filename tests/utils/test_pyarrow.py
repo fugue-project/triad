@@ -1,8 +1,11 @@
+from datetime import datetime
+
+import numpy as np
 import pyarrow as pa
 from pytest import raises
 from triad.utils.pyarrow import (_parse_type, _type_to_expression,
                                  expression_to_schema, schema_to_expression,
-                                 validate_column_name)
+                                 to_pa_datatype, validate_column_name, is_supported)
 
 
 def test_validate_column_name():
@@ -54,6 +57,26 @@ def test__type_to_expression():
     assert "decimal(5)" == _type_to_expression(pa.decimal128(5))
     assert "decimal(5,2)" == _type_to_expression(pa.decimal128(5, 2))
     raises(NotImplementedError, lambda: _type_to_expression(pa.large_binary()))
+
+
+def test_to_pa_datatype():
+    assert pa.int32() == to_pa_datatype(pa.int32())
+    assert pa.int32() == to_pa_datatype("int")
+    assert pa.int64() == to_pa_datatype(int)
+    assert pa.float64() == to_pa_datatype(float)
+    assert pa.float64() == to_pa_datatype(np.float64)
+    assert pa.timestamp("ns") == to_pa_datatype(datetime)
+    raises(TypeError, lambda: to_pa_datatype(123))
+    raises(TypeError, lambda: to_pa_datatype(None))
+
+
+def test_is_supported():
+    assert is_supported(pa.int32())
+    assert is_supported(pa.decimal128(5, 2))
+    assert is_supported(pa.timestamp("s"))
+    assert not is_supported(pa.binary())
+    assert is_supported(pa.struct([pa.field("a", pa.int32())]))
+    assert is_supported(pa.list_(pa.int32()))
 
 
 def _assert_from_expr(expr, expected=None):

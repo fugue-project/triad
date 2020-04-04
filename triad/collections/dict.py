@@ -169,6 +169,7 @@ class ParamDict(IndexedOrderedDict):
     """Parameter dictionary, a subclass of `IndexedOrderedDict`, keys must be string
 
     :param data: for possible types, see :func:"~triad.utils.iter.to_kv_iterable"
+    :param deep: whether to deep copy `data`
     """
 
     OVERWRITE = 0
