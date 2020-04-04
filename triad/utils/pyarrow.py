@@ -2,8 +2,10 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 from triad.utils.assertion import assert_or_throw
+from triad.utils.convert import as_type
 from triad.utils.json import loads_no_dup
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
@@ -51,6 +53,7 @@ _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
     pa.float64(): "double",
     pa.timestamp("ns"): "datetime",
 }
+
 
 _SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", ":"}
 
@@ -138,6 +141,82 @@ def is_supported(data_type: pa.DataType) -> bool:
     )
 
 
+def _to_pytype(pytype: type, obj: Any) -> Any:
+    if obj is None or isinstance(obj, pytype):
+        return obj
+    if obj != obj:  # NaN
+        return None
+    return as_type(obj, pytype)
+
+
+def _to_pydecimal(obj: Any) -> Any:
+    if obj is None or isinstance(obj, float):
+        return obj
+    if obj != obj:  # NaN
+        return None
+    return as_type(obj, float)
+
+
+def _to_pydatetime(obj: Any) -> Any:
+    if obj is None or obj is pd.NaT:
+        return None
+    if isinstance(obj, datetime):
+        return obj
+    if isinstance(obj, pd.Timestamp):
+        return obj.to_pydatetime()
+    if obj != obj:  # NaN
+        return None
+    return as_type(obj, datetime)
+
+
+def _assert_pytype(pytype: type, obj: Any) -> Any:
+    assert isinstance(obj, pytype)
+    return obj
+
+
+_PATYPE_TO_PYTYPE_CONVERTERS: Dict[pa.DataType, Any] = {
+    pa.string(): lambda x: _to_pytype(str, x),
+    pa.bool_(): lambda x: _to_pytype(bool, x),
+    pa.int8(): lambda x: _to_pytype(int, x),
+    pa.int16(): lambda x: _to_pytype(int, x),
+    pa.int32(): lambda x: _to_pytype(int, x),
+    pa.int64(): lambda x: _to_pytype(int, x),
+    pa.uint8(): lambda x: _to_pytype(int, x),
+    pa.uint16(): lambda x: _to_pytype(int, x),
+    pa.uint32(): lambda x: _to_pytype(int, x),
+    pa.uint64(): lambda x: _to_pytype(int, x),
+    pa.float16(): lambda x: _to_pytype(float, x),
+    pa.float32(): lambda x: _to_pytype(float, x),
+    pa.float64(): lambda x: _to_pytype(float, x),
+}
+
+
+class TypeConverter(object):
+    def __init__(self, schema: pa.Schema):
+        self._schema = schema
+        self._to_pytype = [_no_op_convert] * len(schema)
+        self._build_to_pytype()
+        # self._to_dtype = [_no_op_convert] * len(schema)
+
+    @property
+    def schema(self) -> pa.Schema:
+        return self._schema
+
+    def _build_to_pytype(self) -> None:
+        for i in range(len(self.schema)):
+            f = self.schema.get_field_index(i)
+            if f.type in _PATYPE_TO_PYTYPE_CONVERTERS:
+                self._to_pytype[i] = _PATYPE_TO_PYTYPE_CONVERTERS[f.type]
+            elif isinstance(f.type, pa.TimestampType):
+                self._to_pytype[i] = lambda x: _to_pydatetime(x)
+            elif isinstance(f.type, pa.Decimal128Type):
+                self._to_pytype[i] = lambda x: _to_pydecimal(x)
+            elif isinstance(f.type, pa.StructType):
+                self._to_pytype[i] = lambda x: _assert_pytype(dict, x)
+            elif isinstance(f.type, pa.ListType):
+                self._to_pytype[i] = lambda x: _assert_pytype(list, x)
+
+
 def _field_to_expression(field: pa.Field) -> str:
     return f"{field.name}:{_type_to_expression(field.type)}"
 
@@ -215,3 +294,7 @@ def _parse_tokens(expr: str) -> Iterable[str]:
                 yield '"' + s + '"'
             yield expr[i]
             last = i + 1
+
+
+def _no_op_convert(obj: Any) -> Any:
+    return obj
