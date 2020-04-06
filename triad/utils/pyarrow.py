@@ -145,6 +145,10 @@ def is_supported(data_type: pa.DataType) -> bool:
     return isinstance(data_type, tp)
 
 
+def _dummy():
+    pass
+
+
 def apply_schema(
     schema: pa.Schema,
     data: Iterable[List[Any]],
@@ -152,6 +156,24 @@ def apply_schema(
     deep: bool = False,
     str_as_json: bool = True,
 ) -> Iterable[List[Any]]:
+    """Use `pa.Schema` to convert a row(list) to the correspondent types
+
+    :param schema: [description]
+    :type schema: pa.Schema
+    :param data: [description]
+    :type data: Iterable[List[Any]]
+    :param copy: [description], defaults to True
+    :type copy: bool, optional
+    :param deep: [description], defaults to False
+    :type deep: bool, optional
+    :param str_as_json: [description], defaults to True
+    :type str_as_json: bool, optional
+    :raises ValueError: [description]
+    :return: [description]
+    :rtype: Iterable[List[Any]]
+    :yield: [description]
+    :rtype: Iterable[List[Any]]
+    """
     converter = _TypeConverter(schema, copy=copy, deep=deep, str_as_json=str_as_json)
     try:
         for item in data:
