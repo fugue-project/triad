@@ -8,7 +8,7 @@ from pytest import raises
 from triad.collections.schema import Schema
 from triad.constants import FLOAT_INF, FLOAT_NAN, FLOAT_NINF
 from triad.exceptions import InvalidOperationError, NoneArgumentError
-from triad.utils.schema import _to_pydate, _to_pydatetime, apply_schema
+from triad.utils.pyarrow import _to_pydate, _to_pydatetime, apply_schema
 
 """
 None,"1",1,1.1,"2020-01-01","2020-01-01 01:02:03",
@@ -170,7 +170,7 @@ def test_convert_to_list_deep():
 
 def _test_convert(orig, expected_type, expected_value):
     a = [[orig]]
-    s = Schema("a:" + expected_type)
+    s = Schema("a:" + expected_type).pa_schema
     x = list(apply_schema(s, a))[0]
     y = list(apply_schema(s, a, copy=False))[0]
     for b in [x, y]:
@@ -184,7 +184,7 @@ def _test_convert(orig, expected_type, expected_value):
 
 def _test_convert_nested(orig, expected_type, expected_value):
     a = [[orig]]
-    s = Schema("a:" + expected_type)
+    s = Schema("a:" + expected_type).pa_schema
     x = list(apply_schema(s, a, deep=True))[0]
     y = list(apply_schema(s, a, copy=False, deep=True))[0]
     for b in [x, y]:
@@ -196,12 +196,12 @@ def _test_convert_nested(orig, expected_type, expected_value):
 def _assert_raise(orig, expected_type, deep=False):
     with raises(ValueError):
         a = [[orig]]
-        s = Schema("a:" + expected_type)
+        s = Schema("a:" + expected_type).pa_schema
         b = list(apply_schema(s, a, deep=deep))[0]
 
 
 def _assert_not_supported(orig, expected_type, deep=False):
     with raises(NotImplementedError):
         a = [[orig]]
-        s = Schema("a:" + expected_type)
+        s = Schema("a:" + expected_type).pa_schema
         b = list(apply_schema(s, a, deep=deep))[0]
