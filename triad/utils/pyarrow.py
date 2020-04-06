@@ -3,8 +3,8 @@ from datetime import date, datetime
 from typing import Any, Callable, Dict, Iterable, List, Set, Tuple
 
 import numpy as np
-import pyarrow as pa
 import pandas as pd
+import pyarrow as pa
 from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
 from triad.utils.json import loads_no_dup
@@ -145,10 +145,6 @@ def is_supported(data_type: pa.DataType) -> bool:
     return isinstance(data_type, tp)
 
 
-def _dummy():
-    pass
-
-
 def apply_schema(
     schema: pa.Schema,
     data: Iterable[List[Any]],
@@ -156,23 +152,25 @@ def apply_schema(
     deep: bool = False,
     str_as_json: bool = True,
 ) -> Iterable[List[Any]]:
-    """Use `pa.Schema` to convert a row(list) to the correspondent types
+    """Use `pa.Schema` to convert a row(list) to the correspondent types.
 
-    :param schema: [description]
-    :type schema: pa.Schema
-    :param data: [description]
-    :type data: Iterable[List[Any]]
-    :param copy: [description], defaults to True
-    :type copy: bool, optional
-    :param deep: [description], defaults to False
-    :type deep: bool, optional
-    :param str_as_json: [description], defaults to True
-    :type str_as_json: bool, optional
-    :raises ValueError: [description]
-    :return: [description]
-    :rtype: Iterable[List[Any]]
-    :yield: [description]
-    :rtype: Iterable[List[Any]]
+    Notice this function is to convert from python native type to python
+    native type. It is used to normalize data input, which could be generated
+    by different logics, into the correct data types.
+
+    Notice this function assumes each item of `data` has the same length
+    with `schema` and will not do any extra validation on that.
+
+    :param schema: pyarrow schema
+    :param data: and iterable of rows, represtented by list or tuple
+    :param copy: whether to apply inplace (copy=False), or create new instances
+    :param deep: whether to do deep conversion on nested (struct, list) types
+    :param str_as_json: where to treat string data as json for nested types
+
+    :raises ValueError: if any value can't be converted to the datatype
+    :raises NotImplementedError: if any field type is not supported by Triad
+
+    :yield: converted rows
     """
     converter = _TypeConverter(schema, copy=copy, deep=deep, str_as_json=str_as_json)
     try:

@@ -14,6 +14,7 @@ def test_schema_init():
     assert 2 == len(s)
     assert Schema(s) == "a:int,b:str"
     assert Schema(s) is not s
+    assert Schema(a=int, b=str) == "a:long,b:str"
     assert Schema("a:int,b:str") == "a:int,b:str"
     assert Schema("a:int", "b:str") == "a:int,b:str"
     assert Schema(dict(a=int, b="str")) == "a:long,b:str"
@@ -23,6 +24,7 @@ def test_schema_init():
     pa_schema = pa.schema([pa.field("123", pa.int32()), pa.field(
         "b", pa.string())])
     raises(SchemaError, lambda: Schema(pa_schema))
+    raises(SchemaError, lambda: Schema("a:int", b=str))
     assert 0 == len(Schema())
     assert 0 == len(Schema([]))
     assert 0 == len(Schema(None))

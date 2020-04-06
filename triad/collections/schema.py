@@ -15,12 +15,62 @@ from triad.utils.pyarrow import (
 
 
 class SchemaError(Exception):
+    """Exceptions related with construction and modifying schemas
+    """
+
     def __init__(self, message: str):
         super().__init__(message)
 
 
 class Schema(IndexedOrderedDict):
-    def __init__(self, *args: Any):
+    """A Schema wrapper on top of pyarrow.Fields. This has more features
+    than pyarrow.Schema, and they can convert to each other.
+
+    This class can be initialized from schema like objects. Here is a list of
+    schema like objects:
+    * pyarrow.Schema or Schema objects
+    * pyarrow.Field: single field will be treated as a single column schema
+    * schema expressions: :func:`~triad.utils.pyarrow.expression_to_schema`
+    * Dict[str,Any]: key will be the columns, and value will be type like objects
+    * Tuple[str,Any]: first item will be the only column name of the schema,
+        and the second has to be a type like object
+    * List[Any]: a list of Schema like objects
+    * pandas.DataFrame: it will extract the dataframe's schema
+
+    Here is a list of data type like objects:
+    * pyarrow.DataType
+    * pyarrow.Field: will only use the type attribute of the field
+    * type expression or other objects: for :func:`~triad.utils.pyarrow.to_pa_datatype`
+
+    The column name must follow the rules
+    by :func:`~triad.utils.pyarrow.validate_column_name`
+
+    :Examples:
+    >>> Schema("a:int,b:int")
+    >>> Schema("a:int","b:int")
+    >>> Schema(a=int,b=str) # == Schema("a:long,b:str")
+    >>> Schema(dict(a=int,b=str)) # == Schema("a:long,b:str")
+    >>> Schema([(a,int),(b,str)]) # == Schema("a:long,b:str")
+    >>> Schema((a,int),(b,str)) # == Schema("a:long,b:str")
+    >>> Schema("a:[int],b:{x:int,y:{z:[str],w:byte}},c:[{x:str}]")
+
+    :Notice:
+    * For supported pyarrow.DataTypes see :func:`~triad.utils.pyarrow.is_supported`
+    * If you use python type as data type (e.g. `Schema(a=int,b=str)`) be aware
+        the data type different. (e.g. python `int` type -> pyarrow `long`/`int64` type)
+    * When not readonly, only `append` is allowed, `update` or `remove` are disallowed
+    * When readonly, no modification on the existing schema is allowed
+    * `append`, `update` and `remove` are always allowed when creating a new object
+    * InvalidOperationError will be raised for disallowed operations
+    * At most one of `*args` and `**kwargs` can be set
+
+    :param args: one or multiple schema like objects, which will be combined in order
+    :param kwargs: key value pairs for the schema
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        if len(args) > 0 and len(kwargs) > 0:
+            raise SchemaError("Can't set both *args and **kwargs")
         if len(args) == 1:  # duplicate code for better performance
             if isinstance(args[0], Schema):
                 super().__init__(args[0])  # type: ignore
@@ -37,30 +87,47 @@ class Schema(IndexedOrderedDict):
                 super().__init__([(x.name, x) for x in fields])
                 return
         super().__init__()
-        self.append(list(args))
+        if len(args) > 0:
+            self.append(list(args))
+        elif len(kwargs) > 0:
+            self.append(kwargs)
 
     @property
     def names(self) -> List[str]:
+        """List of column names
+        """
         self._build_index()
         return self._index_key  # type: ignore
 
     @property
     def fields(self) -> List[pa.Field]:
+        """List of pyarrow.Fields
+        """
         return list(self.values())
 
     @property
     def types(self) -> List[pa.DataType]:
+        """List of pyarrow.DataTypes
+        """
         return [v.type for v in self.values()]
 
     @property
     def pyarrow_schema(self) -> pa.Schema:
+        """convert as pyarrow.Schema
+        """
         return pa.schema(self.fields)
 
     @property
     def pa_schema(self) -> pa.Schema:
+        """convert as pyarrow.Schema
+        """
         return self.pyarrow_schema
 
     def copy(self) -> "Schema":
+        """Clone Schema object
+
+        :return: cloned object
+        """
         other = super().copy()
         assert isinstance(other, Schema)
         return other
@@ -139,6 +206,12 @@ class Schema(IndexedOrderedDict):
         return Schema(key) in self
 
     def append(self, obj: Any) -> "Schema":  # noqa: C901
+        """Append schema like object to the current schema. Only new columns
+        are allowed.
+
+        :raises SchemaError: if a column exists or is invalid or obj is not convertible
+        :return: the Schema object itself
+        """
         try:
             if obj is None:
                 return self
