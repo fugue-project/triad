@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 import pyarrow as pa
@@ -26,6 +26,9 @@ def test_expression_conversion():
     _assert_from_expr("a:[int32],b:uint8", "a:[int],b:ubyte")
     _assert_from_expr("a : { x : int32 , y : [string] } , b : [ uint8 ] ",
                       "a:{x:int,y:[str]},b:[ubyte]")
+    _assert_from_expr("a : [{ x : int32 , y : [string] }] , b : [ uint8 ] ",
+                      "a:[{x:int,y:[str]}],b:[ubyte]")
+    _assert_from_expr("a:decimal(5,2)")
 
     raises(SyntaxError, lambda: expression_to_schema("123:int"))
     raises(SyntaxError, lambda: expression_to_schema("int"))
@@ -66,6 +69,8 @@ def test_to_pa_datatype():
     assert pa.float64() == to_pa_datatype(float)
     assert pa.float64() == to_pa_datatype(np.float64)
     assert pa.timestamp("ns") == to_pa_datatype(datetime)
+    assert pa.date32() == to_pa_datatype(date)
+    assert pa.date32() == to_pa_datatype("date")
     raises(TypeError, lambda: to_pa_datatype(123))
     raises(TypeError, lambda: to_pa_datatype(None))
 
@@ -74,6 +79,8 @@ def test_is_supported():
     assert is_supported(pa.int32())
     assert is_supported(pa.decimal128(5, 2))
     assert is_supported(pa.timestamp("s"))
+    assert is_supported(pa.date32())
+    assert not is_supported(pa.date64())
     assert not is_supported(pa.binary())
     assert is_supported(pa.struct([pa.field("a", pa.int32())]))
     assert is_supported(pa.list_(pa.int32()))

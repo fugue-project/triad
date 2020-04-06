@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, Tuple, Set, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 import pyarrow as pa

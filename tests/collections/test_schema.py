@@ -1,11 +1,12 @@
+import math
 from collections import OrderedDict
 from datetime import datetime
 
+import pandas as pd
 import pyarrow as pa
 from pytest import raises
 from triad.collections.schema import Schema, SchemaError
 from triad.exceptions import InvalidOperationError, NoneArgumentError
-import pandas as pd
 
 
 def test_schema_init():
