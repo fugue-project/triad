@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 import pyarrow as pa
+import numpy as np
 from pytest import raises
 from triad.collections.schema import Schema, SchemaError
 from triad.exceptions import InvalidOperationError, NoneArgumentError
@@ -39,6 +40,8 @@ def test_schema_properties():
     assert pa.schema([pa.field("a", pa.int32()), pa.field(
         "b", pa.string())]) == s.pyarrow_schema
     assert s.pyarrow_schema == s.pyarrow_schema
+    assert dict(a=np.int32, b=np.dtype(str)) == s.pd_dtype
+    assert s.pandas_dtype == s.pd_dtype
 
 
 def test_schema_copy():

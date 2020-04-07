@@ -5,7 +5,6 @@ from typing import Any, Dict, Iterable, List, Optional, Union, Callable
 
 import pandas as pd
 from triad.collections.dict import ParamDict
-import pyarrow as pa
 from triad.collections.schema import Schema
 
 
@@ -44,17 +43,17 @@ class DataFrame(ABC):
     def is_local(self) -> bool:  # pragma: no cover
         raise NotImplementedError
 
-    @abstractmethod
-    def as_local(self) -> "DataFrame":  # pragma: no cover
-        raise NotImplementedError
+    # @abstractmethod
+    # def as_local(self) -> "DataFrame":  # pragma: no cover
+    #    raise NotImplementedError
 
-    @abstractmethod
-    def apply_schema(self, schema: Any) -> None:  # pragma: no cover
-        raise NotImplementedError
+    # @abstractmethod
+    # def apply_schema(self, schema: Any) -> None:  # pragma: no cover
+    #    raise NotImplementedError
 
-    @abstractmethod
-    def num_partitions(self) -> int:  # pragma: no cover
-        raise NotImplementedError
+    # @abstractmethod
+    # def num_partitions(self) -> int:  # pragma: no cover
+    #    raise NotImplementedError
 
     @abstractmethod
     def empty(self) -> bool:  # pragma: no cover
@@ -76,9 +75,9 @@ class DataFrame(ABC):
     def as_pandas(self) -> pd.DataFrame:  # pragma: no cover
         raise NotImplementedError
 
-    @abstractmethod
-    def as_pyarrow(self) -> pa.DataFrame:  # pragma: no cover
-        raise NotImplementedError
+    # @abstractmethod
+    # def as_pyarrow(self) -> pa.Table:  # pragma: no cover
+    #    raise NotImplementedError
 
     @abstractmethod
     def as_array(
@@ -151,3 +150,11 @@ class DataFrame(ABC):
                 "metadata": self.metadata,
             }
         )
+
+
+class LocalDataFrame(DataFrame):
+    def __init__(self, schema: Any = None, metadata: Any = None):
+        super().__init__(schema=schema, metadata=metadata)
+
+    def is_local(self):
+        return True

@@ -1,11 +1,13 @@
-from datetime import datetime, date
+from datetime import date, datetime
 
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 from pytest import raises
 from triad.utils.pyarrow import (_parse_type, _type_to_expression,
-                                 expression_to_schema, schema_to_expression,
-                                 to_pa_datatype, validate_column_name, is_supported)
+                                 expression_to_schema, is_supported,
+                                 pandas_to_schema, schema_to_expression,
+                                 to_pa_datatype, validate_column_name)
 
 
 def test_validate_column_name():
@@ -84,6 +86,28 @@ def test_is_supported():
     assert not is_supported(pa.binary())
     assert is_supported(pa.struct([pa.field("a", pa.int32())]))
     assert is_supported(pa.list_(pa.int32()))
+
+
+def test_pandas_to_schema():
+    df = pd.DataFrame([[1.0, 2], [2.0, 3]])
+    raises(ValueError, lambda: pandas_to_schema(df))
+    df = pd.DataFrame([[1.0, 2], [2.0, 3]], columns=["x", "y"])
+    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
+    df = pd.DataFrame([["a", 2], ["b", 3]], columns=["x", "y"])
+    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
+    df = pd.DataFrame([], columns=["x", "y"])
+    df = df.astype(dtype={"x": np.int32, "y": np.dtype('object')})
+    assert [pa.field("x", pa.int32()), pa.field(
+        "y", pa.string())] == list(pandas_to_schema(df))
+    df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
+    df = df.astype(dtype={"x": np.int32, "y": np.dtype('object')})
+    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
+    df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
+    df = df.astype(dtype={"x": np.int32, "y": np.dtype(str)})
+    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
+    df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
+    df = df.astype(dtype={"x": np.int32, "y": np.dtype('str')})
+    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
 
 
 def _assert_from_expr(expr, expected=None):

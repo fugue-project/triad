@@ -2,6 +2,7 @@ from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pandas as pd
+import numpy as np
 import pyarrow as pa
 from triad.collections.dict import IndexedOrderedDict
 from triad.utils.assertion import assert_arg_not_none, assert_or_throw
@@ -11,7 +12,10 @@ from triad.utils.pyarrow import (
     schema_to_expression,
     to_pa_datatype,
     validate_column_name,
+    pandas_to_schema,
 )
+
+_STRING_TYPE = pa.string()
 
 
 class SchemaError(Exception):
@@ -123,6 +127,23 @@ class Schema(IndexedOrderedDict):
         """
         return self.pyarrow_schema
 
+    @property
+    def pandas_dtype(self) -> Dict[str, np.dtype]:
+        """convert as `dtype` dict for pandas dataframes
+        """
+        return {
+            f.name: np.dtype(str)
+            if (f.type == _STRING_TYPE)
+            else f.type.to_pandas_dtype()
+            for f in self.values()
+        }
+
+    @property
+    def pd_dtype(self) -> Dict[str, np.dtype]:
+        """convert as `dtype` dict for pandas dataframes
+        """
+        return self.pandas_dtype
+
     def copy(self) -> "Schema":
         """Clone Schema object
 
@@ -225,7 +246,7 @@ class Schema(IndexedOrderedDict):
             elif isinstance(obj, pa.Schema):
                 self._append_pa_schema(obj)
             elif isinstance(obj, pd.DataFrame):
-                self._append_pa_schema(pa.Schema.from_pandas(obj))
+                self._append_pa_schema(pandas_to_schema(obj))
             elif isinstance(obj, Tuple):  # type: ignore
                 self[obj[0]] = obj[1]
             elif isinstance(obj, List):

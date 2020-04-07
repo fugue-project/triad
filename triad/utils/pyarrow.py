@@ -133,6 +133,30 @@ def to_pa_datatype(obj: Any) -> pa.DataType:
     return pa.from_numpy_dtype(np.dtype(obj))
 
 
+def pandas_to_schema(df: pd.DataFrame) -> pa.Schema:
+    """Extract pandas dataframe schema as pyarrow schema. This is a replacement
+    of pyarrow.Schema.from_pandas, and it can correctly handle string type and
+    empty dataframes
+
+    :param df: pandas dataframe
+    :raises ValueError: if pandas dataframe does not have named schema
+    :return: pyarrow.Schema
+    """
+    if df.columns.dtype != "object":
+        raise ValueError("Pandas dataframe must have named schema")
+    if df.shape[0] > 0:
+        return pa.Schema.from_pandas(df)
+    fields: List[pa.Field] = []
+    for i in range(df.shape[1]):
+        tp = df.dtypes[i]
+        if tp == np.dtype("object") or tp == np.dtype(str):
+            t = pa.string()
+        else:
+            t = pa.from_numpy_dtype(tp)
+        fields.append(pa.field(df.columns[i], t))
+    return pa.schema(fields)
+
+
 def is_supported(data_type: pa.DataType) -> bool:
     """Whether `data_type` is currently supported by Triad
 
