@@ -129,7 +129,8 @@ class Schema(IndexedOrderedDict):
 
     @property
     def pandas_dtype(self) -> Dict[str, np.dtype]:
-        """convert as `dtype` dict for pandas dataframes
+        """convert as `dtype` dict for pandas dataframes.
+        Currently, struct type is not supported
         """
         return {
             f.name: np.dtype(str)

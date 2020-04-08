@@ -45,6 +45,17 @@ def test_empty_aware_iterable():
     assert e.empty()
 
 
+def test_empty_aware_iterable_recursive():
+    i = _get_iterable("1,2,3")
+    e = make_empty_aware(i)
+    ee = make_empty_aware(_wrap_iterable(e, True))
+    assert "1,2,3" == ",".join(ee)
+    i = _get_iterable("1,2,3")
+    e = make_empty_aware(i)
+    ee = make_empty_aware(_wrap_iterable(e, False))
+    assert "1t,2t,3t" == ",".join(ee)
+
+
 def test_to_kv_iterable():
     data1 = [(1, 1), (2, 2)]
     data2 = OrderedDict(data1)
@@ -188,3 +199,12 @@ def _make_iterable(n):
     while n > 0:
         yield n
         n -= 1
+
+
+def _wrap_iterable(it, p):
+    if p:
+        for x in it:
+            yield x
+    else:
+        for x in it:
+            yield str(x) + "t"

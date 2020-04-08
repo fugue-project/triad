@@ -1,11 +1,12 @@
 import json
 from abc import ABC, abstractmethod
 from threading import RLock
-from typing import Any, Dict, Iterable, List, Optional, Union, Callable
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import pandas as pd
 from triad.collections.dict import ParamDict
 from triad.collections.schema import Schema
+from triad.utils.assertion import assert_arg_not_none, assert_or_throw
 
 
 class DataFrame(ABC):
@@ -14,6 +15,7 @@ class DataFrame(ABC):
     def __init__(self, schema: Any = None, metadata: Any = None):
         if not callable(schema):
             schema = Schema(schema)
+            assert_or_throw(len(schema) > 0, "DataFrame must have at least one column")
             schema.set_readonly()
             self._schema: Union[Schema, Callable[[], Schema]] = schema
             self._schema_discovered = True
@@ -35,6 +37,9 @@ class DataFrame(ABC):
             return self._schema  # type: ignore
         with self._lazy_schema_lock:
             self._schema = Schema(self._schema())  # type: ignore
+            assert_or_throw(
+                len(self._schema) > 0, "DataFrame must have at least one column"
+            )
             self._schema.set_readonly()
             self._schema_discovered = True
             return self._schema
@@ -71,9 +76,9 @@ class DataFrame(ABC):
     def count(self, persist: bool = False) -> int:  # pragma: no cover
         raise NotImplementedError
 
-    @abstractmethod
-    def as_pandas(self) -> pd.DataFrame:  # pragma: no cover
-        raise NotImplementedError
+    def as_pandas(self) -> pd.DataFrame:
+        pdf = pd.DataFrame(self.as_array(), columns=self.schema.names)
+        return pdf.astype(dtype=self.schema.pd_dtype)
 
     # @abstractmethod
     # def as_pyarrow(self) -> pa.Table:  # pragma: no cover
@@ -158,3 +163,30 @@ class LocalDataFrame(DataFrame):
 
     def is_local(self):
         return True
+
+
+def _get_schema_change(
+    orig_schema: Optional[Schema], schema: Any
+) -> Tuple[Schema, List[int]]:
+    if orig_schema is None:
+        assert_arg_not_none(schema, "schema")
+        schema = Schema(schema)
+        return schema, []
+    elif schema is None:
+        return orig_schema, []
+    if isinstance(schema, (str, Schema)) and orig_schema == schema:
+        return orig_schema, []
+    if schema in orig_schema:
+        # keys list or schema like object that is a subset of orig
+        schema = orig_schema.extract(schema)
+        pos = [orig_schema.index_of_key(x) for x in schema.names]
+        if pos == list(range(len(orig_schema))):
+            pos = []
+        return schema, pos
+    # otherwise it has to be a schema like object that must be a subset
+    # of orig, and that has mismatched types
+    schema = Schema(schema)
+    pos = [orig_schema.index_of_key(x) for x in schema.names]
+    if pos == list(range(len(orig_schema))):
+        pos = []
+    return schema, pos
