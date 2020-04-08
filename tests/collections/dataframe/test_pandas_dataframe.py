@@ -134,6 +134,13 @@ def test_as_array():
     assert isinstance(df.as_array()[0][1], int)
 
 
+def test_as_dict_iterable():
+    df = PandasDataFrame([[pd.NaT, 1.1]], "a:datetime,b:int")
+    assert [dict(a=pd.NaT, b=1)] == list(df.as_dict_iterable())
+    df = PandasDataFrame([["2020-01-01", 1.1]], "a:datetime,b:int")
+    assert [dict(a=datetime(2020, 1, 1), b=1)] == list(df.as_dict_iterable())
+
+
 def _test_as_array_perf():
     s = Schema()
     arr = []

@@ -147,7 +147,14 @@ def test_as_array():
     assert [[datetime(2020, 1, 1), 1]] == df.as_array(type_safe=True)
 
     df = IterableDataFrame([[pd.NaT, 1.1]], "a:datetime,b:int")
-    assert [[None, 1]] == df.as_array(type_safe=True)
+    assert [[pd.NaT, 1]] == df.as_array(type_safe=True)
+
+
+def test_as_dict_iterable():
+    df = IterableDataFrame([[pd.NaT, 1.1]], "a:datetime,b:int")
+    assert [dict(a=pd.NaT, b=1)] == list(df.as_dict_iterable())
+    df = IterableDataFrame([["2020-01-01", 1.1]], "a:datetime,b:int")
+    assert [dict(a=datetime(2020, 1, 1), b=1)] == list(df.as_dict_iterable())
 
 
 def _test_as_array_perf():

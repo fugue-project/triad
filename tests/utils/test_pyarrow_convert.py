@@ -92,11 +92,11 @@ def test_convert_to_datetime():
     pdt = pd.Timestamp('2020-01-01T02:03:04')
     dt = datetime(2020, 1, 1, 2, 3, 4)
     d = date(2020, 1, 1)
-    _test_convert(None, "datetime", None)
+    _test_convert(None, "datetime", pd.NaT)
     _assert_raise("1", "datetime")
     _test_convert("2020-01-01 02:03:04", "datetime", dt)
     _test_convert("2020-01-01", "datetime", datetime(2020, 1, 1))
-    _test_convert(pd.NaT, "datetime", None)
+    _test_convert(pd.NaT, "datetime", pd.NaT)
     _test_convert(pdt, "datetime", dt)
     assert isinstance(_to_pydatetime(pdt), datetime)
     assert not isinstance(_to_pydatetime(pdt), pd.Timestamp)
@@ -109,11 +109,11 @@ def test_convert_to_date():
     pdt = pd.Timestamp('2020-01-01T02:03:04')
     dt = datetime(2020, 1, 1, 2, 3, 4)
     d = date(2020, 1, 1)
-    _test_convert(None, "date", None)
+    _test_convert(None, "date", pd.NaT)
     _assert_raise("1", "date")
     _test_convert("2020-01-01 02:03:04", "date", d)
     _test_convert("2020-01-01", "date", d)
-    _test_convert(pd.NaT, "date", None)
+    _test_convert(pd.NaT, "date", pd.NaT)
     _test_convert(pdt, "date", d)
     assert isinstance(_to_pydate(pdt), date)
     assert not isinstance(_to_pydate(pdt), pd.Timestamp)
@@ -176,6 +176,8 @@ def _test_convert(orig, expected_type, expected_value):
     for b in [x, y]:
         if isinstance(expected_value, float) and math.isnan(expected_value):
             assert math.isnan(b[0])
+        elif expected_value is pd.NaT:
+            assert b[0] is pd.NaT
         else:
             assert expected_value == b[0]
     assert x is not a[0]

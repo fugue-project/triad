@@ -323,7 +323,7 @@ def _to_pyfloat(obj: Any) -> Any:
 
 def _to_pydatetime(obj: Any) -> Any:
     if obj is None or obj is pd.NaT:
-        return None
+        return pd.NaT
     if isinstance(obj, pd.Timestamp):
         return obj.to_pydatetime()
     if isinstance(obj, datetime):
@@ -333,7 +333,7 @@ def _to_pydatetime(obj: Any) -> Any:
 
 def _to_pydate(obj: Any) -> Any:
     if obj is None or obj is pd.NaT:
-        return None
+        return pd.NaT
     if isinstance(obj, pd.Timestamp):
         return obj.to_pydatetime().date()
     if isinstance(obj, datetime):

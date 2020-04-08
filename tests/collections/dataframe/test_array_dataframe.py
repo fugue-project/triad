@@ -11,6 +11,7 @@ from triad.exceptions import InvalidOperationError, NoneArgumentError
 
 def test_init():
     raises(NoneArgumentError, lambda: ArrayDataFrame())
+    raises(AssertionError, lambda: ArrayDataFrame(schema=Schema()))
 
     df = ArrayDataFrame(schema="a:str,b:int")
     assert df.empty()
@@ -147,7 +148,14 @@ def test_as_array():
     assert [[datetime(2020, 1, 1), 1]] == df.as_array(type_safe=True)
 
     df = ArrayDataFrame([[pd.NaT, 1.1]], "a:datetime,b:int")
-    assert [[None, 1]] == df.as_array(type_safe=True)
+    assert [[pd.NaT, 1]] == df.as_array(type_safe=True)
+
+
+def test_as_dict_iterable():
+    df = ArrayDataFrame([[pd.NaT, 1.1]], "a:datetime,b:int")
+    assert [dict(a=pd.NaT, b=1)] == list(df.as_dict_iterable())
+    df = ArrayDataFrame([["2020-01-01", 1.1]], "a:datetime,b:int")
+    assert [dict(a=datetime(2020, 1, 1), b=1)] == list(df.as_dict_iterable())
 
 
 def _test_as_array_perf():
