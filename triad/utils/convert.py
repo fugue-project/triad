@@ -206,6 +206,64 @@ def to_functions(s: Any) -> Iterable[Any]:  # noqa: C901
         yield func
 
 
+def to_bool(obj: Any) -> bool:
+    """Convert an object to python bool value. It can handle values
+    like `True`, `true`, `yes`, `1`, etc
+
+    :param obj: object
+    :raises TypeError: if failed to convert
+    :return: bool value
+    """
+    if obj is None:
+        raise TypeError("None can't convert to bool")
+    o = str(obj).lower()
+    if o in ["true", "yes", "1"]:
+        return True
+    if o in ["false", "no", "0"]:
+        return False
+    raise TypeError(f"{o} can't convert to bool")
+
+
+def to_datetime(obj: Any) -> datetime.datetime:
+    """Convert an object to python datetime. If the object is a
+    string, it will use `ciso8601.parse_datetime` to parse
+
+    :param obj: object
+    :raises TypeError: if failed to convert
+    :return: datetime value
+    """
+    if obj is None:
+        raise TypeError("None can't convert to datetime")
+    if isinstance(obj, datetime.datetime):
+        return obj
+    if isinstance(obj, datetime.date):
+        return datetime.datetime(obj.year, obj.month, obj.day)
+    if isinstance(obj, str):
+        try:
+            return parse_datetime(obj)
+        except Exception as e:
+            raise TypeError(f"{obj} can't convert to datetime", e)
+    raise TypeError(f"{type(obj)} {obj} can't convert to datetime")
+
+
+def to_timedelta(obj: Any) -> datetime.timedelta:
+    """Convert an object to python datetime. If the object is a
+    string, it will use `pandas.to_timedelta` to parse
+
+    :param obj: object
+    :raises TypeError: if failed to convert
+    :return: timedelta value
+    """
+    if obj is None:
+        raise TypeError("None can't convert to timedelta")
+    if isinstance(obj, datetime.timedelta):
+        return obj
+    try:
+        return pd.to_timedelta(obj).to_pytimedelta()
+    except Exception as e:
+        raise TypeError(f"{type(obj)} {obj} can't convert to timedelta", e)
+
+
 def as_type(obj: Any, target: type) -> Any:
     """Convert `obj` into `target` type
 
@@ -271,40 +329,3 @@ def _parse_value_and_unit(exp: Any) -> Tuple[float, str]:
         return float(exp[:i]), exp[i:]
     except (ValueError, AssertionError):
         raise ValueError(f"Invalid expression {exp}")
-
-
-def to_bool(obj: Any) -> bool:
-    if obj is None:
-        raise TypeError("None can't convert to bool")
-    o = str(obj).lower()
-    if o in ["true", "yes", "1"]:
-        return True
-    if o in ["false", "no", "0"]:
-        return False
-    raise TypeError(f"{o} can't convert to bool")
-
-
-def to_datetime(obj: Any) -> datetime.datetime:
-    if obj is None:
-        raise TypeError("None can't convert to datetime")
-    if isinstance(obj, datetime.datetime):
-        return obj
-    if isinstance(obj, datetime.date):
-        return datetime.datetime(obj.year, obj.month, obj.day)
-    if isinstance(obj, str):
-        try:
-            return parse_datetime(obj)
-        except Exception as e:
-            raise TypeError(f"{obj} can't convert to datetime", e)
-    raise TypeError(f"{type(obj)} {obj} can't convert to datetime")
-
-
-def to_timedelta(obj: Any) -> datetime.timedelta:
-    if obj is None:
-        raise TypeError("None can't convert to timedelta")
-    if isinstance(obj, datetime.timedelta):
-        return obj
-    try:
-        return pd.to_timedelta(obj).to_pytimedelta()
-    except Exception as e:
-        raise TypeError(f"{type(obj)} {obj} can't convert to timedelta", e)
