@@ -4,6 +4,7 @@ import sys
 from collections import OrderedDict
 from typing import Any, Dict, List, Tuple
 
+from triad.exceptions import InvalidOperationError
 from triad.utils.assertion import assert_arg_not_none
 from triad.utils.convert import as_type
 from triad.utils.iter import to_kv_iterable
@@ -14,10 +15,18 @@ class IndexedOrderedDict(OrderedDict):
     """
 
     def __init__(self, *args: List[Any], **kwds: Dict[str, Any]):
-        super().__init__(*args, **kwds)
+        self._readonly = False
         self._need_reindex = True
         self._key_index: Dict[Any, int] = {}
         self._index_key: List[Any] = []
+        super().__init__(*args, **kwds)
+
+    @property
+    def readonly(self) -> bool:
+        return self._readonly
+
+    def set_readonly(self) -> None:
+        self._readonly = True
 
     def index_of_key(self, key: Any) -> int:
         """Get index of key
@@ -94,17 +103,17 @@ class IndexedOrderedDict(OrderedDict):
     def __setitem__(  # type: ignore
         self, key: Any, value: Any, *args: List[Any], **kwds: Dict[str, Any]
     ) -> None:
-        self._need_reindex = key not in self
+        self._pre_update("__setitem__", key not in self)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore
 
     def __delitem__(  # type: ignore
         self, *args: List[Any], **kwds: Dict[str, Any]
     ) -> None:
-        self._need_reindex = True
+        self._pre_update("__delitem__")
         super().__delitem__(*args, **kwds)  # type: ignore
 
     def clear(self) -> None:
-        self._need_reindex = True
+        self._pre_update("clear")
         super().clear()
 
     def copy(self) -> "IndexedOrderedDict":
@@ -113,18 +122,26 @@ class IndexedOrderedDict(OrderedDict):
         other._need_reindex = self._need_reindex
         other._index_key = self._index_key.copy()
         other._key_index = self._key_index.copy()
+        other._readonly = False
         return other
+
+    def __copy__(self) -> "IndexedOrderedDict":
+        return self.copy()
+
+    def __deepcopy__(self, arg: Any) -> "IndexedOrderedDict":
+        it = [(copy.deepcopy(k), copy.deepcopy(v)) for k, v in self.items()]
+        return IndexedOrderedDict(it)
 
     def popitem(  # type: ignore
         self, *args: List[Any], **kwds: Dict[str, Any]
     ) -> Tuple[Any, Any]:
-        self._need_reindex = True
+        self._pre_update("popitem")
         return super().popitem(*args, **kwds)  # type: ignore
 
     def move_to_end(  # type: ignore
         self, *args: List[Any], **kwds: Dict[str, Any]
     ) -> None:
-        self._need_reindex = True
+        self._pre_update("move_to_end")
         super().move_to_end(*args, **kwds)  # type: ignore
 
     def __sizeof__(self) -> int:  # pragma: no cover
@@ -133,7 +150,7 @@ class IndexedOrderedDict(OrderedDict):
     def pop(  # type: ignore
         self, *args: List[Any], **kwds: Dict[str, Any]
     ) -> Any:
-        self._need_reindex = True
+        self._pre_update("pop")
         return super().pop(*args, **kwds)  # type: ignore
 
     def _build_index(self) -> None:
@@ -142,11 +159,17 @@ class IndexedOrderedDict(OrderedDict):
             self._key_index = {x: i for i, x in enumerate(self._index_key)}
             self._need_reindex = False
 
+    def _pre_update(self, op: str, need_reindex: bool = True) -> None:
+        if self.readonly:
+            raise InvalidOperationError("This dict is readonly")
+        self._need_reindex = need_reindex
+
 
 class ParamDict(IndexedOrderedDict):
     """Parameter dictionary, a subclass of `IndexedOrderedDict`, keys must be string
 
     :param data: for possible types, see :func:"~triad.utils.iter.to_kv_iterable"
+    :param deep: whether to deep copy `data`
     """
 
     OVERWRITE = 0

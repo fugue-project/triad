@@ -4,6 +4,7 @@ from copy import copy, deepcopy
 
 from pytest import raises
 from triad.collections.dict import IndexedOrderedDict, ParamDict
+from triad.exceptions import InvalidOperationError
 
 
 def test_indexed_orderd_dict():
@@ -36,6 +37,14 @@ def test_indexed_orderd_dict():
     assert not d._need_reindex
     assert 0 == len(d)
 
+    d = IndexedOrderedDict([("b", 2), ("a", 1)])
+    assert not d.readonly
+    d.set_readonly()
+    assert d.readonly
+    raises(InvalidOperationError, lambda: d.__setitem__("b", "3"))
+    raises(InvalidOperationError, lambda: d.__delitem__("b"))
+    assert 2 == d["b"]
+
     # popitem
     d = IndexedOrderedDict([("b", 2), ("a", 1), ("c", 3)])
     assert 1 == d.index_of_key("a")
@@ -45,6 +54,8 @@ def test_indexed_orderd_dict():
     assert ("c", 3) == d.popitem(last=True)
     assert 0 == d.index_of_key("a")
     assert not d._need_reindex
+    d.set_readonly()
+    raises(InvalidOperationError, lambda: d.popitem())
 
     # move_to_end
     d = IndexedOrderedDict([("b", 2), ("a", 1), ("c", 3)])
@@ -52,9 +63,12 @@ def test_indexed_orderd_dict():
     assert d != d1
     d.move_to_end("a")
     assert d == d1
+    d.set_readonly()
+    raises(InvalidOperationError, lambda: d.move_to_end("b"))
 
     # copy and deepcopy
     d = IndexedOrderedDict([("b", 2), ("a", 1), ("c", 3)])
+    d.set_readonly()
     d.index_of_key("a")
     assert not d._need_reindex
     d1 = d.copy()
@@ -62,16 +76,23 @@ def test_indexed_orderd_dict():
     assert not d1._need_reindex
     assert d == d1
     assert 1 == d1.index_of_key("a")
+    assert not d1.readonly  # after copy, readonly is set to False
     del d1["a"]  # will not affect the original
     assert 1 == d.index_of_key("a")
 
     d = IndexedOrderedDict([("b", [1, IndexedOrderedDict([("x", [2, 4])]), 3])])
+    d.set_readonly()
     d1 = copy(d)
+    assert not d1.readonly  # after copy, readonly is set to False
     d1["b"][0] = 10
     assert 10 == d["b"][0]
     d1["b"][1]["x"][0] = 200
     assert 200 == d["b"][1]["x"][0]
+    d.index_of_key("b")
+    assert not d._need_reindex
     d2 = deepcopy(d)
+    assert d2._need_reindex  # after deepcopy, reindex is required
+    assert not d2.readonly  # after deepcopy, readonly is set to False
     d2["b"][0] = 20
     assert 10 == d["b"][0]
     d2["b"][1]["x"][0] = 300
@@ -79,6 +100,7 @@ def test_indexed_orderd_dict():
 
     # pickle
     d = IndexedOrderedDict([("b", 2), ("a", 1), ("c", 3)])
+    d.set_readonly()
     d.index_of_key("a")
     assert not d._need_reindex
     d1 = pickle.loads(pickle.dumps(d))
@@ -86,9 +108,11 @@ def test_indexed_orderd_dict():
     assert not d1._need_reindex
     assert d == d1
     assert 1 == d1.index_of_key("a")
+    assert d1.readonly
 
     # equals
     d = IndexedOrderedDict([("b", 2), ("a", 1), ("c", 3)])
+    d.set_readonly()
     d1 = IndexedOrderedDict([("b", 2), ("c", 3), ("a", 1)])
     d2 = [("b", 2), ("a", 1), ("c", 3)]
     d3 = [("b", 2), ("c", 3), ("a", 1)]

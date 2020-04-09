@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = "0.0.3"
+VERSION = "0.1.0"
 
 with open("README.md") as f:
     LONG_DESCRIPTION = f.read()
@@ -17,7 +17,7 @@ setup(
     author_email="goodwanghan@gmail.com",
     keywords="util utils utility utilities",
     url="http://github.com/goodwanghan/triad",
-    install_requires=["pandas", "six", "ciso8601"],
+    install_requires=["pandas", "six", "ciso8601", "pyarrow", "fs"],
     extras_require={},
     classifiers=[
         # "3 - Alpha", "4 - Beta" or "5 - Production/Stable"
