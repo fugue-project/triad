@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import pandas as pd
 from triad.collections.dict import ParamDict
 from triad.collections.schema import Schema
-from triad.utils.assertion import assert_arg_not_none, assert_or_throw
 
 
 class DataFrame(ABC):
@@ -14,8 +13,7 @@ class DataFrame(ABC):
 
     def __init__(self, schema: Any = None, metadata: Any = None):
         if not callable(schema):
-            schema = Schema(schema)
-            assert_or_throw(len(schema) > 0, "DataFrame must have at least one column")
+            schema = Schema(schema).assert_not_empty()
             schema.set_readonly()
             self._schema: Union[Schema, Callable[[], Schema]] = schema
             self._schema_discovered = True
@@ -36,10 +34,7 @@ class DataFrame(ABC):
             assert isinstance(self._schema, Schema)
             return self._schema  # type: ignore
         with self._lazy_schema_lock:
-            self._schema = Schema(self._schema())  # type: ignore
-            assert_or_throw(
-                len(self._schema) > 0, "DataFrame must have at least one column"
-            )
+            self._schema = Schema(self._schema()).assert_not_empty()  # type: ignore
             self._schema.set_readonly()
             self._schema_discovered = True
             return self._schema
@@ -252,23 +247,22 @@ def _get_schema_change(
     orig_schema: Optional[Schema], schema: Any
 ) -> Tuple[Schema, List[int]]:
     if orig_schema is None:
-        assert_arg_not_none(schema, "schema")
-        schema = Schema(schema)
+        schema = Schema(schema).assert_not_empty()
         return schema, []
     elif schema is None:
-        return orig_schema, []
+        return orig_schema.assert_not_empty(), []
     if isinstance(schema, (str, Schema)) and orig_schema == schema:
-        return orig_schema, []
+        return orig_schema.assert_not_empty(), []
     if schema in orig_schema:
         # keys list or schema like object that is a subset of orig
-        schema = orig_schema.extract(schema)
+        schema = orig_schema.extract(schema).assert_not_empty()
         pos = [orig_schema.index_of_key(x) for x in schema.names]
         if pos == list(range(len(orig_schema))):
             pos = []
         return schema, pos
     # otherwise it has to be a schema like object that must be a subset
     # of orig, and that has mismatched types
-    schema = Schema(schema)
+    schema = Schema(schema).assert_not_empty()
     pos = [orig_schema.index_of_key(x) for x in schema.names]
     if pos == list(range(len(orig_schema))):
         pos = []

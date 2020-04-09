@@ -14,10 +14,7 @@ class PandasDataFrame(LocalDataFrame):
         self, df: Any = None, schema: Any = None, metadata: Any = None
     ):
         if df is None:
-            assert_arg_not_none(
-                schema, msg="Schema must be set if dataframe is not provided"
-            )
-            schema = Schema(schema)
+            schema = Schema(schema).assert_not_empty()
             pdf = pd.DataFrame([], columns=schema.names)
             pdf = pdf.astype(dtype=schema.pd_dtype)
         elif isinstance(df, PandasDataFrame):
@@ -30,7 +27,7 @@ class PandasDataFrame(LocalDataFrame):
             schema = None if schema is None else Schema(schema)
         elif isinstance(df, Iterable):
             assert_arg_not_none(schema, msg=f"schema can't be None for iterable input")
-            schema = Schema(schema)
+            schema = Schema(schema).assert_not_empty()
             pdf = pd.DataFrame(df, columns=schema.names)
             pdf = pdf.astype(dtype=schema.pd_dtype)
         else:
@@ -98,17 +95,13 @@ class PandasDataFrame(LocalDataFrame):
             pdf.empty or type(pdf.index) == pd.RangeIndex,
             ValueError("Pandas datafame must have default index"),
         )
-        assert schema is None or len(schema) > 0, "Schema if set then it can't be empty"
         if pdf.columns.dtype == "object":  # pdf has named schema
             pschema = Schema(pdf)
             if schema is None or pschema == schema:
-                return pdf, pschema
-            pdf = pdf[schema.names]
+                return pdf, pschema.assert_not_empty()
+            pdf = pdf[schema.assert_not_empty().names]
         else:  # pdf has no named schema
-            assert_arg_not_none(
-                schema, msg="Schema can't be none when dataframe has no named schema"
-            )
-            assert schema is not None
+            schema = Schema(schema).assert_not_empty()
             assert_or_throw(
                 pdf.shape[1] == len(schema),
                 ValueError(f"Pandas datafame column count doesn't match {schema}"),

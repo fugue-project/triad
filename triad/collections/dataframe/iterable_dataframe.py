@@ -7,7 +7,6 @@ from triad.collections.dataframe.dataframe import (
 )
 from triad.collections.schema import Schema
 from triad.exceptions import InvalidOperationError
-from triad.utils.assertion import assert_arg_not_none
 from triad.utils.iter import EmptyAwareIterable, make_empty_aware
 from triad.utils.pyarrow import apply_schema
 
@@ -17,9 +16,6 @@ class IterableDataFrame(LocalDataFrame):
         self, df: Any = None, schema: Any = None, metadata: Any = None
     ):
         if df is None:
-            assert_arg_not_none(
-                schema, msg="Schema must be set if dataframe is not provided"
-            )
             idf: Iterable[Any] = []
             orig_schema: Optional[Schema] = None
         elif isinstance(df, IterableDataFrame):
@@ -29,7 +25,6 @@ class IterableDataFrame(LocalDataFrame):
             idf = df.as_array_iterable(type_safe=False)
             orig_schema = df.schema
         elif isinstance(df, Iterable):
-            assert_arg_not_none(schema, msg=f"schema can't be None for iterable input")
             idf = df
             orig_schema = None
         else:

@@ -6,7 +6,7 @@ from triad.collections.dataframe.dataframe import (
     _get_schema_change,
 )
 from triad.exceptions import InvalidOperationError
-from triad.utils.assertion import assert_arg_not_none, assert_or_throw
+from triad.utils.assertion import assert_or_throw
 from triad.utils.pyarrow import apply_schema
 
 
@@ -15,9 +15,6 @@ class ArrayDataFrame(LocalDataFrame):
         self, df: Any = None, schema: Any = None, metadata: Any = None
     ):
         if df is None:
-            assert_arg_not_none(
-                schema, msg="Schema must be set if dataframe is not provided"
-            )
             super().__init__(schema, metadata)
             self._native = []
         elif isinstance(df, DataFrame):
@@ -29,7 +26,6 @@ class ArrayDataFrame(LocalDataFrame):
                 super().__init__(schema, metadata)
                 self._native = df.as_array(schema.names, type_safe=False)
         elif isinstance(df, Iterable):
-            assert_arg_not_none(schema, msg="schema can't be None for iterable input")
             super().__init__(schema, metadata)
             self._native = df if isinstance(df, List) else list(df)
         else:

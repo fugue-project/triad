@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 from pytest import raises
 from triad.collections.dataframe import PandasDataFrame
-from triad.collections.schema import Schema
+from triad.collections.schema import Schema, SchemaError
 from triad.exceptions import InvalidOperationError, NoneArgumentError
 
 
 def test_init():
-    raises(NoneArgumentError, lambda: PandasDataFrame())
-    raises(AssertionError, lambda: PandasDataFrame(schema=Schema()))
+    raises(SchemaError, lambda: PandasDataFrame())
+    raises(SchemaError, lambda: PandasDataFrame(schema=Schema()))
 
     df = PandasDataFrame(schema="a:str,b:int")
     assert df.count() == 0
@@ -19,7 +19,7 @@ def test_init():
     assert Schema(df.native) == "a:str,b:int"
 
     pdf = pd.DataFrame([["a", 1], ["b", 2]])
-    raises(NoneArgumentError, lambda: PandasDataFrame(pdf))
+    raises(SchemaError, lambda: PandasDataFrame(pdf))
     df = PandasDataFrame(pdf, "a:str,b:str")
     assert [["a", "1"], ["b", "2"]] == df.native.values.tolist()
     df = PandasDataFrame(pdf, "a:str,b:int")

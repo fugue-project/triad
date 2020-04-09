@@ -145,6 +145,11 @@ class Schema(IndexedOrderedDict):
         """
         return self.pandas_dtype
 
+    def assert_not_empty(self) -> "Schema":
+        if len(self) > 0:
+            return self
+        raise SchemaError("Schema can't be empty")
+
     def copy(self) -> "Schema":
         """Clone Schema object
 

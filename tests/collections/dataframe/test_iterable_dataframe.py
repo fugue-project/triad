@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 from pytest import raises
 from triad.collections.dataframe import IterableDataFrame, PandasDataFrame
-from triad.collections.schema import Schema
+from triad.collections.schema import Schema, SchemaError
 from triad.exceptions import InvalidOperationError, NoneArgumentError
 
 
 def test_init():
-    raises(NoneArgumentError, lambda: IterableDataFrame())
-    raises(AssertionError, lambda: IterableDataFrame(schema=Schema()))
+    raises(SchemaError, lambda: IterableDataFrame())
+    raises(SchemaError, lambda: IterableDataFrame(schema=Schema()))
 
     df = IterableDataFrame(schema="a:str,b:int")
     assert df.empty()
