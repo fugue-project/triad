@@ -217,11 +217,11 @@ def as_type(obj: Any, target: type) -> Any:
     if issubclass(type(obj), target):
         return obj
     if target == bool:
-        return _as_bool(obj)
+        return to_bool(obj)
     if target == datetime.datetime:
-        return _as_datetime(obj)
+        return to_datetime(obj)
     if target == datetime.timedelta:
-        return _as_timedelta(obj)
+        return to_timedelta(obj)
     return target(obj)
 
 
@@ -273,7 +273,7 @@ def _parse_value_and_unit(exp: Any) -> Tuple[float, str]:
         raise ValueError(f"Invalid expression {exp}")
 
 
-def _as_bool(obj: Any) -> bool:
+def to_bool(obj: Any) -> bool:
     if obj is None:
         raise TypeError("None can't convert to bool")
     o = str(obj).lower()
@@ -284,7 +284,7 @@ def _as_bool(obj: Any) -> bool:
     raise TypeError(f"{o} can't convert to bool")
 
 
-def _as_datetime(obj: Any) -> datetime.datetime:
+def to_datetime(obj: Any) -> datetime.datetime:
     if obj is None:
         raise TypeError("None can't convert to datetime")
     if isinstance(obj, datetime.datetime):
@@ -299,7 +299,7 @@ def _as_datetime(obj: Any) -> datetime.datetime:
     raise TypeError(f"{type(obj)} {obj} can't convert to datetime")
 
 
-def _as_timedelta(obj: Any) -> datetime.timedelta:
+def to_timedelta(obj: Any) -> datetime.timedelta:
     if obj is None:
         raise TypeError("None can't convert to timedelta")
     if isinstance(obj, datetime.timedelta):

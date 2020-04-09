@@ -7,7 +7,7 @@ from pytest import raises
 from tests.utils.convert_examples import BaseClass, Class2, SubClass
 from tests.utils.convert_examples import SubClass as SubClassSame
 import tests.utils.convert_examples as ex
-from triad.utils.convert import (_as_bool, _as_datetime, _as_timedelta,
+from triad.utils.convert import (to_bool, to_datetime, to_timedelta,
                                  _parse_value_and_unit, as_type,
                                  str_to_instance, str_to_type, to_function,
                                  to_instance, to_size, to_type)
@@ -142,44 +142,44 @@ def test_obj_to_function():
     assert to_function("min", first=False) is min
 
 
-def test_as_bool():
-    raises(TypeError, lambda: _as_bool(None))
-    assert _as_bool("TRUE")
-    assert _as_bool(True)
-    assert _as_bool("1")
-    assert _as_bool(1)
-    assert _as_bool("Yes")
-    assert not _as_bool("FALSE")
-    assert not _as_bool(False)
-    assert not _as_bool("0")
-    assert not _as_bool(0)
-    raises(TypeError, lambda: _as_bool("x"))
+def testto_bool():
+    raises(TypeError, lambda: to_bool(None))
+    assert to_bool("TRUE")
+    assert to_bool(True)
+    assert to_bool("1")
+    assert to_bool(1)
+    assert to_bool("Yes")
+    assert not to_bool("FALSE")
+    assert not to_bool(False)
+    assert not to_bool("0")
+    assert not to_bool(0)
+    raises(TypeError, lambda: to_bool("x"))
 
 
-def test_as_datetime():
-    raises(TypeError, lambda: _as_datetime(None))
+def testto_datetime():
+    raises(TypeError, lambda: to_datetime(None))
     dt = datetime.now()
-    assert dt == _as_datetime(dt)
-    assert dt == _as_datetime(str(dt))
-    assert datetime(2019, 5, 18) == _as_datetime("2019-05-18")
-    assert datetime(2019, 5, 18, 10, 11, 12) == _as_datetime("2019-05-18 10:11:12")
-    assert datetime(2019, 5, 18) == _as_datetime(date(2019, 5, 18))
-    raises(TypeError, lambda: _as_datetime("x"))
-    raises(TypeError, lambda: _as_datetime(123))
+    assert dt == to_datetime(dt)
+    assert dt == to_datetime(str(dt))
+    assert datetime(2019, 5, 18) == to_datetime("2019-05-18")
+    assert datetime(2019, 5, 18, 10, 11, 12) == to_datetime("2019-05-18 10:11:12")
+    assert datetime(2019, 5, 18) == to_datetime(date(2019, 5, 18))
+    raises(TypeError, lambda: to_datetime("x"))
+    raises(TypeError, lambda: to_datetime(123))
 
 
-def test_as_timedelta():
-    raises(TypeError, lambda: _as_timedelta(None))
+def testto_timedelta():
+    raises(TypeError, lambda: to_timedelta(None))
     dt = timedelta(days=2)
-    assert dt == _as_timedelta(dt)
-    assert dt == _as_timedelta("2d")
-    assert dt == _as_timedelta("48h")
+    assert dt == to_timedelta(dt)
+    assert dt == to_timedelta("2d")
+    assert dt == to_timedelta("48h")
     dt = timedelta(days=2, minutes=1)
-    assert dt == _as_timedelta("2 day 1 min")
-    assert dt == _as_timedelta("2d1m")
+    assert dt == to_timedelta("2 day 1 min")
+    assert dt == to_timedelta("2d1m")
     dt = pd.Timedelta('2d')
-    assert timedelta(days=2) == _as_timedelta(dt)
-    raises(TypeError, lambda: _as_timedelta("x"))
+    assert timedelta(days=2) == to_timedelta(dt)
+    raises(TypeError, lambda: to_timedelta("x"))
 
 
 def test_as_type():
