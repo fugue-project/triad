@@ -3,6 +3,9 @@ from triad.collections.schema import Schema
 
 
 def test_show():
+    df = ArrayDataFrame(schema="a:str,b:str")
+    df.show()
+
     s = " ".join(["x"] * 2)
     df = ArrayDataFrame([[s, 1], ["b", 2]], "a:str,b:str")
     df.show()
