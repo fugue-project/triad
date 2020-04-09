@@ -10,6 +10,9 @@ from triad.exceptions import InvalidOperationError, NoneArgumentError
 
 
 def test_init():
+    raises(NoneArgumentError, lambda: PandasDataFrame())
+    raises(AssertionError, lambda: PandasDataFrame(schema=Schema()))
+
     df = PandasDataFrame(schema="a:str,b:int")
     assert df.count() == 0
     assert df.schema == "a:str,b:int"

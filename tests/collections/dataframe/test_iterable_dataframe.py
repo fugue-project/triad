@@ -11,6 +11,7 @@ from triad.exceptions import InvalidOperationError, NoneArgumentError
 
 def test_init():
     raises(NoneArgumentError, lambda: IterableDataFrame())
+    raises(AssertionError, lambda: IterableDataFrame(schema=Schema()))
 
     df = IterableDataFrame(schema="a:str,b:int")
     assert df.empty()
