@@ -8,6 +8,8 @@ import pyarrow as pa
 from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
 from triad.utils.json import loads_no_dup
+from triad.utils.string import validate_triad_var_name
+
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "str": pa.string(),
@@ -62,15 +64,13 @@ _SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", ":"}
 
 
 def validate_column_name(expr: str) -> bool:
-    """Check if `expr` is a valid column name based on Triad standard: it has to be
-    a valid python identifier plus it can't be purly `_`
+    """Check if `expr` is a valid column name.
+    See :func:`~triad.utils.string.validate_triad_var_name`
 
     :param expr: column name expression
     :return: whether it is valid
     """
-    if expr is None or not expr.isidentifier():
-        return False
-    return expr.strip("_") != ""
+    return validate_triad_var_name(expr)
 
 
 def expression_to_schema(expr: str) -> pa.Schema:
