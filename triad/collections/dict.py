@@ -18,7 +18,7 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
     """Subclass of OrderedDict that can get and set with index
     """
 
-    def __init__(self, *args: List[Any], **kwds: Dict[str, Any]):
+    def __init__(self, *args: Any, **kwds: Any):
         self._readonly = False
         self._need_reindex = True
         self._key_index: Dict[Any, int] = {}
@@ -105,13 +105,13 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
     # ----------------------------------- Wrappers over OrderedDict
 
     def __setitem__(  # type: ignore
-        self, key: KT, value: VT, *args: List[Any], **kwds: Dict[str, Any]
+        self, key: KT, value: VT, *args: Any, **kwds: Any
     ) -> None:
         self._pre_update("__setitem__", key not in self)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore
 
     def __delitem__(  # type: ignore
-        self, *args: List[Any], **kwds: Dict[str, Any]
+        self, *args: Any, **kwds: Any
     ) -> None:
         self._pre_update("__delitem__")
         super().__delitem__(*args, **kwds)  # type: ignore
@@ -137,7 +137,7 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
         return IndexedOrderedDict(it)
 
     def popitem(  # type: ignore
-        self, *args: List[Any], **kwds: Dict[str, Any]
+        self, *args: Any, **kwds: Any
     ) -> Tuple[KT, VT]:
         self._pre_update("popitem")
         return super().popitem(*args, **kwds)  # type: ignore
@@ -185,7 +185,7 @@ class ParamDict(IndexedOrderedDict[str, VT]):
         self.update(data, deep=deep)
 
     def __setitem__(  # type: ignore
-        self, key: str, value: VT, *args: List[Any], **kwds: Dict[str, Any]
+        self, key: str, value: VT, *args: Any, **kwds: Any
     ) -> None:
         assert isinstance(key, str)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore
