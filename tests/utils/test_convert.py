@@ -142,7 +142,7 @@ def test_obj_to_function():
     assert to_function("min", first=False) is min
 
 
-def testto_bool():
+def test_to_bool():
     raises(TypeError, lambda: to_bool(None))
     assert to_bool("TRUE")
     assert to_bool(True)
@@ -156,7 +156,7 @@ def testto_bool():
     raises(TypeError, lambda: to_bool("x"))
 
 
-def testto_datetime():
+def test_to_datetime():
     raises(TypeError, lambda: to_datetime(None))
     dt = datetime.now()
     assert dt == to_datetime(dt)
@@ -168,7 +168,7 @@ def testto_datetime():
     raises(TypeError, lambda: to_datetime(123))
 
 
-def testto_timedelta():
+def test_to_timedelta():
     raises(TypeError, lambda: to_timedelta(None))
     dt = timedelta(days=2)
     assert dt == to_timedelta(dt)
@@ -180,6 +180,14 @@ def testto_timedelta():
     dt = pd.Timedelta('2d')
     assert timedelta(days=2) == to_timedelta(dt)
     raises(TypeError, lambda: to_timedelta("x"))
+    assert timedelta() == to_timedelta(0)
+    assert timedelta(seconds=2.5) == to_timedelta(2.5)
+    assert timedelta(seconds=2.1) == to_timedelta(np.float64(2.1))
+    assert timedelta(seconds=2) == to_timedelta(np.int32(2))
+    assert timedelta.max == to_timedelta("Max")
+    assert timedelta.max == to_timedelta("InF")
+    assert timedelta.min == to_timedelta("mIn")
+    assert timedelta.min == to_timedelta("-InF")
 
 
 def test_as_type():
