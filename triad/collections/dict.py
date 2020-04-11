@@ -2,7 +2,7 @@ import copy
 import json
 import sys
 from collections import OrderedDict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, TypeVar
 
 from triad.exceptions import InvalidOperationError
 from triad.utils.assertion import assert_arg_not_none
@@ -10,11 +10,15 @@ from triad.utils.convert import as_type
 from triad.utils.iter import to_kv_iterable
 
 
-class IndexedOrderedDict(OrderedDict):
+KT = TypeVar("KT")
+VT = TypeVar("VT")
+
+
+class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
     """Subclass of OrderedDict that can get and set with index
     """
 
-    def __init__(self, *args: List[Any], **kwds: Dict[str, Any]):
+    def __init__(self, *args: Any, **kwds: Any):
         self._readonly = False
         self._need_reindex = True
         self._key_index: Dict[Any, int] = {}
@@ -37,7 +41,7 @@ class IndexedOrderedDict(OrderedDict):
         self._build_index()
         return self._key_index[key]
 
-    def get_key_by_index(self, index: int) -> Any:
+    def get_key_by_index(self, index: int) -> KT:
         """Get key by index
 
         :param index: index of the key
@@ -46,7 +50,7 @@ class IndexedOrderedDict(OrderedDict):
         self._build_index()
         return self._index_key[index]
 
-    def get_value_by_index(self, index: int) -> Any:
+    def get_value_by_index(self, index: int) -> VT:
         """Get value by index
 
         :param index: index of the item
@@ -55,7 +59,7 @@ class IndexedOrderedDict(OrderedDict):
         key = self.get_key_by_index(index)
         return self[key]
 
-    def get_item_by_index(self, index: int) -> Tuple[Any, Any]:
+    def get_item_by_index(self, index: int) -> Tuple[KT, VT]:
         """Get key value pair by index
 
         :param index: index of the item
@@ -64,7 +68,7 @@ class IndexedOrderedDict(OrderedDict):
         key = self.get_key_by_index(index)
         return key, self[key]
 
-    def set_value_by_index(self, index: int, value: Any) -> None:
+    def set_value_by_index(self, index: int, value: VT) -> None:
         """Set value by index
 
         :param index: index of the item
@@ -73,7 +77,7 @@ class IndexedOrderedDict(OrderedDict):
         key = self.get_key_by_index(index)
         self[key] = value
 
-    def pop_by_index(self, index: int) -> Tuple[Any, Any]:
+    def pop_by_index(self, index: int) -> Tuple[KT, VT]:
         """Pop item at index
 
         :param index: index of the item
@@ -101,13 +105,13 @@ class IndexedOrderedDict(OrderedDict):
     # ----------------------------------- Wrappers over OrderedDict
 
     def __setitem__(  # type: ignore
-        self, key: Any, value: Any, *args: List[Any], **kwds: Dict[str, Any]
+        self, key: KT, value: VT, *args: Any, **kwds: Any
     ) -> None:
         self._pre_update("__setitem__", key not in self)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore
 
     def __delitem__(  # type: ignore
-        self, *args: List[Any], **kwds: Dict[str, Any]
+        self, *args: Any, **kwds: Any
     ) -> None:
         self._pre_update("__delitem__")
         super().__delitem__(*args, **kwds)  # type: ignore
@@ -133,13 +137,13 @@ class IndexedOrderedDict(OrderedDict):
         return IndexedOrderedDict(it)
 
     def popitem(  # type: ignore
-        self, *args: List[Any], **kwds: Dict[str, Any]
-    ) -> Tuple[Any, Any]:
+        self, *args: Any, **kwds: Any
+    ) -> Tuple[KT, VT]:
         self._pre_update("popitem")
         return super().popitem(*args, **kwds)  # type: ignore
 
     def move_to_end(  # type: ignore
-        self, *args: List[Any], **kwds: Dict[str, Any]
+        self, *args: Any, **kwds: Any
     ) -> None:
         self._pre_update("move_to_end")
         super().move_to_end(*args, **kwds)  # type: ignore
@@ -148,8 +152,8 @@ class IndexedOrderedDict(OrderedDict):
         return super().__sizeof__() + sys.getsizeof(self._need_reindex)
 
     def pop(  # type: ignore
-        self, *args: List[Any], **kwds: Dict[str, Any]
-    ) -> Any:
+        self, *args: Any, **kwds: Any
+    ) -> VT:
         self._pre_update("pop")
         return super().pop(*args, **kwds)  # type: ignore
 
@@ -165,7 +169,7 @@ class IndexedOrderedDict(OrderedDict):
         self._need_reindex = need_reindex
 
 
-class ParamDict(IndexedOrderedDict):
+class ParamDict(IndexedOrderedDict[str, VT]):
     """Parameter dictionary, a subclass of `IndexedOrderedDict`, keys must be string
 
     :param data: for possible types, see :func:"~triad.utils.iter.to_kv_iterable"
@@ -181,7 +185,7 @@ class ParamDict(IndexedOrderedDict):
         self.update(data, deep=deep)
 
     def __setitem__(  # type: ignore
-        self, key: Any, value: Any, *args: List[Any], **kwds: Dict[str, Any]
+        self, key: str, value: VT, *args: Any, **kwds: Any
     ) -> None:
         assert isinstance(key, str)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore

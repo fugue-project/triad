@@ -1,6 +1,7 @@
 import json
 import pickle
 from copy import copy, deepcopy
+from typing import Any
 
 from pytest import raises
 from triad.collections.dict import IndexedOrderedDict, ParamDict
@@ -241,3 +242,11 @@ def test_param_dict():
     raises(KeyError, lambda: p.update(p1, ParamDict.THROW))
 
     raises(ValueError, lambda: p.update(p1, 100))
+
+
+def test_using_param_dict():
+    def get_count(d: ParamDict[Any]):
+        return len(d)
+
+    dd = ParamDict(dict(a=1))
+    assert 1 == get_count(dd)
