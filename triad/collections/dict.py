@@ -169,7 +169,7 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
         self._need_reindex = need_reindex
 
 
-class ParamDict(IndexedOrderedDict[str, VT]):
+class ParamDict(IndexedOrderedDict[str, Any]):
     """Parameter dictionary, a subclass of `IndexedOrderedDict`, keys must be string
 
     :param data: for possible types, see :func:"~triad.utils.iter.to_kv_iterable"
@@ -185,7 +185,7 @@ class ParamDict(IndexedOrderedDict[str, VT]):
         self.update(data, deep=deep)
 
     def __setitem__(  # type: ignore
-        self, key: str, value: VT, *args: Any, **kwds: Any
+        self, key: str, value: Any, *args: Any, **kwds: Any
     ) -> None:
         assert isinstance(key, str)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore

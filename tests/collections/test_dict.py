@@ -244,9 +244,9 @@ def test_param_dict():
     raises(ValueError, lambda: p.update(p1, 100))
 
 
-def test_using_param_dict():
-    def get_count(d: ParamDict[Any]):
+def test_using_indexed_ordered_dict():
+    def get_count(d: IndexedOrderedDict[str,int]):
         return len(d)
 
-    dd = ParamDict(dict(a=1))
+    dd = IndexedOrderedDict(dict(a=1))
     assert 1 == get_count(dd)
