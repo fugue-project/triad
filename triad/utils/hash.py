@@ -19,6 +19,8 @@ def to_uuid(*args: List[Any]) -> str:
 def _get_strs(obj: Any) -> Iterable[str]:
     if obj is None:
         yield ""
+    elif isinstance(obj, object) and hasattr(obj, "__uuid__"):
+        yield str(obj.__uuid__())  # type: ignore
     elif isinstance(obj, dict):
         for k, v in obj.items():
             for x in _get_strs(k):
