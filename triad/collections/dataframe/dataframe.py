@@ -119,7 +119,7 @@ class DataFrame(ABC):
                 print("")
             if len(self.metadata) > 0:
                 print("Metadata:")
-                print(self.metadata.to_json_str(indent=True))
+                print(self.metadata.to_json(indent=True))
                 print("")
 
     def head(self, n: int, columns: Optional[List[str]] = None) -> List[Any]:

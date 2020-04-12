@@ -221,8 +221,8 @@ def test_param_dict():
     assert "cd" == p.get_or_throw("c", str)
     raises(KeyError, lambda: p.get_or_throw("d", str))
 
-    print(p.to_json_str())
-    print(p.to_json_str(True))
+    print(p.to_json())
+    print(p.to_json(True))
 
     # update
     p = ParamDict(dict(a=1, b=2))
