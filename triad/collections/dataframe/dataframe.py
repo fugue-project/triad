@@ -20,11 +20,11 @@ class DataFrame(ABC):
         else:
             self._schema: Union[Schema, Callable[[], Schema]] = schema  # type: ignore
             self._schema_discovered = False
-        self._metadata: ParamDict[Any] = ParamDict(metadata, deep=True)
+        self._metadata = ParamDict(metadata, deep=True)
         self._lazy_schema_lock = RLock()
 
     @property
-    def metadata(self) -> ParamDict[Any]:
+    def metadata(self) -> ParamDict:
         return self._metadata
 
     @property
