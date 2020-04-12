@@ -1,16 +1,17 @@
-from datetime import datetime, timedelta, date
-
 import builtins
+from datetime import date, datetime, timedelta
+
 import numpy as np
 import pandas as pd
+import tests.utils.convert_examples as ex
 from pytest import raises
 from tests.utils.convert_examples import BaseClass, Class2, SubClass
 from tests.utils.convert_examples import SubClass as SubClassSame
-import tests.utils.convert_examples as ex
-from triad.utils.convert import (to_bool, to_datetime, to_timedelta,
-                                 _parse_value_and_unit, as_type,
-                                 str_to_instance, str_to_type, to_function,
-                                 to_instance, to_size, to_type)
+from triad.utils.convert import (_parse_value_and_unit, as_type,
+                                 get_full_type_path, str_to_instance,
+                                 str_to_type, to_bool, to_datetime,
+                                 to_function, to_instance, to_size,
+                                 to_timedelta, to_type)
 
 
 def test_to_size():
@@ -203,7 +204,24 @@ def test_as_type():
     assert datetime(2019, 5, 18) == as_type("2019-05-18", datetime)
 
 
+def test_get_full_type_path():
+    assert "tests.utils.test_convert.dummy_for_test" == get_full_type_path(
+        dummy_for_test)
+    raises(TypeError, lambda: get_full_type_path(lambda x: x + 1))
+    assert "tests.utils.test_convert.__Dummy__" == get_full_type_path(__Dummy__)
+    assert "tests.utils.convert_examples.SubClass" == get_full_type_path(SubClassSame)
+    raises(TypeError, lambda: get_full_type_path(None))
+    assert "builtins.int" == get_full_type_path(int)
+    assert "builtins.dict" == get_full_type_path(dict)
+    assert "builtins.Exception" == get_full_type_path(Exception)
+
+    assert "builtins.int" == get_full_type_path(123)
+    assert "builtins.str" == get_full_type_path("ad")
+    assert "tests.utils.test_convert.__Dummy__" == get_full_type_path(__Dummy__())
+
 # This is for test_obj_to_function
+
+
 def dummy_for_test():
     pass
 
