@@ -245,7 +245,7 @@ def test_param_dict():
 
 
 def test_using_indexed_ordered_dict():
-    def get_count(d: IndexedOrderedDict[str,int]):
+    def get_count(d: IndexedOrderedDict[str, int]):
         return len(d)
 
     dd = IndexedOrderedDict(dict(a=1))
