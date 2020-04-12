@@ -235,7 +235,7 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         """
         return self._get_or(key, expected_type, throw=True)
 
-    def to_json_str(self, indent: bool = False) -> str:
+    def to_json(self, indent: bool = False) -> str:
         """Generate json expression string for the dictionary
 
         :param indent: whether to have indent

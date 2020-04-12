@@ -207,6 +207,19 @@ def to_functions(s: Any) -> Iterable[Any]:  # noqa: C901
         yield func
 
 
+def get_full_type_path(obj: Any) -> str:
+    if obj is not None:
+        if inspect.isclass(obj):
+            return "{}.{}".format(obj.__module__, obj.__name__)
+        if inspect.isfunction(obj):
+            if obj.__name__.startswith("<lambda"):
+                raise TypeError("Can't get full path for lambda functions")
+            return "{}.{}".format(obj.__module__, obj.__name__)
+        if isinstance(obj, object):
+            return "{}.{}".format(obj.__class__.__module__, obj.__class__.__name__)
+    raise TypeError(f"Unable to get type full path from {obj}")
+
+
 def to_bool(obj: Any) -> bool:
     """Convert an object to python bool value. It can handle values
     like `True`, `true`, `yes`, `1`, etc
