@@ -5,7 +5,16 @@ from typing import Any, Iterable, List
 
 
 def to_uuid(*args: List[Any]) -> str:
-    """Determine the uuid by input arguments
+    """Determine the uuid by input arguments. It will search the input recursively.
+    If an object contains `__uuid__` method, it will call that method to get the uuid
+    for that object.
+
+    :Examples:
+    >>> to_uuid([1,2,3])
+    >>> to_uuid(1,2,3)
+    >>> to_uuid(dict(a=1,b="z"))
+
+    :param *args: arbitrary input
 
     :return: uuid string
     """
