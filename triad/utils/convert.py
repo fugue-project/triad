@@ -208,6 +208,13 @@ def to_functions(s: Any) -> Iterable[Any]:  # noqa: C901
 
 
 def get_full_type_path(obj: Any) -> str:
+    """Get the full module path of the type (if `obj` is class or function) or type
+    of the instance (if `obj` is an object instance)
+
+    :param obj: a class/function type or an object instance
+    :raises TypeError: if `obj` is None, lambda, or neither a class or a function
+    :return: full path string
+    """
     if obj is not None:
         if inspect.isclass(obj):
             return "{}.{}".format(obj.__module__, obj.__name__)

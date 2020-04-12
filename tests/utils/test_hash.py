@@ -34,3 +34,23 @@ def test_to_uuid():
     id1 = to_uuid(["a", "aa"])
     id2 = to_uuid(["aa", "a"])
     assert id1 != id2
+
+    assert to_uuid([Mock2(), Mock2()]) == to_uuid([Mock(), Mock()])
+    assert to_uuid([Mock2(2), Mock2(3)]) == to_uuid([Mock(2), Mock(3)])
+    assert to_uuid([Mock2(2), Mock2(3)]) != to_uuid([Mock(3), Mock(3)])
+
+
+class Mock(object):
+    def __init__(self, n=1):
+        self.n = n
+
+    def __uuid__(self) -> str:
+        return str(self.n)
+
+
+class Mock2(object):
+    def __init__(self, n=1):
+        self.n = n
+
+    def __uuid__(self) -> int:
+        return self.n
