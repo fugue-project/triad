@@ -243,6 +243,9 @@ def test_param_dict():
 
     raises(ValueError, lambda: p.update(p1, 100))
 
+    p.set_readonly()
+    raises(InvalidOperationError, lambda: p.update(p1, 100))
+
 
 def test_using_indexed_ordered_dict():
     def get_count(d: IndexedOrderedDict[str, int]):

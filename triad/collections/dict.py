@@ -260,6 +260,7 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         :raises ValueError: if `on_dup` is invalid
         :return: itself
         """
+        self._pre_update("update", True)
         for k, v in to_kv_iterable(other):
             if on_dup == ParamDict.OVERWRITE or k not in self:
                 self[k] = copy.deepcopy(v) if deep else v
