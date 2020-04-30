@@ -5,9 +5,10 @@ import pandas as pd
 import pyarrow as pa
 from pytest import raises
 from triad.utils.pyarrow import (_parse_type, _type_to_expression,
-                                 expression_to_schema, is_supported,
-                                 pandas_to_schema, schema_to_expression,
-                                 to_pa_datatype, validate_column_name)
+                                 expression_to_schema, get_eq_func,
+                                 is_supported, pandas_to_schema,
+                                 schema_to_expression, to_pa_datatype,
+                                 validate_column_name)
 
 
 def test_validate_column_name():
@@ -86,6 +87,7 @@ def test_is_supported():
     assert not is_supported(pa.binary())
     assert is_supported(pa.struct([pa.field("a", pa.int32())]))
     assert is_supported(pa.list_(pa.int32()))
+    raises(NotImplementedError, lambda: is_supported(pa.date64(), throw=True))
 
 
 def test_pandas_to_schema():
@@ -108,6 +110,58 @@ def test_pandas_to_schema():
     df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
     df = df.astype(dtype={"x": np.int32, "y": np.dtype('str')})
     assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
+
+
+def test_get_eq_func():
+    for t in [pa.int8(), pa.int16(), pa.int32(), pa.int64(),
+              pa.uint8(), pa.uint16(), pa.uint32(), pa.uint64()]:
+        assert not get_eq_func(t)(0, 1)
+        assert not get_eq_func(t)(None, 1)
+        assert get_eq_func(t)(1, 1)
+        assert get_eq_func(t)(None, None)
+    t = pa.string()
+    assert not get_eq_func(t)("0", "1")
+    assert not get_eq_func(t)(None, "1")
+    assert get_eq_func(t)("1", "1")
+    assert get_eq_func(t)(None, None)
+    t = pa.bool_()
+    assert not get_eq_func(t)(False, True)
+    assert not get_eq_func(t)(None, False)
+    assert not get_eq_func(t)(None, True)
+    assert get_eq_func(t)(True, True)
+    assert get_eq_func(t)(False, False)
+    assert get_eq_func(t)(None, None)
+    for t in [pa.float16(), pa.float32(), pa.float64()]:
+        assert not get_eq_func(t)(0.0, 1.1)
+        assert get_eq_func(t)(1.1, 1.1)
+        assert get_eq_func(t)(None, float('nan'))
+        for n in [None, float('nan'), float('inf'), float('-inf')]:
+            assert not get_eq_func(t)(None, 1.1)
+            assert get_eq_func(t)(None, None)
+    for t in [pa.timestamp('ns')]:
+        for n in [None, pd.NaT]:
+            assert not get_eq_func(t)(datetime(2020, 1, 1, 0), datetime(2020, 1, 1, 1))
+            assert not get_eq_func(t)(n, datetime(2020, 1, 1, 1))
+            assert get_eq_func(t)(datetime(2020, 1, 1, 1),  datetime(2020, 1, 1, 1))
+            assert get_eq_func(t)(n, n)
+    assert get_eq_func(pa.timestamp('ns'))(None, pd.NaT)
+    for t in [pa.date32()]:
+        for n in [None, pd.NaT]:
+            assert get_eq_func(t)(datetime(2020, 1, 1, 0), datetime(2020, 1, 1, 1))
+            assert not get_eq_func(t)(datetime(2020, 1, 1), datetime(2020, 1, 2).date())
+            assert not get_eq_func(t)(n, datetime(2020, 1, 1, 1))
+            assert get_eq_func(t)(datetime(2020, 1, 1).date(),  datetime(2020, 1, 1, 1))
+            assert get_eq_func(t)(n, n)
+    t = pa.struct([pa.field("a", pa.int32())])
+    assert not get_eq_func(t)(dict(a=0), dict(a=1))
+    assert not get_eq_func(t)(None, dict(a=1))
+    assert get_eq_func(t)(dict(a=1), dict(a=1))
+    assert get_eq_func(t)(None, None)
+    t = pa.list_(pa.int32())
+    assert not get_eq_func(t)([0], [1])
+    assert not get_eq_func(t)(None, [1])
+    assert get_eq_func(t)([1], [1])
+    assert get_eq_func(t)(None, None)
 
 
 def _assert_from_expr(expr, expected=None):

@@ -171,7 +171,9 @@ class Slicer(object):
         self._current_row = 1
         self._current_size = 0
 
-    def slice(self, orig_it: Iterable[T]) -> Iterable[Iterable[T]]:  # noqa C901
+    def slice(  # noqa C901
+        self, orig_it: Iterable[T]
+    ) -> Iterable[EmptyAwareIterable[T]]:
         """Slice the original iterable into slices by the combined slicing logic
 
         :param orig_it: ther original iterable
