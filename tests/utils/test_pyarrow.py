@@ -8,7 +8,7 @@ from triad.utils.pyarrow import (_parse_type, _type_to_expression,
                                  expression_to_schema, get_eq_func,
                                  is_supported, pandas_to_schema,
                                  schema_to_expression, to_pa_datatype,
-                                 validate_column_name, SchemadDataPartitioner)
+                                 validate_column_name, SchemaedDataPartitioner)
 
 
 def test_validate_column_name():
@@ -164,12 +164,12 @@ def test_get_eq_func():
     assert get_eq_func(t)(None, None)
 
 
-def test_schemad_data_partitioner():
-    p0 = SchemadDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
+def test_schemaed_data_partitioner():
+    p0 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
                                 key_positions=[2, 0], row_limit=0)
-    p1 = SchemadDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
+    p1 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
                                 key_positions=[2, 0], row_limit=1)
-    p2 = SchemadDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
+    p2 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
                                 key_positions=[2, 0], row_limit=2)
     data = [[0, 0, 0], [0, 1, 0], [0, 2, 0], [1, 0, 0]]
     _test_partition(p0, data, "0,0,[0,1,2];1,0,[3]")

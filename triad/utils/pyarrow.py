@@ -227,7 +227,17 @@ def get_eq_func(data_type: pa.DataType) -> Callable[[Any, Any], bool]:
     return _general_eq
 
 
-class SchemadDataPartitioner(object):
+class SchemaedDataPartitioner(object):
+    """Partitioner for stream of array like data with given schema.
+    It uses :func"`~triad.utils.iter.Slicer` to partition the stream
+
+    :param schema: the schema of the data stream to process
+    :param key_positions: positions of partition keys on `schema`
+    :param sizer: the function to get size of an item
+    :param row_limit: max row for each slice, defaults to None
+    :param size_limit: max byte size for each slice, defaults to None
+    """
+
     def __init__(
         self,
         schema: pa.Schema,
@@ -251,6 +261,11 @@ class SchemadDataPartitioner(object):
     def partition(
         self, data: Iterable[Any]
     ) -> Iterable[Tuple[int, int, EmptyAwareIterable[Any]]]:
+        """Partition the given data stream
+
+        :param data: iterable of array like objects
+        :yield: iterable of <partition_no, slice_no, slice iterable> tuple
+        """
         self._hitting_boundary = False
         slice_no = 0
         partition_no = 0
