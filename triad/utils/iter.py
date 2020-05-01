@@ -65,7 +65,7 @@ def to_kv_iterable(  # noqa: C901
             yield k, v
     elif isinstance(data, Iterable):
         ei = make_empty_aware(data)
-        if not ei.empty():
+        if not ei.empty:
             first = ei.peek()
             if isinstance(first, tuple):
                 for k, v in ei:
@@ -100,6 +100,7 @@ class EmptyAwareIterable(Iterable[T]):
         self._state = 0
         self._fill_last()
 
+    @property
     def empty(self) -> bool:
         """Check if the underlying iterable has more items
 
@@ -113,7 +114,7 @@ class EmptyAwareIterable(Iterable[T]):
         :raises StopIteration: if it's empty
         :return: the `next` item
         """
-        if not self.empty():
+        if not self.empty:
             return self._last  # type: ignore
         raise StopIteration("Can't peek empty iterable")
 
@@ -181,7 +182,7 @@ class Slicer(object):
         :yield: an iterable of EmptyAwareIterable
         """
         it = make_empty_aware(orig_it)
-        if it.empty():
+        if it.empty:
             pass
         elif self._row_limit <= 0 and self._size_limit <= 0:
             if self._slicer is None:

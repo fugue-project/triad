@@ -9,40 +9,40 @@ from triad.utils.iter import (EmptyAwareIterable, Slicer, make_empty_aware,
 def test_empty_aware_iterable():
     i = _get_iterable("1,2,3")
     e = make_empty_aware(i)
-    assert not e.empty()
+    assert not e.empty
     assert "1,2,3" == ",".join(e)
-    assert e.empty()
+    assert e.empty
 
     i = _get_iterable("1")
     e = EmptyAwareIterable(i)
-    assert not e.empty()
-    assert not e.empty()
+    assert not e.empty
+    assert not e.empty
     assert "1" == ",".join(e)
-    assert e.empty()
+    assert e.empty
 
     e = EmptyAwareIterable([])
-    assert e.empty()
+    assert e.empty
     assert "" == ",".join(e)
-    assert e.empty()
+    assert e.empty
     raises(StopIteration, lambda: e.peek())
 
     i = _get_iterable("1,2,3")
     e = EmptyAwareIterable(i)
-    assert not e.empty()
+    assert not e.empty
     assert "1,2" == ",".join(itertools.islice(e, 2))
-    assert not e.empty()
+    assert not e.empty
     assert "3" == ",".join(itertools.islice(e, 2))
-    assert e.empty()
+    assert e.empty
 
     i = _get_iterable("1,2,3")
     e = EmptyAwareIterable(iter(i))
-    assert not e.empty()
+    assert not e.empty
     assert "1" == e.peek()
     assert "1,2" == ",".join(itertools.islice(e, 2))
-    assert not e.empty()
+    assert not e.empty
     assert "3" == e.peek()
     assert "3" == ",".join(itertools.islice(e, 2))
-    assert e.empty()
+    assert e.empty
 
 
 def test_empty_aware_iterable_recursive():
@@ -170,7 +170,7 @@ def test_slicer():
 def assert_slice(expected, iterable, slicer, slice_proc):
     ll = []
     for x in slice_iterable(iterable, slicer):
-        assert not x.empty()
+        assert not x.empty
         assert isinstance(x, EmptyAwareIterable)
         ll.append(','.join(map(str, slice_proc(x))))
     s = '-'.join(ll)
