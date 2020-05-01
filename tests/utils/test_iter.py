@@ -144,20 +144,20 @@ def test_slicer():
     assert [[2, 1], [3, 2]] == c.arr
     c = C()
     assert_slicer('.0.1.2', [1, 0, -1], 1, 0, None, c.c)
-    assert [] == c.arr  # chunk_row is effective first
+    assert [[0, 1], [-1, 0]] == c.arr  # is_boundary must be called anyway
     c = C()
     assert_slicer('.00.1', [1, 0, -1], 2, 0, None, c.c)
-    assert [[0, 1]] == c.arr
+    assert [[0, 1], [-1, 0]] == c.arr  # is_boundary must be called anyway
     c = C()
     # size and row counters should reset after slicer taking effect
     assert_slicer('.0.11', [1, 2, 1], 2, 0, None, c.c)
     assert [[2, 1], [1, 2]] == c.arr
     c = C()
     assert_slicer('.00.1', [1, 0, -1], 0, 2, lambda x: 1, c.c)
-    assert [[0, 1]] == c.arr
+    assert [[0, 1], [-1, 0]] == c.arr
     c = C()
     assert_slicer('.0.1.2', [1, 1, 1], 1, 2, lambda x: 1, c.c)
-    assert [] == c.arr
+    assert [[1, 1], [1, 1]] == c.arr
     c = C()
     # size and row counters should reset after slicer taking effect
     assert_slicer('.0.11', [1, 2, 1], 10, 2, lambda x: 1, c.c)

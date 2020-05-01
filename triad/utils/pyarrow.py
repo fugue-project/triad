@@ -1,15 +1,15 @@
 import json
 from datetime import date, datetime
-from typing import Any, Callable, Dict, Iterable, List, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
+from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
 from triad.utils.string import validate_triad_var_name
-
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "str": pa.string(),
@@ -225,6 +225,48 @@ def get_eq_func(data_type: pa.DataType) -> Callable[[Any, Any], bool]:
     if pa.types.is_timestamp(data_type):
         return _timestamp_eq
     return _general_eq
+
+
+class SchemadDataPartitioner(object):
+    def __init__(
+        self,
+        schema: pa.Schema,
+        key_positions: List[int],
+        sizer: Optional[Callable[[Any], int]] = None,
+        row_limit: int = 0,
+        size_limit: Any = None,
+    ):
+        self._eq_funcs: List[Any] = [None] * len(schema)
+        self._keys = key_positions
+        for p in key_positions:
+            self._eq_funcs[p] = get_eq_func(schema.types[p])
+        self._slicer = Slicer(
+            sizer=sizer,
+            row_limit=row_limit,
+            size_limit=size_limit,
+            slicer=self._is_boundary,
+        )
+        self._hitting_boundary = True
+
+    def partition(
+        self, data: Iterable[Any]
+    ) -> Iterable[Tuple[int, int, EmptyAwareIterable[Any]]]:
+        self._hitting_boundary = False
+        slice_no = 0
+        partition_no = 0
+        for slice_ in self._slicer.slice(data):
+            if self._hitting_boundary:
+                slice_no = 0
+                partition_no += 1
+                self._hitting_boundary = False
+            yield partition_no, slice_no, slice_
+            slice_no += 1
+
+    def _is_boundary(self, no: int, current: Any, last: Any) -> bool:
+        self._hitting_boundary = any(
+            not self._eq_funcs[p](current[p], last[p]) for p in self._keys
+        )
+        return self._hitting_boundary
 
 
 def _field_to_expression(field: pa.Field) -> str:

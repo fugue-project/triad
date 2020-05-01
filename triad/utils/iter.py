@@ -178,7 +178,7 @@ class Slicer(object):
 
         :param orig_it: ther original iterable
 
-        :yield: an iterable of iterables
+        :yield: an iterable of EmptyAwareIterable
         """
         it = make_empty_aware(orig_it)
         if it.empty():
@@ -210,9 +210,9 @@ class Slicer(object):
         return no % self._row_limit == 0
 
     def _is_boundary_row_only_w_slicer(self, no: int, current: Any, last: Any) -> bool:
-        if self._current_row >= self._row_limit or (
-            self._slicer is not None and self._slicer(no, current, last)
-        ):
+        # self._slicer must be invoked even hitting row limit
+        is_boundary = self._slicer is not None and self._slicer(no, current, last)
+        if self._current_row >= self._row_limit or is_boundary:
             self._current_row = 1
             return True
         self._current_row += 1
@@ -221,9 +221,9 @@ class Slicer(object):
     def _is_boundary_size_only(self, no: int, current: Any, last: Any) -> bool:
         obj_size = self._sizer(current)  # type: ignore
         next_size = self._current_size + obj_size
-        if next_size > self._size_limit or (
-            self._slicer is not None and self._slicer(no, current, last)
-        ):
+        # self._slicer must be invoked even hitting size limit
+        is_boundary = self._slicer is not None and self._slicer(no, current, last)
+        if next_size > self._size_limit or is_boundary:
             self._current_size = obj_size
             return True
         self._current_size = next_size
@@ -232,13 +232,12 @@ class Slicer(object):
     def _is_boundary(self, no: int, current: Any, last: Any) -> bool:
         obj_size = self._sizer(current)  # type: ignore
         next_size = self._current_size + obj_size
+        # self._slicer must be invoked even hitting row limit and size limit
+        is_boundary = self._slicer is not None and self._slicer(no, current, last)
         if (
             next_size > self._size_limit
             or self._current_row >= self._row_limit  # noqa: W503
-            or (  # noqa: W503
-                self._slicer is not None  # noqa: W503
-                and self._slicer(no, current, last)  # noqa: W503
-            )  # noqa: W503
+            or is_boundary  # noqa: W503
         ):
             self._current_size = obj_size
             self._current_row = 1

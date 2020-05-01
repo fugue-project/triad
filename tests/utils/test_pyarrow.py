@@ -8,7 +8,7 @@ from triad.utils.pyarrow import (_parse_type, _type_to_expression,
                                  expression_to_schema, get_eq_func,
                                  is_supported, pandas_to_schema,
                                  schema_to_expression, to_pa_datatype,
-                                 validate_column_name)
+                                 validate_column_name, SchemadDataPartitioner)
 
 
 def test_validate_column_name():
@@ -162,6 +162,28 @@ def test_get_eq_func():
     assert not get_eq_func(t)(None, [1])
     assert get_eq_func(t)([1], [1])
     assert get_eq_func(t)(None, None)
+
+
+def test_schemad_data_partitioner():
+    p0 = SchemadDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
+                                key_positions=[2, 0], row_limit=0)
+    p1 = SchemadDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
+                                key_positions=[2, 0], row_limit=1)
+    p2 = SchemadDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
+                                key_positions=[2, 0], row_limit=2)
+    data = [[0, 0, 0], [0, 1, 0], [0, 2, 0], [1, 0, 0]]
+    _test_partition(p0, data, "0,0,[0,1,2];1,0,[3]")
+    _test_partition(p1, data, "0,0,[0];0,1,[1];0,2,[2];1,0,[3]")
+    _test_partition(p2, data, "0,0,[0,1];0,1,[2];1,0,[3]")
+    _test_partition(p2, data, "0,0,[0,1];0,1,[2];1,0,[3]")  # can reuse the partitioner
+
+
+def _test_partition(partitioner, data, expression):
+    e = []
+    for p, s, ck in partitioner.partition(data):
+        idx = [data.index(x) for x in ck]
+        e.append(f"{p},{s},{idx}")
+    assert expression == ";".join(e).replace(" ", "")
 
 
 def _assert_from_expr(expr, expected=None):
