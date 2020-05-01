@@ -1,15 +1,15 @@
 import json
 from datetime import date, datetime
-from typing import Any, Callable, Dict, Iterable, List, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
+from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
 from triad.utils.string import validate_triad_var_name
-
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "str": pa.string(),
@@ -157,16 +157,21 @@ def pandas_to_schema(df: pd.DataFrame) -> pa.Schema:
     return pa.schema(fields)
 
 
-def is_supported(data_type: pa.DataType) -> bool:
+def is_supported(data_type: pa.DataType, throw: bool = False) -> bool:
     """Whether `data_type` is currently supported by Triad
 
     :param data_type: instance of pa.DataType
+    :param throw: whether to raise exception if not supported
     :return: if it is supported
     """
     if data_type in _TYPE_EXPRESSION_R_MAPPING:
         return True
     tp = (pa.Decimal128Type, pa.TimestampType, pa.StructType, pa.ListType)
-    return isinstance(data_type, tp)
+    if isinstance(data_type, tp):
+        return True
+    if not throw:
+        return False
+    raise NotImplementedError(f"{data_type} is not supported by Triad")
 
 
 def apply_schema(
@@ -204,6 +209,64 @@ def apply_schema(
         raise
     except Exception as e:
         raise ValueError(str(e))
+
+
+def get_eq_func(data_type: pa.DataType) -> Callable[[Any, Any], bool]:
+    """Generate equality function for a give datatype
+
+    :param data_type: pyarrow data type supported by Triad
+    :return: the function
+    """
+    is_supported(data_type, throw=True)
+    if data_type in _COMPARATORS:
+        return _COMPARATORS[data_type]
+    if pa.types.is_date(data_type):
+        return _date_eq
+    if pa.types.is_timestamp(data_type):
+        return _timestamp_eq
+    return _general_eq
+
+
+class SchemadDataPartitioner(object):
+    def __init__(
+        self,
+        schema: pa.Schema,
+        key_positions: List[int],
+        sizer: Optional[Callable[[Any], int]] = None,
+        row_limit: int = 0,
+        size_limit: Any = None,
+    ):
+        self._eq_funcs: List[Any] = [None] * len(schema)
+        self._keys = key_positions
+        for p in key_positions:
+            self._eq_funcs[p] = get_eq_func(schema.types[p])
+        self._slicer = Slicer(
+            sizer=sizer,
+            row_limit=row_limit,
+            size_limit=size_limit,
+            slicer=self._is_boundary,
+        )
+        self._hitting_boundary = True
+
+    def partition(
+        self, data: Iterable[Any]
+    ) -> Iterable[Tuple[int, int, EmptyAwareIterable[Any]]]:
+        self._hitting_boundary = False
+        slice_no = 0
+        partition_no = 0
+        for slice_ in self._slicer.slice(data):
+            if self._hitting_boundary:
+                slice_no = 0
+                partition_no += 1
+                self._hitting_boundary = False
+            yield partition_no, slice_no, slice_
+            slice_no += 1
+
+    def _is_boundary(self, no: int, current: Any, last: Any) -> bool:
+        self._hitting_boundary = any(
+            not self._eq_funcs[p](current[p], last[p]) for p in self._keys
+        )
+        return self._hitting_boundary
 
 
 def _field_to_expression(field: pa.Field) -> str:
@@ -451,3 +514,34 @@ class _TypeConverter(object):
                 )
                 return lambda x: _to_pylist(converter, x, self._copy, self._str_as_json)
         raise NotImplementedError(f"{f} type is not supported")  # pragma: no cover
+
+
+def _general_eq(o1: Any, o2: Any) -> bool:
+    return o1 == o2
+
+
+def _float_eq(o1: Any, o2: Any) -> bool:
+    return o1 == o2 or ((o1 != o1 or o1 is None) and (o2 != o2 or o2 is None))
+
+
+def _timestamp_eq(o1: Any, o2: Any) -> bool:
+    return o1 == o2 or ((o1 is pd.NaT or o1 is None) and (o2 is pd.NaT or o2 is None))
+
+
+def _date_eq(o1: Any, o2: Any) -> bool:
+    if o1 == o2:
+        return True
+    nat1 = o1 is pd.NaT or o1 is None
+    nat2 = o2 is pd.NaT or o2 is None
+    if nat1 and nat2:
+        return True
+    if nat1 or nat2:
+        return False
+    return o1.year == o2.year and o1.month == o2.month and o1.day == o2.day
+
+
+_COMPARATORS: Dict[pa.DataType, Callable[[Any, Any], bool]] = {
+    pa.float16(): _float_eq,
+    pa.float32(): _float_eq,
+    pa.float64(): _float_eq,
+}

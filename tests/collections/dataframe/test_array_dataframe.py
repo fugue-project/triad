@@ -63,7 +63,7 @@ def test_simple_methods():
     assert df.empty()
     raises(IndexError, lambda: df.peek_array())
     raises(IndexError, lambda: df.peek_dict())
-    assert df.is_local()
+    assert df.is_local
 
     df = ArrayDataFrame([["a", 1], ["b", "2"]], "x:str,y:double")
     assert 2 == df.count()

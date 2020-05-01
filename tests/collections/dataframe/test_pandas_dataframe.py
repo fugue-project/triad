@@ -59,7 +59,7 @@ def test_simple_methods():
     assert 0 == df.count()
     raises(IndexError, lambda: df.peek_array())
     raises(IndexError, lambda: df.peek_dict())
-    assert df.is_local()
+    assert df.is_local
 
     df = PandasDataFrame([["a", 1], ["b", "2"]], "x:str,y:double")
     assert df.as_pandas() is df.native

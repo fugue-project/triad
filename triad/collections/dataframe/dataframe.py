@@ -39,6 +39,7 @@ class DataFrame(ABC):
             self._schema_discovered = True
             return self._schema
 
+    @property
     @abstractmethod
     def is_local(self) -> bool:  # pragma: no cover
         raise NotImplementedError
@@ -156,6 +157,7 @@ class LocalDataFrame(DataFrame):
     def __init__(self, schema: Any = None, metadata: Any = None):
         super().__init__(schema=schema, metadata=metadata)
 
+    @property
     def is_local(self):
         return True
 

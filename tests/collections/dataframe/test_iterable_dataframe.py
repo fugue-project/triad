@@ -63,7 +63,7 @@ def test_simple_methods():
     assert df.empty()
     raises(StopIteration, lambda: df.peek_array())
     raises(StopIteration, lambda: df.peek_dict())
-    assert df.is_local()
+    assert df.is_local
 
     df = IterableDataFrame([["a", 1], ["b", "2"]], "x:str,y:double")
     raises(InvalidOperationError, lambda: df.count())
