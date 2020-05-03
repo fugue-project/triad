@@ -129,6 +129,15 @@ def test_indexed_orderd_dict():
 
 
 def test_param_dict():
+    d = ParamDict([("a", 1), ("b", 2)])
+    assert 1 == d["a"]
+    assert 1 == d[0]
+    assert 2 == d["b"]
+    assert "2" == d.get_or_throw(1, str)
+    # if giving index, it should ignore the throw flag and always throw
+    raises(IndexError, lambda: d.get(2, "x"))
+    raises(IndexError, lambda: d.get_or_none(2, str))
+
     d = {
         "a": "b",
         "b": {
