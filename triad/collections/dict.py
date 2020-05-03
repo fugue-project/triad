@@ -2,13 +2,12 @@ import copy
 import json
 import sys
 from collections import OrderedDict
-from typing import Any, Dict, List, Tuple, TypeVar
+from typing import Any, Dict, List, Tuple, TypeVar, Union
 
 from triad.exceptions import InvalidOperationError
 from triad.utils.assertion import assert_arg_not_none
 from triad.utils.convert import as_type
 from triad.utils.iter import to_kv_iterable
-
 
 KT = TypeVar("KT")
 VT = TypeVar("VT")
@@ -190,7 +189,14 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         assert isinstance(key, str)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore
 
-    def get(self, key: str, default: Any) -> Any:  # type: ignore
+    def __getitem__(  # type: ignore
+        self, key: Union[str, int]
+    ) -> Any:
+        if isinstance(key, int):
+            key = self.get_key_by_index(key)
+        return super().__getitem__(key)  # type: ignore
+
+    def get(self, key: Union[int, str], default: Any) -> Any:  # type: ignore
         """Get value by `key`, and the value must be a subtype of the type of `default`
         (which can't be None). If the `key` is not found, return `default`.
 
@@ -202,11 +208,11 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         `default`. If `key` is not found, return `default`
         """
         assert_arg_not_none(default, "default")
-        if key in self:
+        if (isinstance(key, str) and key in self) or isinstance(key, int):
             return as_type(self[key], type(default))
         return default
 
-    def get_or_none(self, key: str, expected_type: type) -> Any:
+    def get_or_none(self, key: Union[int, str], expected_type: type) -> Any:
         """Get value by `key`, and the value must be a subtype of `expected_type`
 
         :param key: the key to search
@@ -219,7 +225,7 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         """
         return self._get_or(key, expected_type, throw=False)
 
-    def get_or_throw(self, key: str, expected_type: type) -> Any:
+    def get_or_throw(self, key: Union[int, str], expected_type: type) -> Any:
         """Get value by `key`, and the value must be a subtype of `expected_type`.
         If `key` is not found or value can't be converted to `expected_type`, raise
         exception
@@ -272,8 +278,10 @@ class ParamDict(IndexedOrderedDict[str, Any]):
                 raise ValueError(f"{on_dup} is not supported")
         return self
 
-    def _get_or(self, key: str, expected_type: type, throw: bool = True) -> Any:
-        if key in self:
+    def _get_or(
+        self, key: Union[int, str], expected_type: type, throw: bool = True
+    ) -> Any:
+        if (isinstance(key, str) and key in self) or isinstance(key, int):
             return as_type(self[key], expected_type)
         if throw:
             raise KeyError(f"{key} not found")
