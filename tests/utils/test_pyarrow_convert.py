@@ -20,6 +20,20 @@ str,int,double,bool,datetime,date,decimal,dict,list
 """
 
 
+def test_convert_to_null():
+    pdt = pd.Timestamp('2020-01-01T02:03:04')
+
+    _test_convert(None, "null", None)
+    _test_convert("1", "null", None)
+    _test_convert(pd.NaT, "null", None)
+    _test_convert(pdt, "null", None)
+    _test_convert(FLOAT_NAN, "null", None)
+    _test_convert(FLOAT_INF, "null", None)
+    _test_convert(FLOAT_NINF, "null", None)
+    _test_convert(True, "null", None)
+    _test_convert(False, "null", None)
+
+
 def test_convert_to_str():
     pdt = pd.Timestamp('2020-01-01T02:03:04')
 
