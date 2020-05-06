@@ -12,6 +12,7 @@ from triad.utils.json import loads_no_dup
 from triad.utils.string import validate_triad_var_name
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
+    "null": pa.null(),
     "str": pa.string(),
     "string": pa.string(),
     "bool": pa.bool_(),
@@ -42,6 +43,7 @@ _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
 }
 
 _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
+    pa.null(): "null",
     pa.string(): "str",
     pa.bool_(): "bool",
     pa.int8(): "byte",
@@ -371,6 +373,10 @@ def _parse_tokens(expr: str) -> Iterable[str]:
             last = i + 1
 
 
+def _to_pynone(obj: Any) -> Any:
+    return None
+
+
 def _to_pyint(obj: Any) -> Any:
     if obj is None or isinstance(obj, int):
         return obj
@@ -468,6 +474,7 @@ def _no_op_convert(obj: Any) -> Any:  # pragma: no cover
 
 class _TypeConverter(object):
     _CONVERTERS: Dict[pa.DataType, Any] = {
+        pa.null(): _to_pynone,
         pa.string(): _to_pystr,
         pa.bool_(): _to_pybool,
         pa.int8(): _to_pyint,
@@ -531,6 +538,10 @@ class _TypeConverter(object):
         raise NotImplementedError(f"{f} type is not supported")  # pragma: no cover
 
 
+def _none_eq(o1: Any, o2: Any) -> bool:
+    return True
+
+
 def _general_eq(o1: Any, o2: Any) -> bool:
     return o1 == o2
 
@@ -556,6 +567,7 @@ def _date_eq(o1: Any, o2: Any) -> bool:
 
 
 _COMPARATORS: Dict[pa.DataType, Callable[[Any, Any], bool]] = {
+    pa.null(): _none_eq,
     pa.float16(): _float_eq,
     pa.float32(): _float_eq,
     pa.float64(): _float_eq,
