@@ -394,6 +394,8 @@ def _to_pystr(obj: Any) -> Any:
 def _to_pybool(obj: Any) -> Any:
     if obj is None or isinstance(obj, bool):
         return obj
+    if obj != obj:  # NaN
+        return None
     return as_type(obj, bool)
 
 

@@ -4,6 +4,7 @@ from datetime import date, datetime
 
 import pandas as pd
 import pyarrow as pa
+import numpy as np
 from pytest import raises
 from triad.collections.schema import Schema
 from triad.constants import FLOAT_INF, FLOAT_NAN, FLOAT_NINF
@@ -59,6 +60,7 @@ def test_convert_to_int():
     _test_convert(pd.NaT, "int", None)
     _assert_raise(pdt, "int")
     _test_convert(FLOAT_NAN, "int", None)
+    _test_convert(np.nan, "int", None)
     _assert_raise(FLOAT_INF, "int")
     _assert_raise(FLOAT_NINF, "int")
     _assert_raise("true", "int")
@@ -97,9 +99,10 @@ def test_convert_to_bool():
     _test_convert("True", "bool", True)
     _test_convert("false", "bool", False)
     _test_convert("False", "bool", False)
-    _assert_raise(pd.NaT, "bool")
+    _test_convert(pd.NaT, "bool", None)
     _assert_raise(pdt, "bool")
-    _assert_raise(FLOAT_NAN, "bool")
+    _test_convert(FLOAT_NAN, "bool", None)
+    _test_convert(np.nan, "bool", None)
 
 
 def test_convert_to_datetime():
