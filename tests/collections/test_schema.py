@@ -261,3 +261,14 @@ def test_schema_assert_not_empty():
     raises(SchemaError, lambda: Schema(None).assert_not_empty())
     raises(SchemaError, lambda: Schema([]).assert_not_empty())
     assert Schema("a:int").assert_not_empty() == "a:int"
+
+
+def test_schema_rename():
+    s = Schema("a:int,b:str,c:bool").rename(columns=dict(a="c", c="a"))
+    assert s == "c:int,b:str,a:bool"
+    s = Schema("a:int,b:str,c:bool").rename(
+        columns=dict(a="c", c="a"), ignore_missing=True)
+    assert s == "c:int,b:str,a:bool"
+    raises(SchemaError, lambda: s.rename(dict(x="b")))
+    raises(SchemaError, lambda: s.rename(dict(a="b")))
+    raises(SchemaError, lambda: s.rename(dict(a=123)))

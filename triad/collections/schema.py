@@ -26,7 +26,7 @@ class SchemaError(Exception):
         super().__init__(message)
 
 
-class Schema(IndexedOrderedDict):
+class Schema(IndexedOrderedDict[str, pa.Field]):
     """A Schema wrapper on top of pyarrow.Fields. This has more features
     than pyarrow.Schema, and they can convert to each other.
 
@@ -438,6 +438,21 @@ class Schema(IndexedOrderedDict):
             return self
         except Exception as e:
             raise SchemaError(f"Unable to union {self} with {other}: {str(e)}")
+
+    def rename(self, columns: Dict[str, str], ignore_missing: bool = False) -> "Schema":
+        """Rename the current schema and generate a new one
+
+        :param columns: dictionary to map from old to new column names
+        :return: renamed schema object
+        """
+        if not ignore_missing:
+            for x in columns:
+                if x not in self:
+                    raise SchemaError(f"Failed to rename: {x} not in {self}")
+        pairs = [
+            (k if k not in columns else columns[k], v.type) for k, v in self.items()
+        ]
+        return Schema(pairs)
 
     def _pre_update(self, op: str, need_reindex: bool = True) -> None:
         if op == "__setitem__":
