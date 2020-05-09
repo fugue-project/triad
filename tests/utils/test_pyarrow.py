@@ -4,11 +4,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pytest import raises
-from triad.utils.pyarrow import (_parse_type, _type_to_expression,
-                                 expression_to_schema, get_eq_func,
-                                 is_supported, pandas_to_schema,
-                                 schema_to_expression, to_pa_datatype,
-                                 validate_column_name, SchemaedDataPartitioner)
+from triad.utils.pyarrow import SchemaedDataPartitioner, _parse_type, _type_to_expression, expression_to_schema, get_eq_func, is_supported, schema_to_expression, schemas_equal, to_pa_datatype, validate_column_name
 
 
 def test_validate_column_name():
@@ -90,28 +86,6 @@ def test_is_supported():
     raises(NotImplementedError, lambda: is_supported(pa.date64(), throw=True))
 
 
-def test_pandas_to_schema():
-    df = pd.DataFrame([[1.0, 2], [2.0, 3]])
-    raises(ValueError, lambda: pandas_to_schema(df))
-    df = pd.DataFrame([[1.0, 2], [2.0, 3]], columns=["x", "y"])
-    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
-    df = pd.DataFrame([["a", 2], ["b", 3]], columns=["x", "y"])
-    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
-    df = pd.DataFrame([], columns=["x", "y"])
-    df = df.astype(dtype={"x": np.int32, "y": np.dtype('object')})
-    assert [pa.field("x", pa.int32()), pa.field(
-        "y", pa.string())] == list(pandas_to_schema(df))
-    df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
-    df = df.astype(dtype={"x": np.int32, "y": np.dtype('object')})
-    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
-    df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
-    df = df.astype(dtype={"x": np.int32, "y": np.dtype(str)})
-    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
-    df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
-    df = df.astype(dtype={"x": np.int32, "y": np.dtype('str')})
-    assert list(pa.Schema.from_pandas(df)) == list(pandas_to_schema(df))
-
-
 def test_get_eq_func():
     for t in [pa.int8(), pa.int16(), pa.int32(), pa.int64(),
               pa.uint8(), pa.uint16(), pa.uint32(), pa.uint64()]:
@@ -171,17 +145,37 @@ def test_get_eq_func():
 
 def test_schemaed_data_partitioner():
     p0 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
-                                key_positions=[2, 0], row_limit=0)
+                                 key_positions=[2, 0], row_limit=0)
     p1 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
-                                key_positions=[2, 0], row_limit=1)
+                                 key_positions=[2, 0], row_limit=1)
     p2 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
-                                key_positions=[2, 0], row_limit=2)
+                                 key_positions=[2, 0], row_limit=2)
     data = [[0, 0, 0], [0, 1, 0], [0, 2, 0], [1, 0, 0]]
     _test_partition(p0, data, "0,0,[0,1,2];1,0,[3]")
     _test_partition(p1, data, "0,0,[0];0,1,[1];0,2,[2];1,0,[3]")
     _test_partition(p2, data, "0,0,[0,1];0,1,[2];1,0,[3]")
     _test_partition(p2, data, "0,0,[0,1];0,1,[2];1,0,[3]")  # can reuse the partitioner
 
+
+def test_schemas_equal():
+    a = expression_to_schema("a:int,b:int,c:int")
+    b = expression_to_schema("a:int,b:int,c:int")
+    c = expression_to_schema("a:int,c:int,b:int")
+    assert schemas_equal(a, a)
+    assert schemas_equal(a, b)
+    assert not schemas_equal(a, c)
+    assert schemas_equal(a, c, check_order=False)
+    a = a.with_metadata({"a": "1"})
+    assert schemas_equal(a, a)
+    assert not schemas_equal(a, b)
+    assert schemas_equal(a, b, check_metadata=False)
+    assert not schemas_equal(a, c)
+    assert not schemas_equal(a, c, check_order=False)
+    assert not schemas_equal(a, c, check_metadata=False)
+    assert schemas_equal(a, c, check_order=False, check_metadata=False)
+    c = c.with_metadata({"a": "1"})
+    assert not schemas_equal(a, c)
+    assert schemas_equal(a, c, check_order=False)
 
 def _test_partition(partitioner, data, expression):
     e = []

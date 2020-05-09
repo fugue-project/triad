@@ -135,28 +135,16 @@ def to_pa_datatype(obj: Any) -> pa.DataType:
     return pa.from_numpy_dtype(np.dtype(obj))
 
 
-def pandas_to_schema(df: pd.DataFrame) -> pa.Schema:
-    """Extract pandas dataframe schema as pyarrow schema. This is a replacement
-    of pyarrow.Schema.from_pandas, and it can correctly handle string type and
-    empty dataframes
-
-    :param df: pandas dataframe
-    :raises ValueError: if pandas dataframe does not have named schema
-    :return: pyarrow.Schema
+def to_pandas_dtype(schema: pa.Schema) -> Dict[str, np.dtype]:
+    """convert as `dtype` dict for pandas dataframes.
+    Currently, struct type is not supported
     """
-    if df.columns.dtype != "object":
-        raise ValueError("Pandas dataframe must have named schema")
-    if df.shape[0] > 0:
-        return pa.Schema.from_pandas(df)
-    fields: List[pa.Field] = []
-    for i in range(df.shape[1]):
-        tp = df.dtypes[i]
-        if tp == np.dtype("object") or tp == np.dtype(str):
-            t = pa.string()
-        else:
-            t = pa.from_numpy_dtype(tp)
-        fields.append(pa.field(df.columns[i], t))
-    return pa.schema(fields)
+    return {
+        f.name: np.dtype(str)
+        if pa.types.is_string(f.type)
+        else f.type.to_pandas_dtype()
+        for f in schema
+    }
 
 
 def is_supported(data_type: pa.DataType, throw: bool = False) -> bool:
@@ -174,6 +162,26 @@ def is_supported(data_type: pa.DataType, throw: bool = False) -> bool:
     if not throw:
         return False
     raise NotImplementedError(f"{data_type} is not supported by Triad")
+
+
+def schemas_equal(
+    a: pa.Schema, b: pa.Schema, check_order: bool = True, check_metadata: bool = True
+) -> bool:
+    """check if two schemas are equal
+
+    :param a: first pyarrow schema
+    :param b: second pyarrow schema
+    :param compare_order: whether to compare order
+    :param compare_order: whether to compare metadata
+    :return: if the two schema equal
+    """
+    if check_order:
+        return a.equals(b, check_metadata=check_metadata)
+    if check_metadata and a.metadata != b.metadata:
+        return False
+    da = {k: a.field(k) for k in a.names}
+    db = {k: b.field(k) for k in b.names}
+    return da == db
 
 
 def apply_schema(
@@ -517,11 +525,11 @@ class _TypeConverter(object):
     def _build_field_converter(self, f: pa.Field) -> Callable[[Any], Any]:
         if f.type in _TypeConverter._CONVERTERS:
             return _TypeConverter._CONVERTERS[f.type]
-        elif isinstance(f.type, pa.TimestampType):
+        elif pa.types.is_timestamp(f.type):
             return _to_pydatetime
-        elif isinstance(f.type, pa.Decimal128Type):
+        elif pa.types.is_decimal(f.type):
             raise NotImplementedError("decimal conversion is not supported")
-        elif isinstance(f.type, pa.StructType):
+        elif pa.types.is_struct(f.type):
             if not self._deep:
                 return lambda x: _assert_pytype(dict, x)
             else:
@@ -529,7 +537,7 @@ class _TypeConverter(object):
                     x.name: self._build_field_converter(x) for x in list(f.type)
                 }
                 return lambda x: _to_pydict(converters, x, self._str_as_json)
-        elif isinstance(f.type, pa.ListType):
+        elif pa.types.is_list(f.type):
             if not self._deep:
                 return lambda x: _assert_pytype(list, x)
             else:
