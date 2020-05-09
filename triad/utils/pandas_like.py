@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List, Optional, TypeVar
+from typing import Any, Callable, Iterable, List, Optional, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -116,6 +116,37 @@ def enforce_type(df: T, schema: pa.Schema, null_safe: bool = False) -> T:
             s = s.astype(v.type.to_pandas_dtype())
         df[v.name] = s
     return df
+
+
+def safe_groupby_apply(
+    df: Any,
+    cols: List[str],
+    func: Callable[[T], T],
+    key_col_name="__safe_groupby_key__",
+) -> T:
+    """Safe groupby apply operation on pandas like dataframes
+
+    :param df: pandas like dataframe
+    :param cols: columns to group on, can be empty
+    :param func: apply function, df in, df out
+    :param key_col_name: temp key as index for groupu. default "__safe_groupby_key__"
+    :return: output dataframe
+
+    :Notice:
+    The dataframe must be either empty, or with type pd.RangeIndex, pd.Int64Index
+    or pd.UInt64Index and without a name, otherwise, `ValueError` will raise.
+    """
+    _ensure_compatible_index(df)
+    if len(cols) == 0:
+        return func(df)
+    keys = df[cols].drop_duplicates()
+    keys[key_col_name] = np.arange(keys.shape[0])
+    df = df.merge(keys, on=cols).set_index([key_col_name])
+
+    def _wrapper(df: T) -> T:
+        return func(df.reset_index(drop=True))
+
+    return df.groupby([key_col_name]).apply(_wrapper).reset_index(drop=True)
 
 
 def _ensure_compatible_index(df: T) -> None:
