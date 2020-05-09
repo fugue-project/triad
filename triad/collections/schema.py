@@ -1,8 +1,8 @@
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 from triad.collections.dict import IndexedOrderedDict
 from triad.utils.assertion import assert_arg_not_none, assert_or_throw
@@ -11,11 +11,10 @@ from triad.utils.pyarrow import (
     is_supported,
     schema_to_expression,
     to_pa_datatype,
+    to_pandas_dtype,
     validate_column_name,
-    pandas_to_schema,
 )
-
-_STRING_TYPE = pa.string()
+from triad.utils.pandas_like import to_schema
 
 
 class SchemaError(Exception):
@@ -132,16 +131,12 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         """convert as `dtype` dict for pandas dataframes.
         Currently, struct type is not supported
         """
-        return {
-            f.name: np.dtype(str)
-            if (f.type == _STRING_TYPE)
-            else f.type.to_pandas_dtype()
-            for f in self.values()
-        }
+        return to_pandas_dtype(self.pa_schema)
 
     @property
     def pd_dtype(self) -> Dict[str, np.dtype]:
-        """convert as `dtype` dict for pandas dataframes
+        """convert as `dtype` dict for pandas dataframes.
+        Currently, struct type is not supported
         """
         return self.pandas_dtype
 
@@ -252,7 +247,7 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             elif isinstance(obj, pa.Schema):
                 self._append_pa_schema(obj)
             elif isinstance(obj, pd.DataFrame):
-                self._append_pa_schema(pandas_to_schema(obj))
+                self._append_pa_schema(to_schema(obj))
             elif isinstance(obj, Tuple):  # type: ignore
                 self[obj[0]] = obj[1]
             elif isinstance(obj, List):
