@@ -123,8 +123,10 @@ def safe_groupby_apply(
     cols: List[str],
     func: Callable[[T], T],
     key_col_name="__safe_groupby_key__",
-) -> Any:
+) -> T:
     _ensure_compatible_index(df)
+    if len(cols) == 0:
+        return func(df)
     keys = df[cols].drop_duplicates()
     keys[key_col_name] = np.arange(keys.shape[0])
     df = df.merge(keys, on=cols).set_index([key_col_name])

@@ -133,6 +133,12 @@ def test_safe_group_by_apply():
     assert 3 == res.shape[1]
     assert [["a", 1, 2], ["a", 2, 2], [None, 3, 1]] == res.values.tolist()
 
+    res = safe_groupby_apply(df.native, [], _m1)
+    _ensure_compatible_index(res)
+    assert 3 == res.shape[0]
+    assert 3 == res.shape[1]
+    assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.values.tolist()
+
 
 class DF(object):  # This is a mock
     def __init__(self, data, schema, enforce=False):
