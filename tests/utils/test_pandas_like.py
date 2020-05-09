@@ -6,7 +6,9 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pytest import raises
-from triad.utils.pandas_like import as_array_iterable, enforce_type, to_schema
+from triad.utils.pandas_like import (_ensure_compatible_index,
+                                     as_array_iterable, enforce_type,
+                                     safe_groupby_apply, to_schema)
 from triad.utils.pyarrow import expression_to_schema
 
 
@@ -115,6 +117,21 @@ def test_nan_none():
     arr = df.as_array()[1]
     assert arr[0] is None
     assert math.isnan(arr[1])
+
+
+def test_safe_group_by_apply():
+    df = DF([["a", 1], ["a", 2], [None, 3]], "b:str,c:long", True)
+
+    def _m1(df):
+        _ensure_compatible_index(df)
+        df["ct"] = df.shape[0]
+        return df
+
+    res = safe_groupby_apply(df.native, ["b"], _m1)
+    _ensure_compatible_index(res)
+    assert 3 == res.shape[0]
+    assert 3 == res.shape[1]
+    assert [["a", 1, 2], ["a", 2, 2], [None, 3, 1]] == res.values.tolist()
 
 
 class DF(object):  # This is a mock
