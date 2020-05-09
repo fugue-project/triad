@@ -124,6 +124,18 @@ def safe_groupby_apply(
     func: Callable[[T], T],
     key_col_name="__safe_groupby_key__",
 ) -> T:
+    """Safe groupby apply operation on pandas like dataframes
+
+    :param df: pandas like dataframe
+    :param cols: columns to group on, can be empty
+    :param func: apply function, df in, df out
+    :param key_col_name: temp key as index for groupu. default "__safe_groupby_key__"
+    :return: output dataframe
+
+    :Notice:
+    The dataframe must be either empty, or with type pd.RangeIndex, pd.Int64Index
+    or pd.UInt64Index and without a name, otherwise, `ValueError` will raise.
+    """
     _ensure_compatible_index(df)
     if len(cols) == 0:
         return func(df)
