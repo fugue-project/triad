@@ -118,6 +118,9 @@ def test_nan_none():
     assert arr[0] is None
     assert math.isnan(arr[1])
 
+    df = DF([], "b:str,c:double", True)
+    assert len(df.as_array()) == 0
+
 
 def test_safe_group_by_apply():
     df = DF([["a", 1], ["a", 2], [None, 3]], "b:str,c:long", True)
@@ -138,6 +141,11 @@ def test_safe_group_by_apply():
     assert 3 == res.shape[0]
     assert 3 == res.shape[1]
     assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.values.tolist()
+
+    df = DF([[1.0, "a"], [1.0, "b"], [None, "c"], [None, "d"]], "b:double,c:str", True)
+    res = safe_groupby_apply(df.native, ["b"], _m1)
+    assert [[1.0, "a", 2], [1.0, "b", 2],
+            [float('nan'), "c", 2], [float('nan'), "d", 2]].__repr__() == res.values.tolist().__repr__()
 
 
 class DF(object):  # This is a mock
