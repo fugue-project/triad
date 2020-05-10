@@ -92,26 +92,26 @@ def enforce_type(df: T, schema: pa.Schema, null_safe: bool = False) -> T:
     :return: converted dataframe
 
     :Notice:
-    * When `null_safe` is true, the native column types in the dataframe may change,
-      for example, if a column of `int64` has None values, the output will make sure
-      each value in the column is either None or an integer, however, due to the
-      behavior of pandas like dataframes, the type of the columns may
-      no longer be `int64`
-    * `null_safe` is not compatible with all pandas like dataframes, so by default
-      it is `False`
+    When `null_safe` is true, the native column types in the dataframe may change,
+    for example, if a column of `int64` has None values, the output will make sure
+    each value in the column is either None or an integer, however, due to the
+    behavior of pandas like dataframes, the type of the columns may
+    no longer be `int64`
     """
+    if df.empty:
+        return df
     if not null_safe:
         return df.astype(dtype=to_pandas_dtype(schema))
     for v in schema:
         s = df[v.name]
         if pa.types.is_string(v.type):
-            ns = s.isnull()
+            ns = s[s.isnull()].index.tolist()
             s = s.astype(str)
-            s[ns] = None
+            s.iloc[ns] = None
         elif pa.types.is_integer(v.type) or pa.types.is_boolean(v.type):
-            ns = s.isnull()
+            ns = s[s.isnull()].index.tolist()
             s = s.fillna(0).astype(v.type.to_pandas_dtype())
-            s[ns] = None
+            s.iloc[ns] = None
         else:
             s = s.astype(v.type.to_pandas_dtype())
         df[v.name] = s
