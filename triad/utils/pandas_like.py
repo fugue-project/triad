@@ -70,7 +70,7 @@ def to_schema(df: T) -> pa.Schema:
     _ensure_compatible_index(df)
     if df.columns.dtype != "object":
         raise ValueError("Pandas dataframe must have named schema")
-    if isinstance(df, pd.DataFrame) and not df.empty:
+    if isinstance(df, pd.DataFrame) and len(df.index) > 0:
         return pa.Schema.from_pandas(df)
     fields: List[pa.Field] = []
     for i in range(df.shape[1]):
@@ -98,7 +98,7 @@ def enforce_type(df: T, schema: pa.Schema, null_safe: bool = False) -> T:
     behavior of pandas like dataframes, the type of the columns may
     no longer be `int64`
     """
-    if df.empty:
+    if len(df.index) == 0:
         return df
     if not null_safe:
         return df.astype(dtype=to_pandas_dtype(schema))
@@ -152,7 +152,9 @@ def safe_groupby_apply(
 def _ensure_compatible_index(df: T) -> None:
     if df.index.name is not None:
         raise ValueError(f"pandas like datafame index can't have name")
-    if isinstance(df.index, (pd.RangeIndex, pd.Int64Index, pd.UInt64Index)) or df.empty:
+    if isinstance(df.index, (pd.RangeIndex, pd.Int64Index, pd.UInt64Index)):
+        return
+    if len(df.index) == 0:
         return
     raise ValueError(
         f"pandas like datafame must have default index, but got {type(df.index)}"
