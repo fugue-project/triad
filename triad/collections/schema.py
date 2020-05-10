@@ -14,7 +14,7 @@ from triad.utils.pyarrow import (
     to_pandas_dtype,
     validate_column_name,
 )
-from triad.utils.pandas_like import to_schema
+from triad.utils.pandas_like import PD_UTILS
 
 
 class SchemaError(Exception):
@@ -247,7 +247,7 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             elif isinstance(obj, pa.Schema):
                 self._append_pa_schema(obj)
             elif isinstance(obj, pd.DataFrame):
-                self._append_pa_schema(to_schema(obj))
+                self._append_pa_schema(PD_UTILS.to_schema(obj))
             elif isinstance(obj, Tuple):  # type: ignore
                 self[obj[0]] = obj[1]
             elif isinstance(obj, List):
