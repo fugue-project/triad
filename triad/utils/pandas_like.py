@@ -10,6 +10,11 @@ T = TypeVar("T", bound=Any)
 
 class PandasLikeUtils(Generic[T]):
     def empty(self, df: T) -> bool:
+        """Check if the dataframe is empty
+
+        :param df: pandas like dataframe
+        :return: if it is empty
+        """
         return len(df.index) == 0
 
     def as_array_iterable(
@@ -143,8 +148,8 @@ class PandasLikeUtils(Generic[T]):
         self.ensure_compatible(df)
         if len(cols) == 0:
             return func(df)
-        keys = df[cols].drop_duplicates()
-        keys[key_col_name] = np.arange(keys.shape[0])
+        keys = df[cols].drop_duplicates().reset_index(drop=True)
+        keys[key_col_name] = keys.index
         df = df.merge(keys, on=cols).set_index([key_col_name])
 
         def _wrapper(df: T) -> T:
@@ -153,16 +158,26 @@ class PandasLikeUtils(Generic[T]):
         return df.groupby([key_col_name]).apply(_wrapper).reset_index(drop=True)
 
     def is_compatile_index(self, df: T) -> bool:
-        if isinstance(df.index, (pd.RangeIndex, pd.Int64Index, pd.UInt64Index)):
-            return True
-        if self.empty(df):
-            return True
-        return False
+        """Check whether the datafame is compatible with the operations inside
+        this utils collection
+
+        :param df: pandas like dataframe
+        :return: if it is compatible
+        """
+        return isinstance(df.index, (pd.RangeIndex, pd.Int64Index, pd.UInt64Index))
 
     def ensure_compatible(self, df: T) -> None:
+        """Check whether the datafame is compatible with the operations inside
+        this utils collection, if not, it will raise ValueError
+
+        :param df: pandas like dataframe
+        :raises ValueError: if not compatible
+        """
         if df.index.name is not None:
             raise ValueError(f"pandas like datafame index can't have name")
         if self.is_compatile_index(df):
+            return
+        if self.empty(df):
             return
         raise ValueError(
             f"pandas like datafame must have default index, but got {type(df.index)}"
