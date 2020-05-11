@@ -131,6 +131,7 @@ class PandasLikeUtils(Generic[T]):
         cols: List[str],
         func: Callable[[T], T],
         key_col_name="__safe_groupby_key__",
+        **kwargs: Any,
     ) -> T:
         """Safe groupby apply operation on pandas like dataframes
 
@@ -155,7 +156,9 @@ class PandasLikeUtils(Generic[T]):
         def _wrapper(df: T) -> T:
             return func(df.reset_index(drop=True))
 
-        return df.groupby([key_col_name]).apply(_wrapper).reset_index(drop=True)
+        return (
+            df.groupby([key_col_name]).apply(_wrapper, **kwargs).reset_index(drop=True)
+        )
 
     def is_compatile_index(self, df: T) -> bool:
         """Check whether the datafame is compatible with the operations inside
