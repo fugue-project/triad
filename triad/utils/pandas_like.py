@@ -177,7 +177,7 @@ class PandasLikeUtils(Generic[T]):
         :raises ValueError: if not compatible
         """
         if df.index.name is not None:
-            raise ValueError(f"pandas like datafame index can't have name")
+            raise ValueError("pandas like datafame index can't have name")
         if self.is_compatile_index(df):
             return
         if self.empty(df):
