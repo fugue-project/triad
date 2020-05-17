@@ -11,4 +11,3 @@ A collection of python utility functions for Fugue projects
 ```
 pip install triad
 ```
-
