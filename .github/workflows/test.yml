@@ -26,7 +26,15 @@ jobs:
       run: make devenv
     - name: Test
       run: make test
+    #- name: Coveralls
+    #  uses: coverallsapp/github-action@master
+    #  env:
+    #    COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+    #  with:
+    #    github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Coveralls
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      run: |
+        pip install python-coveralls
+        coveralls
