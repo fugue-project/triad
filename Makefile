@@ -17,9 +17,10 @@ dev:
 	pip3 install -r requirements.txt
 
 docs:
-	rm -rf docs/source/api
-	sphinx-apidoc --no-toc -f -t=docs/source/_templates -o docs/source/api triad/
-	sphinx-build -M html docs/source/ docs/build/
+	rm -rf docs/api
+	rm -rf docs/build
+	sphinx-apidoc --no-toc -f -t=docs/_templates -o docs/api triad/
+	sphinx-build -M html docs/ docs/build/
 
 lint:
 	pre-commit run --all-files
