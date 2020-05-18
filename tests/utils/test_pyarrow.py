@@ -4,7 +4,18 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pytest import raises
-from triad.utils.pyarrow import SchemaedDataPartitioner, _parse_type, _type_to_expression, expression_to_schema, get_eq_func, is_supported, schema_to_expression, schemas_equal, to_pa_datatype, validate_column_name
+from triad.utils.pyarrow import (
+    SchemaedDataPartitioner,
+    _parse_type,
+    _type_to_expression,
+    expression_to_schema,
+    get_eq_func,
+    is_supported,
+    schema_to_expression,
+    schemas_equal,
+    to_pa_datatype,
+    validate_column_name,
+)
 
 
 def test_validate_column_name():
@@ -23,10 +34,14 @@ def test_expression_conversion():
     _assert_from_expr("a:int,b:ubyte")
     _assert_from_expr(" a : int32 , b : uint8 ", "a:int,b:ubyte")
     _assert_from_expr("a:[int32],b:uint8", "a:[int],b:ubyte")
-    _assert_from_expr("a : { x : int32 , y : [string] } , b : [ uint8 ] ",
-                      "a:{x:int,y:[str]},b:[ubyte]")
-    _assert_from_expr("a : [{ x : int32 , y : [string] }] , b : [ uint8 ] ",
-                      "a:[{x:int,y:[str]}],b:[ubyte]")
+    _assert_from_expr(
+        "a : { x : int32 , y : [string] } , b : [ uint8 ] ",
+        "a:{x:int,y:[str]},b:[ubyte]",
+    )
+    _assert_from_expr(
+        "a : [{ x : int32 , y : [string] }] , b : [ uint8 ] ",
+        "a:[{x:int,y:[str]}],b:[ubyte]",
+    )
     _assert_from_expr("a:decimal(5,2)")
 
     raises(SyntaxError, lambda: expression_to_schema("123:int"))
@@ -41,8 +56,9 @@ def test_expression_conversion():
 def test__parse_type():
     assert pa.int32() == _parse_type(" int ")
     assert pa.timestamp("ns") == _parse_type(" datetime ")
-    assert pa.timestamp(
-        "s", 'America/New_York') == _parse_type(" timestamp ( s , America/New_York ) ")
+    assert pa.timestamp("s", "America/New_York") == _parse_type(
+        " timestamp ( s , America/New_York ) "
+    )
     assert pa.timestamp("s") == _parse_type(" timestamp ( s ) ")
     assert _parse_type(" timestamp ( ns ) ") == _parse_type(" datetime ")
     assert pa.decimal128(5, 2) == _parse_type(" decimal(5,2) ")
@@ -53,9 +69,9 @@ def test__type_to_expression():
     assert "int" == _type_to_expression(pa.int32())
     assert "datetime" == _type_to_expression(pa.timestamp("ns"))
     assert "timestamp(ns,America/New_York)" == _type_to_expression(
-        pa.timestamp("ns", "America/New_York"))
-    assert "timestamp(s)" == _type_to_expression(
-        pa.timestamp("s"))
+        pa.timestamp("ns", "America/New_York")
+    )
+    assert "timestamp(s)" == _type_to_expression(pa.timestamp("s"))
     assert "decimal(5)" == _type_to_expression(pa.decimal128(5))
     assert "decimal(5,2)" == _type_to_expression(pa.decimal128(5, 2))
     raises(NotImplementedError, lambda: _type_to_expression(pa.large_binary()))
@@ -87,8 +103,16 @@ def test_is_supported():
 
 
 def test_get_eq_func():
-    for t in [pa.int8(), pa.int16(), pa.int32(), pa.int64(),
-              pa.uint8(), pa.uint16(), pa.uint32(), pa.uint64()]:
+    for t in [
+        pa.int8(),
+        pa.int16(),
+        pa.int32(),
+        pa.int64(),
+        pa.uint8(),
+        pa.uint16(),
+        pa.uint32(),
+        pa.uint64(),
+    ]:
         assert not get_eq_func(t)(0, 1)
         assert not get_eq_func(t)(None, 1)
         assert get_eq_func(t)(1, 1)
@@ -113,23 +137,23 @@ def test_get_eq_func():
     for t in [pa.float16(), pa.float32(), pa.float64()]:
         assert not get_eq_func(t)(0.0, 1.1)
         assert get_eq_func(t)(1.1, 1.1)
-        assert get_eq_func(t)(None, float('nan'))
-        for n in [None, float('nan'), float('inf'), float('-inf')]:
+        assert get_eq_func(t)(None, float("nan"))
+        for n in [None, float("nan"), float("inf"), float("-inf")]:
             assert not get_eq_func(t)(None, 1.1)
             assert get_eq_func(t)(None, None)
-    for t in [pa.timestamp('ns')]:
+    for t in [pa.timestamp("ns")]:
         for n in [None, pd.NaT]:
             assert not get_eq_func(t)(datetime(2020, 1, 1, 0), datetime(2020, 1, 1, 1))
             assert not get_eq_func(t)(n, datetime(2020, 1, 1, 1))
-            assert get_eq_func(t)(datetime(2020, 1, 1, 1),  datetime(2020, 1, 1, 1))
+            assert get_eq_func(t)(datetime(2020, 1, 1, 1), datetime(2020, 1, 1, 1))
             assert get_eq_func(t)(n, n)
-    assert get_eq_func(pa.timestamp('ns'))(None, pd.NaT)
+    assert get_eq_func(pa.timestamp("ns"))(None, pd.NaT)
     for t in [pa.date32()]:
         for n in [None, pd.NaT]:
             assert get_eq_func(t)(datetime(2020, 1, 1, 0), datetime(2020, 1, 1, 1))
             assert not get_eq_func(t)(datetime(2020, 1, 1), datetime(2020, 1, 2).date())
             assert not get_eq_func(t)(n, datetime(2020, 1, 1, 1))
-            assert get_eq_func(t)(datetime(2020, 1, 1).date(),  datetime(2020, 1, 1, 1))
+            assert get_eq_func(t)(datetime(2020, 1, 1).date(), datetime(2020, 1, 1, 1))
             assert get_eq_func(t)(n, n)
     t = pa.struct([pa.field("a", pa.int32())])
     assert not get_eq_func(t)(dict(a=0), dict(a=1))
@@ -144,12 +168,21 @@ def test_get_eq_func():
 
 
 def test_schemaed_data_partitioner():
-    p0 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
-                                 key_positions=[2, 0], row_limit=0)
-    p1 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
-                                 key_positions=[2, 0], row_limit=1)
-    p2 = SchemaedDataPartitioner(schema=expression_to_schema("a:int,b:int,c:int"),
-                                 key_positions=[2, 0], row_limit=2)
+    p0 = SchemaedDataPartitioner(
+        schema=expression_to_schema("a:int,b:int,c:int"),
+        key_positions=[2, 0],
+        row_limit=0,
+    )
+    p1 = SchemaedDataPartitioner(
+        schema=expression_to_schema("a:int,b:int,c:int"),
+        key_positions=[2, 0],
+        row_limit=1,
+    )
+    p2 = SchemaedDataPartitioner(
+        schema=expression_to_schema("a:int,b:int,c:int"),
+        key_positions=[2, 0],
+        row_limit=2,
+    )
     data = [[0, 0, 0], [0, 1, 0], [0, 2, 0], [1, 0, 0]]
     _test_partition(p0, data, "0,0,[0,1,2];1,0,[3]")
     _test_partition(p1, data, "0,0,[0];0,1,[1];0,2,[2];1,0,[3]")
@@ -176,6 +209,7 @@ def test_schemas_equal():
     c = c.with_metadata({"a": "1"})
     assert not schemas_equal(a, c)
     assert schemas_equal(a, c, check_order=False)
+
 
 def _test_partition(partitioner, data, expression):
     e = []

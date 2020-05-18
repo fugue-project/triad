@@ -19,11 +19,12 @@ def test_schema_init():
     assert Schema("a:int,b:str") == "a:int,b:str"
     assert Schema("a:int", "b:str") == "a:int,b:str"
     assert Schema(dict(a=int, b="str")) == "a:long,b:str"
-    assert Schema(("a", int), [("b", str), ("c", "int")],
-                  dict(d=datetime, e="str")) == "a:long,b:str,c:int,d:datetime,e:str"
+    assert (
+        Schema(("a", int), [("b", str), ("c", "int")], dict(d=datetime, e="str"))
+        == "a:long,b:str,c:int,d:datetime,e:str"
+    )
     assert Schema(" a:{x:int32, y:str},b:[datetime]") == "a:{x:int,y:str},b:[datetime]"
-    pa_schema = pa.schema([pa.field("123", pa.int32()), pa.field(
-        "b", pa.string())])
+    pa_schema = pa.schema([pa.field("123", pa.int32()), pa.field("b", pa.string())])
     raises(SchemaError, lambda: Schema(pa_schema))
     raises(SchemaError, lambda: Schema("a:int", b=str))
     assert 0 == len(Schema())
@@ -37,8 +38,10 @@ def test_schema_properties():
     assert ["a", "b"] == s.names
     assert [pa.int32(), pa.string()] == s.types
     assert [pa.field("a", pa.int32()), pa.field("b", pa.string())] == s.fields
-    assert pa.schema([pa.field("a", pa.int32()), pa.field(
-        "b", pa.string())]) == s.pyarrow_schema
+    assert (
+        pa.schema([pa.field("a", pa.int32()), pa.field("b", pa.string())])
+        == s.pyarrow_schema
+    )
     assert s.pyarrow_schema == s.pyarrow_schema
     assert dict(a=np.int32, b=np.dtype(str)) == s.pd_dtype
     assert s.pandas_dtype == s.pd_dtype
@@ -70,13 +73,13 @@ def test_schema_setter():
 def test_schema_eq():
     s = Schema("a:int,b:str")
     assert s != None
-    assert not(s == None)
+    assert not (s == None)
     assert s == s
     assert s == Schema("a:int,b:str")
-    assert not(s == Schema("b:str,a:int"))
+    assert not (s == Schema("b:str,a:int"))
     assert s == ["a:int", "b:str"]
     assert s != ["a:long", "b:str"]
-    assert not(s == ["a:long", "b:str"])
+    assert not (s == ["a:long", "b:str"])
     assert s == [("a", "int"), ("b", str)]
     assert s == OrderedDict([("a", "int"), ("b", str)])
 
@@ -267,7 +270,8 @@ def test_schema_rename():
     s = Schema("a:int,b:str,c:bool").rename(columns=dict(a="c", c="a"))
     assert s == "c:int,b:str,a:bool"
     s = Schema("a:int,b:str,c:bool").rename(
-        columns=dict(a="c", c="a"), ignore_missing=True)
+        columns=dict(a="c", c="a"), ignore_missing=True
+    )
     assert s == "c:int,b:str,a:bool"
     raises(SchemaError, lambda: s.rename(dict(x="b")))
     raises(SchemaError, lambda: s.rename(dict(a="b")))

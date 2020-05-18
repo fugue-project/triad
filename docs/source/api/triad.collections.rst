@@ -1,4 +1,4 @@
-triad.collections 
+triad.collections
 ==================
 
 
@@ -17,5 +17,3 @@ triad.collections.schema
    :members:
    :undoc-members:
    :show-inheritance:
-
-

@@ -18,17 +18,18 @@ def test_to_schema():
     df = pd.DataFrame([["a", 2], ["b", 3]], columns=["x", "y"])
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
     df = pd.DataFrame([], columns=["x", "y"])
-    df = df.astype(dtype={"x": np.int32, "y": np.dtype('object')})
-    assert [pa.field("x", pa.int32()), pa.field(
-        "y", pa.string())] == list(PD_UTILS.to_schema(df))
+    df = df.astype(dtype={"x": np.int32, "y": np.dtype("object")})
+    assert [pa.field("x", pa.int32()), pa.field("y", pa.string())] == list(
+        PD_UTILS.to_schema(df)
+    )
     df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
-    df = df.astype(dtype={"x": np.int32, "y": np.dtype('object')})
+    df = df.astype(dtype={"x": np.int32, "y": np.dtype("object")})
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
     df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
     df = df.astype(dtype={"x": np.int32, "y": np.dtype(str)})
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
     df = pd.DataFrame([[1, "x"], [2, "y"]], columns=["x", "y"])
-    df = df.astype(dtype={"x": np.int32, "y": np.dtype('str')})
+    df = df.astype(dtype={"x": np.int32, "y": np.dtype("str")})
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
 
     # test index
@@ -142,8 +143,12 @@ def test_safe_group_by_apply():
 
     df = DF([[1.0, "a"], [1.0, "b"], [None, "c"], [None, "d"]], "b:double,c:str", True)
     res = PD_UTILS.safe_groupby_apply(df.native, ["b"], _m1)
-    assert [[1.0, "a", 2], [1.0, "b", 2],
-            [float('nan'), "c", 2], [float('nan'), "d", 2]].__repr__() == res.values.tolist().__repr__()
+    assert [
+        [1.0, "a", 2],
+        [1.0, "b", 2],
+        [float("nan"), "c", 2],
+        [float("nan"), "d", 2],
+    ].__repr__() == res.values.tolist().__repr__()
 
 
 class DF(object):  # This is a mock
@@ -154,10 +159,16 @@ class DF(object):  # This is a mock
 
     def as_array(self, cols=None, type_safe=False, null_safe=False):
         if cols is None or isinstance(cols, pa.Schema):
-            return list(PD_UTILS.as_array_iterable(
-                self.native, schema=cols, type_safe=type_safe, null_safe=null_safe))
+            return list(
+                PD_UTILS.as_array_iterable(
+                    self.native, schema=cols, type_safe=type_safe, null_safe=null_safe
+                )
+            )
         if isinstance(cols, list):
             os = PD_UTILS.to_schema(self.native)
             s = pa.schema([os.field(x) for x in cols])
-            return list(PD_UTILS.as_array_iterable(
-                self.native, schema=s, type_safe=type_safe, null_safe=null_safe))
+            return list(
+                PD_UTILS.as_array_iterable(
+                    self.native, schema=s, type_safe=type_safe, null_safe=null_safe
+                )
+            )

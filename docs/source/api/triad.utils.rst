@@ -1,4 +1,4 @@
-triad.utils 
+triad.utils
 ============
 
 
@@ -65,5 +65,3 @@ triad.utils.string
    :members:
    :undoc-members:
    :show-inheritance:
-
-

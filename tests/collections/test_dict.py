@@ -138,13 +138,7 @@ def test_param_dict():
     raises(IndexError, lambda: d.get(2, "x"))
     raises(IndexError, lambda: d.get_or_none(2, str))
 
-    d = {
-        "a": "b",
-        "b": {
-            "x": 1,
-            "y": "d"
-        }
-    }
+    d = {"a": "b", "b": {"x": 1, "y": "d"}}
     p = ParamDict(d)
     print({"test": p})
     d["b"]["x"] = 2
@@ -160,7 +154,7 @@ def test_param_dict():
     assert 4 == pp["b"]["x"]
 
     assert 2 == len(p)
-    assert "a,b" == ','.join([k for k, _ in p.items()])
+    assert "a,b" == ",".join([k for k, _ in p.items()])
     del p["a"]
     assert 1 == len(p)
     p["c"] = 1
@@ -206,11 +200,23 @@ def test_param_dict():
     assert a == {"b": 2, "a": 1}
     assert a != {"b": 1, "a": 1}
     assert a != None
-    assert not(a == None)
+    assert not (a == None)
 
-    p = ParamDict({"a": "True", "b": True, "c": "true", "d": "False",
-                   "e": False, "f": "false", "g": "yes", "h": "NO",
-                   "i": 0, "j": "1", "k": ""})
+    p = ParamDict(
+        {
+            "a": "True",
+            "b": True,
+            "c": "true",
+            "d": "False",
+            "e": False,
+            "f": "false",
+            "g": "yes",
+            "h": "NO",
+            "i": 0,
+            "j": "1",
+            "k": "",
+        }
+    )
     assert p.get_or_throw("a", bool)
     assert p.get_or_throw("b", bool)
     assert p.get_or_throw("c", bool)

@@ -7,11 +7,20 @@ import tests.utils.convert_examples as ex
 from pytest import raises
 from tests.utils.convert_examples import BaseClass, Class2, SubClass
 from tests.utils.convert_examples import SubClass as SubClassSame
-from triad.utils.convert import (_parse_value_and_unit, as_type,
-                                 get_full_type_path, str_to_instance,
-                                 str_to_type, to_bool, to_datetime,
-                                 to_function, to_instance, to_size,
-                                 to_timedelta, to_type)
+from triad.utils.convert import (
+    _parse_value_and_unit,
+    as_type,
+    get_full_type_path,
+    str_to_instance,
+    str_to_type,
+    to_bool,
+    to_datetime,
+    to_function,
+    to_instance,
+    to_size,
+    to_timedelta,
+    to_type,
+)
 
 
 def test_to_size():
@@ -50,10 +59,10 @@ def test_str_to_type():
     assert BaseClass == str_to_type("tests.utils.convert_examples.BaseClass")
     assert SubClass == str_to_type("SubClass", BaseClass)
     assert SubClassSame == str_to_type("SubClassSame")
-    raises(TypeError, lambda: str_to_type(
-        "tests.utils.convert_examples.BaseClass", int))
-    raises(TypeError, lambda: str_to_type(
-        "tests.utils.convert_examples.BaseClass1"))
+    raises(
+        TypeError, lambda: str_to_type("tests.utils.convert_examples.BaseClass", int)
+    )
+    raises(TypeError, lambda: str_to_type("tests.utils.convert_examples.BaseClass1"))
     raises(TypeError, lambda: str_to_type("pytest.raises"))
     raises(TypeError, lambda: str_to_type("__dummy_impossible__"))
 
@@ -87,10 +96,10 @@ def test_obj_to_type():
     raises(TypeError, lambda: to_type("tests.utils.Class2", BaseClass))
 
     assert ex.__Dummy__ is not __Dummy__
-    assert to_type("tests.utils.convert_examples.__Dummy__",
-                   first=True) is ex.__Dummy__
-    assert to_type("tests.utils.convert_examples.__Dummy__",
-                   first=False) is ex.__Dummy__
+    assert to_type("tests.utils.convert_examples.__Dummy__", first=True) is ex.__Dummy__
+    assert (
+        to_type("tests.utils.convert_examples.__Dummy__", first=False) is ex.__Dummy__
+    )
     assert ex.invoke_to_type("__Dummy__", first=True) is ex.__Dummy__
     assert ex.invoke_to_type("__Dummy__", first=False) is __Dummy__
 
@@ -107,8 +116,7 @@ def test_obj_to_instance():
     assert isinstance(i, Class2)
     i = to_instance(Class2, args=[1, 2, 3])
     assert isinstance(i, Class2)
-    raises(TypeError, lambda: to_instance(Class2,
-                                          BaseClass, args=[1, 2, 3]))
+    raises(TypeError, lambda: to_instance(Class2, BaseClass, args=[1, 2, 3]))
     i = to_instance(Class2("a:int"))
     assert isinstance(i, Class2)
     raises(TypeError, lambda: to_instance(Class2(), BaseClass))
@@ -117,10 +125,14 @@ def test_obj_to_instance():
 
     assert ex.__Dummy__ is not __Dummy__
     assert type(to_instance("__Dummy__")) is __Dummy__
-    assert type(to_instance("tests.utils.convert_examples.__Dummy__",
-                            first=True)) is ex.__Dummy__
-    assert type(to_instance("tests.utils.convert_examples.__Dummy__",
-                            first=False)) is ex.__Dummy__
+    assert (
+        type(to_instance("tests.utils.convert_examples.__Dummy__", first=True))
+        is ex.__Dummy__
+    )
+    assert (
+        type(to_instance("tests.utils.convert_examples.__Dummy__", first=False))
+        is ex.__Dummy__
+    )
 
 
 def test_obj_to_function():
@@ -178,7 +190,7 @@ def test_to_timedelta():
     dt = timedelta(days=2, minutes=1)
     assert dt == to_timedelta("2 day 1 min")
     assert dt == to_timedelta("2d1m")
-    dt = pd.Timedelta('2d')
+    dt = pd.Timedelta("2d")
     assert timedelta(days=2) == to_timedelta(dt)
     raises(TypeError, lambda: to_timedelta("x"))
     assert timedelta() == to_timedelta(0)
@@ -200,13 +212,14 @@ def test_as_type():
     assert not as_type("no", bool)
     assert as_type("a:int", Class2).s == Class2("a:int").s
     assert as_type(None, Class2).s == Class2(None).s
-    assert timedelta(days=2) == as_type('2d', timedelta)
+    assert timedelta(days=2) == as_type("2d", timedelta)
     assert datetime(2019, 5, 18) == as_type("2019-05-18", datetime)
 
 
 def test_get_full_type_path():
     assert "tests.utils.test_convert.dummy_for_test" == get_full_type_path(
-        dummy_for_test)
+        dummy_for_test
+    )
     raises(TypeError, lambda: get_full_type_path(lambda x: x + 1))
     assert "tests.utils.test_convert.__Dummy__" == get_full_type_path(__Dummy__)
     assert "tests.utils.convert_examples.SubClass" == get_full_type_path(SubClassSame)
@@ -218,6 +231,7 @@ def test_get_full_type_path():
     assert "builtins.int" == get_full_type_path(123)
     assert "builtins.str" == get_full_type_path("ad")
     assert "tests.utils.test_convert.__Dummy__" == get_full_type_path(__Dummy__())
+
 
 # This is for test_obj_to_function
 

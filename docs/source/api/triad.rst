@@ -1,4 +1,4 @@
-triad 
+triad
 ======
 
 .. toctree::
@@ -23,5 +23,3 @@ triad.exceptions
    :members:
    :undoc-members:
    :show-inheritance:
-
-
