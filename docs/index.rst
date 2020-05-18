@@ -12,8 +12,3 @@ Welcome to Triad's documentation!
 
    api/triad
 
-Indices and tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
