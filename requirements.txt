@@ -9,6 +9,7 @@ pylint
 pytest
 pytest-cov
 pytest-mock
+sphinx
 
 # publish to pypi
 wheel
