@@ -31,16 +31,18 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
 
     This class can be initialized from schema like objects. Here is a list of
     schema like objects:
+
     * pyarrow.Schema or Schema objects
     * pyarrow.Field: single field will be treated as a single column schema
     * schema expressions: :func:`~triad.utils.pyarrow.expression_to_schema`
     * Dict[str,Any]: key will be the columns, and value will be type like objects
     * Tuple[str,Any]: first item will be the only column name of the schema,
-        and the second has to be a type like object
+      and the second has to be a type like object
     * List[Any]: a list of Schema like objects
     * pandas.DataFrame: it will extract the dataframe's schema
 
     Here is a list of data type like objects:
+
     * pyarrow.DataType
     * pyarrow.Field: will only use the type attribute of the field
     * type expression or other objects: for :func:`~triad.utils.pyarrow.to_pa_datatype`
