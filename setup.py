@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
+from triad import __version__
 
-VERSION = "0.3.0"
 
 with open("README.md") as f:
     LONG_DESCRIPTION = f.read()
 
 setup(
     name="triad",
-    version=VERSION,
+    version=__version__,
     packages=find_packages(),
     description="A collection of python utils for Fugue projects",
     long_description=LONG_DESCRIPTION,
