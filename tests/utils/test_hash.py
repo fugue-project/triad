@@ -8,13 +8,7 @@ def test_to_uuid():
     assert to_uuid(None) == to_uuid(None)
     assert to_uuid() != to_uuid(None)
 
-    d = {
-        "a": 1,
-        "b": {
-            "x": "x",
-            "y": [1, 2, 3]
-        }
-    }
+    d = {"a": 1, "b": {"x": "x", "y": [1, 2, 3]}}
     id1 = to_uuid(d)
     id2 = to_uuid(d)
     d["b"]["y"][0] = None

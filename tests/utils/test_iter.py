@@ -2,8 +2,13 @@ import itertools
 from collections import OrderedDict
 
 from pytest import raises
-from triad.utils.iter import (EmptyAwareIterable, Slicer, make_empty_aware,
-                              slice_iterable, to_kv_iterable)
+from triad.utils.iter import (
+    EmptyAwareIterable,
+    Slicer,
+    make_empty_aware,
+    slice_iterable,
+    to_kv_iterable,
+)
 
 
 def test_empty_aware_iterable():
@@ -81,48 +86,53 @@ def test_slice_iterable():
     # make sure empty iterable will yield no slice
     ll = list(slice_iterable([], lambda n, c, l: n % 2 == 0))
     assert 0 == len(ll)
-    assert_slice('', [], lambda n,
-                 c, l: n % 2 == 0, lambda x: x)
-    assert_slice('1,2-3,4-5', range(1, 6), lambda n,
-                 c, l: n % 2 == 0, lambda x: x)
-    assert_slice('1,2,3,4,5', range(1, 6), lambda n,
-                 c, l: c < l, lambda x: x)
-    assert_slice('1-2-3-4-5', range(1, 6), lambda n,
-                 c, l: c > l, lambda x: x)
+    assert_slice("", [], lambda n, c, l: n % 2 == 0, lambda x: x)
+    assert_slice("1,2-3,4-5", range(1, 6), lambda n, c, l: n % 2 == 0, lambda x: x)
+    assert_slice("1,2,3,4,5", range(1, 6), lambda n, c, l: c < l, lambda x: x)
+    assert_slice("1-2-3-4-5", range(1, 6), lambda n, c, l: c > l, lambda x: x)
     # for each slice, only iterate some of them
-    assert_slice('1-3-5', range(1, 6), lambda n,
-                 c, l: n % 2 == 0, lambda x: itertools.islice(x, 1))
-    assert_slice('1,2-3,4-5', range(1, 6), lambda n,
-                 c, l: n % 2 == 0, lambda x: itertools.islice(x, 100))
-    assert_slice('--', range(1, 6), lambda n,
-                 c, l: n % 2 == 0, lambda x: itertools.islice(x, 0))
+    assert_slice(
+        "1-3-5",
+        range(1, 6),
+        lambda n, c, l: n % 2 == 0,
+        lambda x: itertools.islice(x, 1),
+    )
+    assert_slice(
+        "1,2-3,4-5",
+        range(1, 6),
+        lambda n, c, l: n % 2 == 0,
+        lambda x: itertools.islice(x, 100),
+    )
+    assert_slice(
+        "--", range(1, 6), lambda n, c, l: n % 2 == 0, lambda x: itertools.islice(x, 0)
+    )
     n = -1
 
     def sl(it):
         nonlocal n
         n += 1
         return itertools.islice(it, n)
-    assert_slice('-3-5', range(1, 6), lambda n,
-                 c, l: n % 2 == 0, sl)
+
+    assert_slice("-3-5", range(1, 6), lambda n, c, l: n % 2 == 0, sl)
 
 
 def test_slicer():
-    assert_slicer('', [], 1, 0, lambda x: 1)
-    assert_slicer('', [], 0, 0, lambda x: 1)
-    assert_slicer('', [], 0, 1, lambda x: 1)
-    assert_slicer('', [], 1, 1, lambda x: 1)
-    assert_slicer('.000', [1, 1, 1], 0, 0, None)
-    assert_slicer('.000', [1, 1, 1], None, None, None)
-    assert_slicer('.0.1.2', [1, 1, 1], 1, 0, None)
-    assert_slicer('.00.1', [1, 1, 1], 2, 0, None)
-    assert_slicer('.0.1.2', [1, 1, 1], 0, 1, lambda x: 1)
-    assert_slicer('.0.1.2', [1, 1, 1], 0, 1, lambda x: 10)
-    assert_slicer('.00.1', [1, 1, 1], 0, 2, lambda x: 1)
-    assert_slicer('.0.1.2', [1, 1, 1], 1, 2, lambda x: 1)
-    assert_slicer('.00.1', [1, 1, 1], 10, 2, lambda x: 1)
-    assert_slicer('.000', [1, 1, 1], 10, 20, lambda x: 1)
-    assert_slicer('.0.1.2', [1, 1, 1], 1, '2k', lambda x: 1)
-    assert_slicer('.00.1', [1, 1, 1], None, '2k', lambda x: 1024)
+    assert_slicer("", [], 1, 0, lambda x: 1)
+    assert_slicer("", [], 0, 0, lambda x: 1)
+    assert_slicer("", [], 0, 1, lambda x: 1)
+    assert_slicer("", [], 1, 1, lambda x: 1)
+    assert_slicer(".000", [1, 1, 1], 0, 0, None)
+    assert_slicer(".000", [1, 1, 1], None, None, None)
+    assert_slicer(".0.1.2", [1, 1, 1], 1, 0, None)
+    assert_slicer(".00.1", [1, 1, 1], 2, 0, None)
+    assert_slicer(".0.1.2", [1, 1, 1], 0, 1, lambda x: 1)
+    assert_slicer(".0.1.2", [1, 1, 1], 0, 1, lambda x: 10)
+    assert_slicer(".00.1", [1, 1, 1], 0, 2, lambda x: 1)
+    assert_slicer(".0.1.2", [1, 1, 1], 1, 2, lambda x: 1)
+    assert_slicer(".00.1", [1, 1, 1], 10, 2, lambda x: 1)
+    assert_slicer(".000", [1, 1, 1], 10, 20, lambda x: 1)
+    assert_slicer(".0.1.2", [1, 1, 1], 1, "2k", lambda x: 1)
+    assert_slicer(".00.1", [1, 1, 1], None, "2k", lambda x: 1024)
 
     class C(object):
         def __init__(self):
@@ -133,38 +143,38 @@ def test_slicer():
             return current > last
 
     c = C()
-    assert_slicer('', [], 1, 0, lambda x: 1, c.c)
-    assert_slicer('', [], 0, 0, lambda x: 1, c.c)
-    assert_slicer('', [], 0, 1, lambda x: 1, c.c)
-    assert_slicer('', [], 1, 1, lambda x: 1, c.c)
+    assert_slicer("", [], 1, 0, lambda x: 1, c.c)
+    assert_slicer("", [], 0, 0, lambda x: 1, c.c)
+    assert_slicer("", [], 0, 1, lambda x: 1, c.c)
+    assert_slicer("", [], 1, 1, lambda x: 1, c.c)
     assert 0 == len(c.arr)
-    assert_slicer('.000', [1, 1, 1], 0, 0, None, c.c)
+    assert_slicer(".000", [1, 1, 1], 0, 0, None, c.c)
     c = C()
-    assert_slicer('.0.1.2', [1, 2, 3], 0, 0, None, c.c)
+    assert_slicer(".0.1.2", [1, 2, 3], 0, 0, None, c.c)
     assert [[2, 1], [3, 2]] == c.arr
     c = C()
-    assert_slicer('.0.1.2', [1, 0, -1], 1, 0, None, c.c)
+    assert_slicer(".0.1.2", [1, 0, -1], 1, 0, None, c.c)
     assert [[0, 1], [-1, 0]] == c.arr  # is_boundary must be called anyway
     c = C()
-    assert_slicer('.00.1', [1, 0, -1], 2, 0, None, c.c)
+    assert_slicer(".00.1", [1, 0, -1], 2, 0, None, c.c)
     assert [[0, 1], [-1, 0]] == c.arr  # is_boundary must be called anyway
     c = C()
     # size and row counters should reset after slicer taking effect
-    assert_slicer('.0.11', [1, 2, 1], 2, 0, None, c.c)
+    assert_slicer(".0.11", [1, 2, 1], 2, 0, None, c.c)
     assert [[2, 1], [1, 2]] == c.arr
     c = C()
-    assert_slicer('.00.1', [1, 0, -1], 0, 2, lambda x: 1, c.c)
+    assert_slicer(".00.1", [1, 0, -1], 0, 2, lambda x: 1, c.c)
     assert [[0, 1], [-1, 0]] == c.arr
     c = C()
-    assert_slicer('.0.1.2', [1, 1, 1], 1, 2, lambda x: 1, c.c)
+    assert_slicer(".0.1.2", [1, 1, 1], 1, 2, lambda x: 1, c.c)
     assert [[1, 1], [1, 1]] == c.arr
     c = C()
     # size and row counters should reset after slicer taking effect
-    assert_slicer('.0.11', [1, 2, 1], 10, 2, lambda x: 1, c.c)
+    assert_slicer(".0.11", [1, 2, 1], 10, 2, lambda x: 1, c.c)
     assert [[2, 1], [1, 2]] == c.arr
-    assert_slicer('.000', [1, 1, 1], 10, 20, lambda x: 1)
-    assert_slicer('.0.1.2', [1, 1, 1], 1, '2k', lambda x: 1)
-    assert_slicer('.00.1', [1, 1, 1], None, '2k', lambda x: 1024)
+    assert_slicer(".000", [1, 1, 1], 10, 20, lambda x: 1)
+    assert_slicer(".0.1.2", [1, 1, 1], 1, "2k", lambda x: 1)
+    assert_slicer(".00.1", [1, 1, 1], None, "2k", lambda x: 1024)
 
 
 def assert_slice(expected, iterable, slicer, slice_proc):
@@ -172,8 +182,8 @@ def assert_slice(expected, iterable, slicer, slice_proc):
     for x in slice_iterable(iterable, slicer):
         assert not x.empty
         assert isinstance(x, EmptyAwareIterable)
-        ll.append(','.join(map(str, slice_proc(x))))
-    s = '-'.join(ll)
+        ll.append(",".join(map(str, slice_proc(x))))
+    s = "-".join(ll)
     assert expected == s
 
 
@@ -187,11 +197,11 @@ def assert_slicer(expected, arr, max_row, max_size, sizer, slicer=None):
         for x in chunk:
             r.append(str(n))
         n += 1
-    assert expected == ''.join(r)
+    assert expected == "".join(r)
 
 
 def _get_iterable(s):
-    for ss in s.split(','):
+    for ss in s.split(","):
         yield ss
 
 

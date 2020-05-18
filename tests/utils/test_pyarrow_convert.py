@@ -22,7 +22,7 @@ str,int,double,bool,datetime,date,decimal,dict,list
 
 
 def test_convert_to_null():
-    pdt = pd.Timestamp('2020-01-01T02:03:04')
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
 
     _test_convert(None, "null", None)
     _test_convert("1", "null", None)
@@ -36,7 +36,7 @@ def test_convert_to_null():
 
 
 def test_convert_to_str():
-    pdt = pd.Timestamp('2020-01-01T02:03:04')
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
 
     _test_convert(None, "str", None)
     _test_convert("1", "str", "1")
@@ -50,7 +50,7 @@ def test_convert_to_str():
 
 
 def test_convert_to_int():
-    pdt = pd.Timestamp('2020-01-01T02:03:04')
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
 
     _test_convert(None, "int", None)
     _test_convert("1", "int", 1)
@@ -67,7 +67,7 @@ def test_convert_to_int():
 
 
 def test_convert_to_double():
-    pdt = pd.Timestamp('2020-01-01T02:03:04')
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
 
     _test_convert(None, "double", None)
     _test_convert("1", "double", 1.0)
@@ -92,7 +92,7 @@ def test_convert_to_decimal():
 
 
 def test_convert_to_bool():
-    pdt = pd.Timestamp('2020-01-01T02:03:04')
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
 
     _test_convert(None, "bool", None)
     _test_convert("true", "bool", True)
@@ -106,7 +106,7 @@ def test_convert_to_bool():
 
 
 def test_convert_to_datetime():
-    pdt = pd.Timestamp('2020-01-01T02:03:04')
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
     dt = datetime(2020, 1, 1, 2, 3, 4)
     d = date(2020, 1, 1)
     _test_convert(None, "datetime", pd.NaT)
@@ -123,7 +123,7 @@ def test_convert_to_datetime():
 
 
 def test_convert_to_date():
-    pdt = pd.Timestamp('2020-01-01T02:03:04')
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
     dt = datetime(2020, 1, 1, 2, 3, 4)
     d = date(2020, 1, 1)
     _test_convert(None, "date", pd.NaT)
@@ -156,8 +156,9 @@ def test_convert_to_dict_deep():
     _test_convert_nested(None, "{a:int}", None)
     _test_convert_nested(d, "{a:int}", d)
     _test_convert_nested({}, "{a:int}", dict(a=None))
-    _test_convert_nested('{"b":{"c":["1"]}}', "{a:int,b:{c:[int]}}",
-                         dict(a=None, b=dict(c=[1])))
+    _test_convert_nested(
+        '{"b":{"c":["1"]}}', "{a:int,b:{c:[int]}}", dict(a=None, b=dict(c=[1]))
+    )
     _assert_raise(dict(a="x"), "{a:int}", True)
     _assert_raise(dict(b=123), "{b:{a:int}}", True)
 
@@ -179,8 +180,9 @@ def test_convert_to_list_deep():
     _test_convert_nested(None, "[int]", None)
     _test_convert_nested(d, "[int]", [1])
     _test_convert_nested([], "[int]", [])
-    _test_convert_nested('[{"b":{"c":["1"]}}]', "[{a:int,b:{c:[int]}}]",
-                         [dict(a=None, b=dict(c=[1]))])
+    _test_convert_nested(
+        '[{"b":{"c":["1"]}}]', "[{a:int,b:{c:[int]}}]", [dict(a=None, b=dict(c=[1]))]
+    )
     _assert_raise(["x"], "[int]", True)
     _assert_raise(1, "[int]", True)
 
