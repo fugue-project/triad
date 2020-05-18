@@ -8,7 +8,7 @@ Welcome to Triad's documentation!
 
 .. toctree::
    :maxdepth: 3
-   :caption: Contents:
+   :caption: API:
 
    api/triad
 
