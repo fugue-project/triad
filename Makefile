@@ -20,7 +20,7 @@ docs:
 	rm -rf docs/api
 	rm -rf docs/build
 	sphinx-apidoc --no-toc -f -t=docs/_templates -o docs/api triad/
-	sphinx-build -M html docs/ docs/build/
+	sphinx-build -b html docs/ docs/build/
 
 lint:
 	pre-commit run --all-files
