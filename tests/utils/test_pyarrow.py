@@ -15,6 +15,7 @@ from triad.utils.pyarrow import (
     schemas_equal,
     to_pa_datatype,
     validate_column_name,
+    TRIAD_DEFAULT_TIMESTAMP
 )
 
 
@@ -55,19 +56,19 @@ def test_expression_conversion():
 
 def test__parse_type():
     assert pa.int32() == _parse_type(" int ")
-    assert pa.timestamp("ns") == _parse_type(" datetime ")
+    assert TRIAD_DEFAULT_TIMESTAMP == _parse_type(" datetime ")
     assert pa.timestamp("s", "America/New_York") == _parse_type(
         " timestamp ( s , America/New_York ) "
     )
     assert pa.timestamp("s") == _parse_type(" timestamp ( s ) ")
-    assert _parse_type(" timestamp ( ns ) ") == _parse_type(" datetime ")
+    assert _parse_type(" timestamp ( us ) ") == _parse_type(" datetime ")
     assert pa.decimal128(5, 2) == _parse_type(" decimal(5,2) ")
     assert pa.decimal128(5) == _parse_type(" decimal ( 5 )  ")
 
 
 def test__type_to_expression():
     assert "int" == _type_to_expression(pa.int32())
-    assert "datetime" == _type_to_expression(pa.timestamp("ns"))
+    assert "datetime" == _type_to_expression(TRIAD_DEFAULT_TIMESTAMP)
     assert "timestamp(ns,America/New_York)" == _type_to_expression(
         pa.timestamp("ns", "America/New_York")
     )
@@ -83,7 +84,7 @@ def test_to_pa_datatype():
     assert pa.int64() == to_pa_datatype(int)
     assert pa.float64() == to_pa_datatype(float)
     assert pa.float64() == to_pa_datatype(np.float64)
-    assert pa.timestamp("ns") == to_pa_datatype(datetime)
+    assert TRIAD_DEFAULT_TIMESTAMP == to_pa_datatype(datetime)
     assert pa.date32() == to_pa_datatype(date)
     assert pa.date32() == to_pa_datatype("date")
     raises(TypeError, lambda: to_pa_datatype(123))

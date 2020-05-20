@@ -11,6 +11,8 @@ from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
 from triad.utils.string import validate_triad_var_name
 
+TRIAD_DEFAULT_TIMESTAMP = pa.timestamp("us")
+
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "null": pa.null(),
     "str": pa.string(),
@@ -39,7 +41,7 @@ _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "double": pa.float64(),
     "float64": pa.float64(),
     "date": pa.date32(),
-    "datetime": pa.timestamp("ns"),
+    "datetime": TRIAD_DEFAULT_TIMESTAMP,
 }
 
 _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
@@ -58,7 +60,7 @@ _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
     pa.float32(): "float",
     pa.float64(): "double",
     pa.date32(): "date",
-    pa.timestamp("ns"): "datetime",
+    TRIAD_DEFAULT_TIMESTAMP: "datetime",
 }
 
 
@@ -129,7 +131,7 @@ def to_pa_datatype(obj: Any) -> pa.DataType:
     if isinstance(obj, str):
         return _parse_type(obj)
     if issubclass(obj, datetime):
-        return pa.timestamp("ns")
+        return TRIAD_DEFAULT_TIMESTAMP
     if issubclass(obj, date):
         return pa.date32()
     return pa.from_numpy_dtype(np.dtype(obj))
