@@ -13,3 +13,15 @@ A collection of python utility functions for Fugue projects
 ```
 pip install triad
 ```
+
+
+## Release History
+### 0.3.2
+* extracted TRIAD_DEFAULT_TIMESTAMP as a constant
+
+### <=0.3.1
+* Open sourced and docs are ready
+* Added basic utility functions
+* Types and schema are based on pyarrow
+* A better indexed and ordered dict
+* Added ParamDict
