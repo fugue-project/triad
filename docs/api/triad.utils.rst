@@ -66,3 +66,11 @@ triad.utils.string
    :undoc-members:
    :show-inheritance:
 
+triad.utils.threading
+---------------------
+
+.. automodule:: triad.utils.threading
+   :members:
+   :undoc-members:
+   :show-inheritance:
+

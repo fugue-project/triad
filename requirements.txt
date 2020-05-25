@@ -12,6 +12,8 @@ pytest-mock
 sphinx
 sphinx-rtd-theme
 
+cloudpickle
+
 # publish to pypi
 wheel
 twine
