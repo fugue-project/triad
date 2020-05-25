@@ -16,6 +16,10 @@ pip install triad
 
 
 ## Release History
+
+### 0.3.3
+* Add thread-safe cloudpicklable RunOnce class
+
 ### 0.3.2
 * extracted TRIAD_DEFAULT_TIMESTAMP as a constant
 
