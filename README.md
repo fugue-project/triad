@@ -17,6 +17,9 @@ pip install triad
 
 ## Release History
 
+### 0.3.4
+* Add general FileSystem
+
 ### 0.3.3
 * Add thread-safe cloudpicklable RunOnce class
 
