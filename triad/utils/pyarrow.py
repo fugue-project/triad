@@ -388,10 +388,10 @@ def _to_pynone(obj: Any) -> Any:
 
 
 def _to_pyint(obj: Any) -> Any:
-    if obj is None or isinstance(obj, int):
-        return obj
-    if obj != obj:  # NaN
+    if obj is None or obj != obj:  # NaN
         return None
+    if isinstance(obj, int):
+        return obj
     return as_type(obj, int)
 
 
@@ -402,41 +402,44 @@ def _to_pystr(obj: Any) -> Any:
 
 
 def _to_pybool(obj: Any) -> Any:
-    if obj is None or isinstance(obj, bool):
-        return obj
-    if obj != obj:  # NaN
+    if obj is None or obj != obj:  # NaN
         return None
+    if isinstance(obj, bool):
+        return obj
     return as_type(obj, bool)
 
 
 def _to_pyfloat(obj: Any) -> Any:
-    if obj is None or isinstance(obj, float):
-        return obj
-    if obj != obj:  # NaN
+    if obj is None or obj != obj:  # NaN
         return None
-    return as_type(obj, float)
+    if isinstance(obj, float):
+        return obj
+    obj = as_type(obj, float)
+    return None if obj != obj else obj
 
 
 def _to_pydatetime(obj: Any) -> Any:
     if obj is None or obj is pd.NaT:
-        return pd.NaT
+        return None
     if isinstance(obj, pd.Timestamp):
         return obj.to_pydatetime()
     if isinstance(obj, datetime):
         return obj
-    return as_type(obj, datetime)
+    obj = as_type(obj, datetime)
+    return None if obj != obj else obj
 
 
 def _to_pydate(obj: Any) -> Any:
     if obj is None or obj is pd.NaT:
-        return pd.NaT
+        return None
     if isinstance(obj, pd.Timestamp):
         return obj.to_pydatetime().date()
     if isinstance(obj, datetime):
         return obj.date()
     if isinstance(obj, date):
         return obj
-    return as_type(obj, datetime).date()
+    obj = as_type(obj, datetime).date()
+    return None if obj != obj else obj
 
 
 def _assert_pytype(pytype: type, obj: Any) -> Any:

@@ -55,6 +55,7 @@ def test_as_array_iterable():
     assert [["a", 1]] == df.as_array()
     assert [["a", 1]] == df.as_array(["a", "b"])
     assert [[1, "a"]] == df.as_array(["b", "a"])
+    assert [[1, "a"]] == df.as_array(["b", "a"], null_schema=True)
 
     # prevent pandas auto type casting
     df = DF([[1.0, 1.1]], "a:double,b:int")
@@ -70,15 +71,13 @@ def test_as_array_iterable():
     assert isinstance(df.as_array()[0][1], int)
 
     df = DF([[pd.Timestamp("2020-01-01"), 1.1]], "a:datetime,b:int")
-    df.native["a"] = pd.to_datetime(df.native["a"])
     assert [[datetime(2020, 1, 1), 1]] == df.as_array()
-    assert isinstance(df.as_array()[0][0], datetime)
-    assert isinstance(df.as_array()[0][1], int)
+    assert isinstance(df.as_array(type_safe=True)[0][0], datetime)
+    assert isinstance(df.as_array(type_safe=True)[0][1], int)
 
     df = DF([[pd.NaT, 1.1]], "a:datetime,b:int")
-    df.native["a"] = pd.to_datetime(df.native["a"])
-    assert isinstance(df.as_array()[0][0], datetime)
-    assert isinstance(df.as_array()[0][1], int)
+    assert df.as_array(type_safe=True)[0][0] is None
+    assert isinstance(df.as_array(type_safe=True)[0][1], int)
 
     df = DF([[1.0, 1.1]], "a:double,b:int")
     assert [[1.0, 1]] == df.as_array(type_safe=True)
@@ -87,35 +86,36 @@ def test_as_array_iterable():
 
 
 def test_nested():
+    # data = [[dict(b=[30, "40"])]]
+    # s = expression_to_schema("a:{a:str,b:[int]}")
+    # df = DF(data, "a:{a:str,b:[int]}")
+    # a = df.as_array(type_safe=True)
+    # assert [[dict(a=None, b=[30, 40])]] == a
+
     data = [[[json.dumps(dict(b=[30, "40"]))]]]
     s = expression_to_schema("a:[{a:str,b:[int]}]")
     df = DF(data, "a:[{a:str,b:[int]}]")
-    a = df.as_array(s, type_safe=True)
+    a = df.as_array(type_safe=True)
     assert [[[dict(a=None, b=[30, 40])]]] == a
 
     data = [[json.dumps(["1", 2])]]
     s = expression_to_schema("a:[int]")
     df = DF(data, "a:[int]")
-    a = df.as_array(s, type_safe=True)
+    a = df.as_array(type_safe=True)
     assert [[[1, 2]]] == a
 
 
 def test_nan_none():
     df = DF([[None, None]], "b:str,c:double", True)
     assert df.native.iloc[0, 0] is None
-    arr = df.as_array(null_safe=True)[0]
+    arr = df.as_array(type_safe=True)[0]
     assert arr[0] is None
-    assert math.isnan(arr[1])
+    assert arr[1] is None
 
     df = DF([[None, None]], "b:int,c:bool", True)
     arr = df.as_array(type_safe=True)[0]
-    assert np.isnan(arr[0])  # TODO: this will cause inconsistent behavior cross engine
-    assert np.isnan(arr[1])  # TODO: this will cause inconsistent behavior cross engine
-
-    df = DF([["a", 1.1], [None, None]], "b:str,c:double", True)
-    arr = df.as_array()[1]
     assert arr[0] is None
-    assert math.isnan(arr[1])
+    assert arr[1] is None
 
     df = DF([], "b:str,c:double", True)
     assert len(df.as_array()) == 0
@@ -156,19 +156,12 @@ class DF(object):  # This is a mock
         s = expression_to_schema(schema)
         df = pd.DataFrame(data, columns=s.names)
         self.native = PD_UTILS.enforce_type(df, s, enforce)
+        self.schema = s
 
-    def as_array(self, cols=None, type_safe=False, null_safe=False):
-        if cols is None or isinstance(cols, pa.Schema):
-            return list(
-                PD_UTILS.as_array_iterable(
-                    self.native, schema=cols, type_safe=type_safe, null_safe=null_safe
-                )
+    def as_array(self, cols=None, type_safe=False, null_schema=False):
+        schema = None if null_schema else self.schema
+        return list(
+            PD_UTILS.as_array_iterable(
+                self.native, schema=schema, columns=cols, type_safe=type_safe
             )
-        if isinstance(cols, list):
-            os = PD_UTILS.to_schema(self.native)
-            s = pa.schema([os.field(x) for x in cols])
-            return list(
-                PD_UTILS.as_array_iterable(
-                    self.native, schema=s, type_safe=type_safe, null_safe=null_safe
-                )
-            )
+        )
