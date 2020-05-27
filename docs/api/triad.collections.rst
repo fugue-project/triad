@@ -10,6 +10,14 @@ triad.collections.dict
    :undoc-members:
    :show-inheritance:
 
+triad.collections.fs
+--------------------
+
+.. automodule:: triad.collections.fs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 triad.collections.schema
 ------------------------
 
