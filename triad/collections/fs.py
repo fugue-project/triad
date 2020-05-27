@@ -9,7 +9,35 @@ from triad.utils.hash import to_uuid
 import os
 
 
-class FSPath(object):
+class FileSystem(MountFS):
+    def __init__(self, auto_close: bool = True):
+        super().__init__(auto_close)
+        self._fs_store: Dict[str, FSBase] = {}
+        self._in_create = False
+        self._fs_lock = RLock()
+
+    def create_fs(self, root: str) -> FSBase:
+        for scheme in ["temp://", "mem://"]:
+            if root.startswith(scheme):
+                fs = tempfs.TempFS(root[len(scheme) :])
+                return fs
+        return open_fs(root)
+
+    def _delegate(self, path) -> Tuple[FSBase, str]:
+        with self._fs_lock:
+            if self._in_create:  # pragma: no cover
+                return super()._delegate(path)
+            self._in_create = True
+            fp = _FSPath(path)
+            if fp.root not in self._fs_store:
+                self._fs_store[fp.root] = self.create_fs(fp.root)
+                self.mount(to_uuid(fp.root), self._fs_store[fp.root])
+            self._in_create = False
+        m_path = os.path.join(to_uuid(fp.root), fp.relative_path)
+        return super()._delegate(m_path)
+
+
+class _FSPath(object):
     def __init__(self, path: str):
         if path is None:
             raise ValueError("path can't be None")
@@ -56,30 +84,3 @@ class FSPath(object):
                 scheme = path[1 : p - 1]
                 return scheme + "://" + path[p + 1 :]
         return path
-
-
-class FileSystem(MountFS):
-    def __init__(self, auto_close: bool = True):
-        super().__init__(auto_close)
-        self._fs_store: Dict[str, FSBase] = {}
-        self._in_create = False
-        self._fs_lock = RLock()
-
-    def create_fs(self, root: str) -> FSBase:
-        if root.startswith("temp://"):
-            fs = tempfs.TempFS(root[7:])
-            return fs
-        return open_fs(root)
-
-    def _delegate(self, path) -> Tuple[FSBase, str]:
-        with self._fs_lock:
-            if self._in_create:  # pragma: no cover
-                return super()._delegate(path)
-            self._in_create = True
-            fp = FSPath(path)
-            if fp.root not in self._fs_store:
-                self._fs_store[fp.root] = self.create_fs(fp.root)
-                self.mount(to_uuid(fp.root), self._fs_store[fp.root])
-            self._in_create = False
-        m_path = os.path.join(to_uuid(fp.root), fp.relative_path)
-        return super()._delegate(m_path)

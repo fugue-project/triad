@@ -2,44 +2,44 @@ import os
 from os.path import exists
 
 from pytest import raises
-from triad.collections.fs import FileSystem, FSPath
+from triad.collections.fs import FileSystem, _FSPath
 
 
-def test_fspath():
-    p = FSPath("/a//b.txt")
+def test__FSPath():
+    p = _FSPath("/a//b.txt")
     assert "" == p.scheme
     assert "/" == p.root
     assert "a/b.txt" == p.relative_path
 
-    p = FSPath("//a.txt")
+    p = _FSPath("//a.txt")
     assert "" == p.scheme
     assert "/" == p.root
     assert "a.txt" == p.relative_path
 
-    p = FSPath("file://a/b.txt")
+    p = _FSPath("file://a/b.txt")
     assert "" == p.scheme
     assert "/" == p.root
     assert "a/b.txt" == p.relative_path
 
-    p = FSPath("hdfs://a/b.txt")
+    p = _FSPath("hdfs://a/b.txt")
     assert "hdfs" == p.scheme
     assert "hdfs://a" == p.root
     assert "b.txt" == p.relative_path
 
-    p = FSPath("temp://a/b")
+    p = _FSPath("temp://a/b")
     assert "temp" == p.scheme
     assert "temp://a" == p.root
     assert "b" == p.relative_path
 
-    p = FSPath("/temp:/a/b")
+    p = _FSPath("/temp:/a/b")
     assert "temp" == p.scheme
     assert "temp://a" == p.root
     assert "b" == p.relative_path
 
-    raises(ValueError, lambda: FSPath(None))
-    raises(ValueError, lambda: FSPath(""))
-    raises(ValueError, lambda: FSPath("a.txt"))
-    raises(ValueError, lambda: FSPath("hdfs://"))
+    raises(ValueError, lambda: _FSPath(None))
+    raises(ValueError, lambda: _FSPath(""))
+    raises(ValueError, lambda: _FSPath("a.txt"))
+    raises(ValueError, lambda: _FSPath("hdfs://"))
 
 
 def test_fs(tmpdir):
@@ -56,6 +56,14 @@ def test_fs(tmpdir):
     fs.makedirs("temp://x/y")
     fs.makedirs("temp://y/z")
     assert 3 == fs.create_called
+    fs.makedirs("mem://x/y")
+    fs.makedirs("mem://y/z")
+    assert 5 == fs.create_called
+    fs.writetext(os.path.join(p1, "a.txt"), "xyz")
+    fs.copy(os.path.join(p1, "a.txt"), "mem://y/z/a.txt")
+    assert "xyz" == fs.readtext("mem://y/z/a.txt")
+    assert not fs.exists("mem://y/z/w/a.txt")
+    assert 5 == fs.create_called
 
 
 class MockFS(FileSystem):
