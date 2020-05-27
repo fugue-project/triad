@@ -64,7 +64,11 @@ def test_fs(tmpdir):
     assert "xyz" == fs.readtext("mem://y/z/a.txt")
     assert not fs.exists("mem://y/z/w/a.txt")
     assert 5 == fs.create_called
-
+    fs.writetext("mem://from/a.txt", "hello")
+    fs.copy("mem://from/a.txt", "mem://to/a.txt")
+    assert "hello" == fs.readtext("mem://to/a.txt")
+    assert 7 == fs.create_called
+    
 
 class MockFS(FileSystem):
     def __init__(self):

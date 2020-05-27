@@ -2,7 +2,7 @@ from threading import RLock
 from typing import Dict, Tuple
 from urllib.parse import urlparse
 
-from fs import open_fs, tempfs
+from fs import open_fs, tempfs, memoryfs
 from fs.base import FS as FSBase
 from fs.mountfs import MountFS
 from triad.utils.hash import to_uuid
@@ -10,6 +10,24 @@ import os
 
 
 class FileSystem(MountFS):
+    """A unified filesystem based on PyFileSystem2. The special requirement
+    for this class is that all paths must be absolute path with scheme.
+    To customize different file systems, you should override `create_fs`
+    to provide your own configured file systems.
+
+    :Examples:
+    >>> fs = FileSystem()
+    >>> fs.writetext("mem://from/a.txt", "hello")
+    >>> fs.copy("mem://from/a.txt", "mem://to/a.txt")
+
+    :Notice:
+    If a path is not a local path, it must include the scheme and `netloc`
+    (the first element after `://`)
+
+    :param auto_close: If `True` (the default), the child filesystems
+      will be closed when `MountFS` is closed.
+    """
+
     def __init__(self, auto_close: bool = True):
         super().__init__(auto_close)
         self._fs_store: Dict[str, FSBase] = {}
@@ -17,10 +35,20 @@ class FileSystem(MountFS):
         self._fs_lock = RLock()
 
     def create_fs(self, root: str) -> FSBase:
-        for scheme in ["temp://", "mem://"]:
-            if root.startswith(scheme):
-                fs = tempfs.TempFS(root[len(scheme) :])
-                return fs
+        """create a PyFileSystem instance from `root`. `root` is in the
+        format of `/` if local path, else `<scheme>://<netloc>`.
+
+        You should override this method to provide custom instances, for
+        example, if you want to create an S3FS with certain parameters.
+
+        :param root: `/` if local path, else `<scheme>://<netloc>`
+        """
+        if root.startswith("temp://"):
+            fs = tempfs.TempFS(root[len("temp://") :])
+            return fs
+        if root.startswith("mem://"):
+            fs = memoryfs.MemoryFS()
+            return fs
         return open_fs(root)
 
     def _delegate(self, path) -> Tuple[FSBase, str]:
