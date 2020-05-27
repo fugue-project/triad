@@ -17,6 +17,9 @@ pip install triad
 
 ## Release History
 
+### 0.3.5
+* Change pyarrow and pandas type_safe output to be consistent with pyarrow (None for pd.NaT, nan, etc)
+
 ### 0.3.4
 * Add general FileSystem
 

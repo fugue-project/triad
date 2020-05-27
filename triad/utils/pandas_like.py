@@ -17,40 +17,52 @@ class PandasLikeUtils(Generic[T]):
         """
         return len(df.index) == 0
 
+    def as_arrow(self, df: T, schema: Optional[pa.Schema] = None) -> pa.Table:
+        """Convert pandas like dataframe to pyarrow table
+
+        :param df: pandas like dataframe
+        :param schema: if specified, it will be used to construct pyarrow table,
+          defaults to None
+
+        :return: pyarrow table
+        """
+        return pa.Table.from_pandas(df, schema=schema, preserve_index=False, safe=False)
+
     def as_array_iterable(
         self,
         df: T,
         schema: Optional[pa.Schema] = None,
+        columns: Optional[List[str]] = None,
         type_safe: bool = False,
-        null_safe: bool = False,
     ) -> Iterable[List[Any]]:
         """Convert pandas like dataframe to iterable of rows in the format of list.
 
         :param df: pandas like dataframe
-        :param schema: columns and types for output.
-            Leave it None to return all columns in original type
-        :param type_safe: whether to enforce the types in schema, if not, it will
+        :param schema: schema of the input. With None, it will infer the schema,
+          it can't infer wrong schema for nested types, so try to be explicit
+        :param columns: columns to output, None for all columns
+        :param type_safe: whether to enforce the types in schema, if False, it will
             return the original values from the dataframe
-        :param null_safe: whether to ensure returning null for nan or null values in
-            columns with type int, bool and string
         :return: iterable of rows, each row is a list
 
         :Notice:
-        * `null_safe` by default is False, for non pandas dataframe, setting it to
-        True may cause errors
-        * If there are nested types in schema, the conversion can be a lot slower
+        If there are nested types in schema, the conversion can be slower
         """
         if self.empty(df):
             return
         if schema is None:
             schema = self.to_schema(df)
-        else:
-            df = df[schema.names]
-            orig = self.to_schema(df)
-            if not orig.equals(schema):
-                df = self.enforce_type(df, schema, null_safe)
-        if not type_safe or all(not pa.types.is_nested(x) for x in schema.types):
+        if columns is not None:
+            df = df[columns]
+            schema = pa.schema([schema.field(n) for n in columns])
+        if not type_safe:
             for arr in df.itertuples(index=False, name=None):
+                yield list(arr)
+        elif all(not pa.types.is_nested(x) for x in schema.types):
+            p = self.as_arrow(df, schema)
+            d = p.to_pydict()
+            cols = [d[n] for n in schema.names]
+            for arr in zip(*cols):
                 yield list(arr)
         else:
             # If schema has nested types, the conversion will be much slower
