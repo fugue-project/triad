@@ -120,7 +120,7 @@ class PandasLikeUtils(Generic[T]):
                 ns = s[s.isnull()].index.tolist()
                 s = s.fillna(0).astype(v.type.to_pandas_dtype())
                 s.iloc[ns] = None
-            else:
+            elif not pa.types.is_struct(v.type):
                 s = s.astype(v.type.to_pandas_dtype())
             df[v.name] = s
         return df
