@@ -5,7 +5,7 @@
 [![PyPI license](https://img.shields.io/pypi/l/triad.svg)](https://pypi.python.org/pypi/triad/)
 [![PyPI version](https://badge.fury.io/py/triad.svg)](https://pypi.python.org/pypi/triad/)
 [![Coverage Status](https://coveralls.io/repos/github/fugue-project/triad/badge.svg)](https://coveralls.io/github/fugue-project/triad)
-[![Doc](https://readthedocs.org/projects/triad/badge)](https://traid.readthedocs.org)
+[![Doc](https://readthedocs.org/projects/triad/badge)](https://triad.readthedocs.org)
 
 A collection of python utility functions for Fugue projects
 
