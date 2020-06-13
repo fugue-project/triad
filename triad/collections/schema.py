@@ -21,7 +21,7 @@ class SchemaError(Exception):
     """Exceptions related with construction and modifying schemas
     """
 
-    def __init__(self, message: str):
+    def __init__(self, message: Any):
         super().__init__(message)
 
 
@@ -450,6 +450,51 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             (k if k not in columns else columns[k], v.type) for k, v in self.items()
         ]
         return Schema(pairs)
+
+    def transform(self, *args: Any, **kwargs: Any) -> "Schema":
+        """Transform the current schema to a new schema
+
+        :raises SchemaError: if there is any exception
+        :return: transformed schema
+
+        :Examples:
+        >>> s=Schema("a:int,b:int,c:str")
+        >>> s.transform("x:str") # x:str
+        >>> # add
+        >>> s.transform("*,x:str") # a:int,b:int,c:str,x:str
+        >>> s.transform("*","x:str") # a:int,b:int,c:str,x:str
+        >>> s.transform("*",x=str) # a:int,b:int,c:str,x:str
+        >>> # subtract
+        >>> s.transform("*-c,a") # b:int
+        >>> s.transform("*~c,a,x") # b:int  # ~ means exlcude if exists
+        >>> # callable
+        >>> s.transform(lambda s:s.fields[0]) # a:int
+        >>> s.transform(lambda s:s.fields[0], lambda s:s.fields[2]) # a:int,c:str
+        """
+        try:
+            result = Schema()
+            for a in args:
+                if callable(a):
+                    result += a(self)
+                elif isinstance(a, str):
+                    if "~" in a:
+                        aa = a.split("~", 1)
+                        exclude = True
+                    else:
+                        aa = a.split("-", 1)
+                        exclude = False
+                    s = Schema(aa[0].replace("*", str(self)))
+                    if len(aa) == 2:
+                        cols = [x.strip() for x in aa[1].split(",") if x.strip() != ""]
+                        s = s.exclude(cols) if exclude else s - cols
+                    result += s
+                else:
+                    result += a
+            return result + Schema(kwargs)
+        except SchemaError:
+            raise
+        except Exception as e:
+            raise SchemaError(e)
 
     def _pre_update(self, op: str, need_reindex: bool = True) -> None:
         if op == "__setitem__":
