@@ -17,6 +17,9 @@ pip install triad
 
 ## Release History
 
+### 0.3.6
+* Add `transform` to Schema class
+
 ### 0.3.5
 * Change pyarrow and pandas type_safe output to be consistent with pyarrow (None for pd.NaT, nan, etc)
 

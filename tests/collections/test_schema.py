@@ -276,3 +276,20 @@ def test_schema_rename():
     raises(SchemaError, lambda: s.rename(dict(x="b")))
     raises(SchemaError, lambda: s.rename(dict(a="b")))
     raises(SchemaError, lambda: s.rename(dict(a=123)))
+
+
+def test_schema_transform():
+    s = Schema("a:int,b:str,c:bool")
+    assert s.transform("x:str") == "x:str"
+    assert s.transform("*") == s
+    assert s.transform("*~x,y") == s
+    assert s.transform("*,d:str") == "a:int,b:str,c:bool,d:str"
+    assert s.transform("*,d:str - a ") == "b:str,c:bool,d:str"
+    assert s.transform("*,d:str - c,,a ") == "b:str,d:str"
+    assert s.transform("*,d:str ~ c,,a,x ") == "b:str,d:str"
+    assert s.transform("*", {"d": str}, e=str) == "a:int,b:str,c:bool,d:str,e:str"
+    assert s.transform(lambda s: s.fields[0], lambda s: s.fields[2]) == "a:int,c:bool"
+    assert s.transform(lambda s: s - ["b"]) == "a:int,c:bool"
+    raises(SchemaError, lambda: s.transform("**"))
+    raises(SchemaError, lambda: s.transform("*", "*"))
+    raises(SchemaError, lambda: s.transform("*-x"))
