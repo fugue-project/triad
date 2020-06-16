@@ -64,7 +64,7 @@ def test_schema_setter():
     with raises(SchemaError):
         a["x"] = pa.field("y", pa.int32())  # key!=field.name
     with raises(SchemaError):
-        a["y"] = pa.binary()  # unsupported types
+        a["y"] = pa.large_binary()  # unsupported types
     a["c"] = str
     a["d"] = pa.field("d", pa.int32())
     assert a == "a:int,b:str,c:str,d:int"
@@ -280,6 +280,8 @@ def test_schema_rename():
 
 def test_schema_transform():
     s = Schema("a:int,b:str,c:bool")
+    assert s.transform() == Schema()
+    assert s.transform(None) == Schema()
     assert s.transform("x:str") == "x:str"
     assert s.transform("*") == s
     assert s.transform("*~x,y") == s

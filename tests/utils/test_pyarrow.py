@@ -44,6 +44,8 @@ def test_expression_conversion():
         "a:[{x:int,y:[str]}],b:[ubyte]",
     )
     _assert_from_expr("a:decimal(5,2)")
+    _assert_from_expr("a:bytes,b:bytes")
+    _assert_from_expr("a:bytes,b: binary", "a:bytes,b:bytes")
 
     raises(SyntaxError, lambda: expression_to_schema("123:int"))
     raises(SyntaxError, lambda: expression_to_schema("int"))
@@ -75,6 +77,11 @@ def test__type_to_expression():
     assert "timestamp(s)" == _type_to_expression(pa.timestamp("s"))
     assert "decimal(5)" == _type_to_expression(pa.decimal128(5))
     assert "decimal(5,2)" == _type_to_expression(pa.decimal128(5, 2))
+    assert "bytes" == _type_to_expression(pa.binary())
+    assert "bytes" == _type_to_expression(pa.binary(-1))
+    raises(NotImplementedError, lambda: _type_to_expression(pa.binary(0)))
+    raises(NotImplementedError, lambda: _type_to_expression(pa.binary(-2)))
+    raises(NotImplementedError, lambda: _type_to_expression(pa.binary(1)))
     raises(NotImplementedError, lambda: _type_to_expression(pa.large_binary()))
 
 
@@ -87,6 +94,8 @@ def test_to_pa_datatype():
     assert TRIAD_DEFAULT_TIMESTAMP == to_pa_datatype(datetime)
     assert pa.date32() == to_pa_datatype(date)
     assert pa.date32() == to_pa_datatype("date")
+    assert pa.binary() == to_pa_datatype("bytes")
+    assert pa.binary() == to_pa_datatype("binary")
     raises(TypeError, lambda: to_pa_datatype(123))
     raises(TypeError, lambda: to_pa_datatype(None))
 
@@ -97,7 +106,9 @@ def test_is_supported():
     assert is_supported(pa.timestamp("s"))
     assert is_supported(pa.date32())
     assert not is_supported(pa.date64())
-    assert not is_supported(pa.binary())
+    assert is_supported(pa.binary())
+    assert not is_supported(pa.binary(0))
+    assert not is_supported(pa.binary(1))
     assert is_supported(pa.struct([pa.field("a", pa.int32())]))
     assert is_supported(pa.list_(pa.int32()))
     raises(NotImplementedError, lambda: is_supported(pa.date64(), throw=True))

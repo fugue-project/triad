@@ -17,6 +17,9 @@ pip install triad
 
 ## Release History
 
+### 0.3.7
+* Add pyarrow binary type support
+
 ### 0.3.6
 * Add `transform` to Schema class
 
