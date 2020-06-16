@@ -8,6 +8,7 @@ import pyarrow as pa
 from pytest import raises
 from triad.utils.pandas_like import PD_UTILS
 from triad.utils.pyarrow import expression_to_schema
+import pickle
 
 
 def test_to_schema():
@@ -103,6 +104,15 @@ def test_nested():
     df = DF(data, "a:[int]")
     a = df.as_array(type_safe=True)
     assert [[[1, 2]]] == a
+
+
+def test_binary():
+    b = pickle.dumps("xyz")
+    data = [[b, b"xy"]]
+    s = expression_to_schema("a:bytes,b:bytes")
+    df = DF(data, "a:bytes,b:bytes")
+    a = df.as_array(type_safe=True)
+    assert [[b, b"xy"]] == a
 
 
 def test_nan_none():

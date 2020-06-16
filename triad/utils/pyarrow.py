@@ -1,4 +1,5 @@
 import json
+import pickle
 from datetime import date, datetime
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
@@ -42,6 +43,8 @@ _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "float64": pa.float64(),
     "date": pa.date32(),
     "datetime": TRIAD_DEFAULT_TIMESTAMP,
+    "binary": pa.binary(),
+    "bytes": pa.binary(),
 }
 
 _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
@@ -61,6 +64,7 @@ _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
     pa.float64(): "double",
     pa.date32(): "date",
     TRIAD_DEFAULT_TIMESTAMP: "datetime",
+    pa.binary(): "bytes",
 }
 
 
@@ -442,6 +446,14 @@ def _to_pydate(obj: Any) -> Any:
     return None if obj != obj else obj
 
 
+def _to_pybytes(obj: Any) -> Any:
+    if obj is None or isinstance(obj, bytes):
+        return obj
+    if isinstance(obj, bytearray):
+        return bytes(obj)
+    return pickle.dumps(obj)
+
+
 def _assert_pytype(pytype: type, obj: Any) -> Any:
     if obj is None or isinstance(obj, pytype):
         return obj
@@ -504,6 +516,7 @@ class _TypeConverter(object):
         pa.float32(): _to_pyfloat,
         pa.float64(): _to_pyfloat,
         pa.date32(): _to_pydate,
+        pa.binary(): _to_pybytes,
     }
 
     def __init__(

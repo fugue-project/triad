@@ -10,6 +10,7 @@ from triad.collections.schema import Schema
 from triad.constants import FLOAT_INF, FLOAT_NAN, FLOAT_NINF
 from triad.exceptions import InvalidOperationError, NoneArgumentError
 from triad.utils.pyarrow import _to_pydate, _to_pydatetime, apply_schema
+import pickle
 
 """
 None,"1",1,1.1,"2020-01-01","2020-01-01 01:02:03",
@@ -105,6 +106,20 @@ def test_convert_to_bool():
     _assert_raise(pdt, "bool")
     _test_convert(FLOAT_NAN, "bool", None)
     _test_convert(np.nan, "bool", None)
+
+
+def test_convert_to_binary():
+    pdt = pd.Timestamp("2020-01-01T02:03:04")
+
+    _test_convert(None, "bytes", None)
+    _test_convert(b'\x0e\x15', "bytes", b'\x0e\x15')
+    _test_convert(bytearray(b'\x0e\x15'), "bytes", b'\x0e\x15')
+    _test_convert(False, "bytes", pickle.dumps(False))
+    _test_convert("true", "bytes", pickle.dumps("true"))
+    _test_convert(pd.NaT, "bytes", pickle.dumps(pd.NaT))
+    _test_convert(pdt, "bytes", pickle.dumps(pdt))
+    _test_convert(FLOAT_NAN, "bytes", pickle.dumps(FLOAT_NAN))
+    _test_convert(np.nan, "bytes", pickle.dumps(np.nan))
 
 
 def test_convert_to_datetime():
