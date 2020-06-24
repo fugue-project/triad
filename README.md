@@ -7,6 +7,8 @@
 [![Coverage Status](https://coveralls.io/repos/github/fugue-project/triad/badge.svg)](https://coveralls.io/github/fugue-project/triad)
 [![Doc](https://readthedocs.org/projects/triad/badge)](https://triad.readthedocs.org)
 
+[Join Fugue-Project on Slack](https://join.slack.com/t/fugue-project/shared_invite/zt-ffo2ik1d-maSsCykv_p7kXpnmIjKAug)
+
 A collection of python utility functions for Fugue projects
 
 ## Installation
@@ -16,6 +18,9 @@ pip install triad
 
 
 ## Release History
+
+### 0.3.8
+* Change to Apache 2.0 license
 
 ### 0.3.7
 * Add pyarrow binary type support
