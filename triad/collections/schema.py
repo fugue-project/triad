@@ -18,8 +18,7 @@ from triad.utils.pandas_like import PD_UTILS
 
 
 class SchemaError(Exception):
-    """Exceptions related with construction and modifying schemas
-    """
+    """Exceptions related with construction and modifying schemas"""
 
     def __init__(self, message: Any):
         super().__init__(message)
@@ -99,33 +98,28 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
 
     @property
     def names(self) -> List[str]:
-        """List of column names
-        """
+        """List of column names"""
         self._build_index()
         return self._index_key  # type: ignore
 
     @property
     def fields(self) -> List[pa.Field]:
-        """List of pyarrow.Fields
-        """
+        """List of pyarrow.Fields"""
         return list(self.values())
 
     @property
     def types(self) -> List[pa.DataType]:
-        """List of pyarrow.DataTypes
-        """
+        """List of pyarrow.DataTypes"""
         return [v.type for v in self.values()]
 
     @property
     def pyarrow_schema(self) -> pa.Schema:
-        """convert as pyarrow.Schema
-        """
+        """convert as pyarrow.Schema"""
         return pa.schema(self.fields)
 
     @property
     def pa_schema(self) -> pa.Schema:
-        """convert as pyarrow.Schema
-        """
+        """convert as pyarrow.Schema"""
         return self.pyarrow_schema
 
     @property
