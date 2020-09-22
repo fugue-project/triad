@@ -7,9 +7,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/fugue-project/triad/badge.svg)](https://coveralls.io/github/fugue-project/triad)
 [![Doc](https://readthedocs.org/projects/triad/badge)](https://triad.readthedocs.org)
 
-[Join Fugue-Project on Slack](https://join.slack.com/t/fugue-project/shared_invite/zt-ffo2ik1d-maSsCykv_p7kXpnmIjKAug)
+[Join Fugue-Project on Slack](https://join.slack.com/t/fugue-project/shared_invite/zt-he6tcazr-OCkj2GEv~J9UYoZT3FPM4g)
 
-A collection of python utility functions for Fugue projects
+A collection of python utility functions for [Fugue projects](https://github.com/fugue-project)
 
 ## Installation
 ```
@@ -18,6 +18,9 @@ pip install triad
 
 
 ## Release History
+
+### 0.4.0
+* Prepare for Fugue open source
 
 ### 0.3.8
 * Change to Apache 2.0 license

@@ -14,8 +14,7 @@ VT = TypeVar("VT")
 
 
 class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
-    """Subclass of OrderedDict that can get and set with index
-    """
+    """Subclass of OrderedDict that can get and set with index"""
 
     def __init__(self, *args: Any, **kwds: Any):
         self._readonly = False
@@ -109,9 +108,7 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
         self._pre_update("__setitem__", key not in self)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore
 
-    def __delitem__(  # type: ignore
-        self, *args: Any, **kwds: Any
-    ) -> None:
+    def __delitem__(self, *args: Any, **kwds: Any) -> None:  # type: ignore
         self._pre_update("__delitem__")
         super().__delitem__(*args, **kwds)  # type: ignore
 
@@ -135,24 +132,18 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
         it = [(copy.deepcopy(k), copy.deepcopy(v)) for k, v in self.items()]
         return IndexedOrderedDict(it)
 
-    def popitem(  # type: ignore
-        self, *args: Any, **kwds: Any
-    ) -> Tuple[KT, VT]:
+    def popitem(self, *args: Any, **kwds: Any) -> Tuple[KT, VT]:  # type: ignore
         self._pre_update("popitem")
         return super().popitem(*args, **kwds)  # type: ignore
 
-    def move_to_end(  # type: ignore
-        self, *args: Any, **kwds: Any
-    ) -> None:
+    def move_to_end(self, *args: Any, **kwds: Any) -> None:  # type: ignore
         self._pre_update("move_to_end")
         super().move_to_end(*args, **kwds)  # type: ignore
 
     def __sizeof__(self) -> int:  # pragma: no cover
         return super().__sizeof__() + sys.getsizeof(self._need_reindex)
 
-    def pop(  # type: ignore
-        self, *args: Any, **kwds: Any
-    ) -> VT:
+    def pop(self, *args: Any, **kwds: Any) -> VT:  # type: ignore
         self._pre_update("pop")
         return super().pop(*args, **kwds)  # type: ignore
 
@@ -189,9 +180,7 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         assert isinstance(key, str)
         super().__setitem__(key, value, *args, **kwds)  # type: ignore
 
-    def __getitem__(  # type: ignore
-        self, key: Union[str, int]
-    ) -> Any:
+    def __getitem__(self, key: Union[str, int]) -> Any:  # type: ignore
         if isinstance(key, int):
             key = self.get_key_by_index(key)
         return super().__getitem__(key)  # type: ignore

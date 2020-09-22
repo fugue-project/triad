@@ -104,8 +104,7 @@ class _FSPath(object):
         return self._path
 
     def _modify_path(self, path: str) -> str:
-        """to fix things like /s3:/a/b.txt -> s3://a/b.txt
-        """
+        """to fix things like /s3:/a/b.txt -> s3://a/b.txt"""
         if path.startswith("/"):
             p = path.find("/", 1)
             if p > 1 and path[p - 1] == ":":

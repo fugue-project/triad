@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from triad import __version__
+from triad_version import __version__
 
 
 with open("README.md") as f:
@@ -15,7 +15,7 @@ setup(
     license="Apache-2.0",
     author="Han Wang",
     author_email="goodwanghan@gmail.com",
-    keywords="util utils utility utilities",
+    keywords="fugue util utils utility utilities",
     url="http://github.com/fugue-project/triad",
     install_requires=["pandas", "six", "ciso8601", "pyarrow", "fs"],
     extras_require={},
