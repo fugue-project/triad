@@ -10,8 +10,9 @@ help:
 
 devenv:
 	python3 -m venv venv
-	. venv/bin/activate
-	pip3 install -r requirements.txt
+	venv/bin/pip install -r requirements.txt
+	venv/bin/pre-commit install
+	venv/bin/pre-commit run --all-files
 
 dev:
 	pip3 install -r requirements.txt

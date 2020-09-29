@@ -1,4 +1,4 @@
-from typing import Any, Callable, Iterable, List, Optional, TypeVar, Generic
+from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -6,9 +6,12 @@ import pyarrow as pa
 from triad.utils.pyarrow import apply_schema, to_pandas_dtype
 
 T = TypeVar("T", bound=Any)
+_DEFAULT_JOIN_KEYS: List[str] = []
 
 
 class PandasLikeUtils(Generic[T]):
+    """A collection of utils for general pandas like dataframes"""
+
     def empty(self, df: T) -> bool:
         """Check if the dataframe is empty
 
@@ -139,13 +142,15 @@ class PandasLikeUtils(Generic[T]):
 
     def safe_groupby_apply(
         self,
-        df: Any,
+        df: T,
         cols: List[str],
         func: Callable[[T], T],
         key_col_name="__safe_groupby_key__",
         **kwargs: Any,
     ) -> T:
-        """Safe groupby apply operation on pandas like dataframes
+        """Safe groupby apply operation on pandas like dataframes.
+        In pandas like groupby apply, if any key is null, the whole group is dropped.
+        This method makes sure those groups are included.
 
         :param df: pandas like dataframe
         :param cols: columns to group on, can be empty
@@ -158,19 +163,20 @@ class PandasLikeUtils(Generic[T]):
         The dataframe must be either empty, or with type pd.RangeIndex, pd.Int64Index
         or pd.UInt64Index and without a name, otherwise, `ValueError` will raise.
         """
-        self.ensure_compatible(df)
-        if len(cols) == 0:
-            return func(df)
-        keys = df[cols].drop_duplicates().reset_index(drop=True)
-        keys[key_col_name] = keys.index
-        df = df.merge(keys, on=cols).set_index([key_col_name])
 
         def _wrapper(df: T) -> T:
             return func(df.reset_index(drop=True))
 
-        return (
-            df.groupby([key_col_name]).apply(_wrapper, **kwargs).reset_index(drop=True)
-        )
+        self.ensure_compatible(df)
+        if len(cols) == 0:
+            return func(df)
+        params: Dict[str, Any] = {}
+        for c in cols:
+            params[key_col_name + "null_" + c] = df[c].isnull()
+            params[key_col_name + "fill_" + c] = df[c].fillna(0)
+        keys = list(params.keys())
+        gdf = df.assign(**params).set_index(keys)
+        return gdf.groupby(keys).apply(_wrapper, **kwargs).reset_index(drop=True)
 
     def is_compatile_index(self, df: T) -> bool:
         """Check whether the datafame is compatible with the operations inside
@@ -200,6 +206,8 @@ class PandasLikeUtils(Generic[T]):
 
 
 class PandasUtils(PandasLikeUtils[pd.DataFrame]):
+    """A collection of pandas utils"""
+
     pass
 
 

@@ -19,6 +19,10 @@ pip install triad
 
 ## Release History
 
+### 0.4.1
+* Improvement on group by apply
+* Improvement on environment setup
+
 ### 0.4.0
 * Prepare for Fugue open source
 
