@@ -18,7 +18,7 @@ jobs:
       with:
         python-version: '3.x'
     - name: Install dependencies
-      run: make devenv
+      run: make dev
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
