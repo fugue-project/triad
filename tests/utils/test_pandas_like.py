@@ -151,6 +151,20 @@ def test_safe_group_by_apply():
     assert 3 == res.shape[1]
     assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.values.tolist()
 
+    df = DF(
+        [["a", 1.0], [None, 3.0], [None, 3.0], [None, None]], "a:str,b:double", True
+    )
+    res = PD_UTILS.safe_groupby_apply(df.native, ["a", "b"], _m1)
+    PD_UTILS.ensure_compatible(res)
+    assert 4 == res.shape[0]
+    assert 3 == res.shape[1]
+    assert [
+        ["a", 1.0, 1],
+        [None, 3.0, 2],
+        [None, 3.0, 2],
+        [None, float("nan"), 1],
+    ].__repr__() == res.values.tolist().__repr__()
+
     df = DF([[1.0, "a"], [1.0, "b"], [None, "c"], [None, "d"]], "b:double,c:str", True)
     res = PD_UTILS.safe_groupby_apply(df.native, ["b"], _m1)
     assert [
