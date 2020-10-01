@@ -19,6 +19,9 @@ pip install triad
 
 ## Release History
 
+### 0.4.2
+* Fix a bug in pandas like safe_groupby_apply
+
 ### 0.4.1
 * Improvement on group by apply
 * Improvement on environment setup
