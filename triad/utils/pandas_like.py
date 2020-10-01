@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeVar
 
 import numpy as np
@@ -7,6 +8,7 @@ from triad.utils.pyarrow import apply_schema, to_pandas_dtype
 
 T = TypeVar("T", bound=Any)
 _DEFAULT_JOIN_KEYS: List[str] = []
+_DEFAULT_DATETIME = datetime(2000, 1, 1)
 
 
 class PandasLikeUtils(Generic[T]):
@@ -164,8 +166,8 @@ class PandasLikeUtils(Generic[T]):
         or pd.UInt64Index and without a name, otherwise, `ValueError` will raise.
         """
 
-        def _wrapper(df: T) -> T:
-            return func(df.reset_index(drop=True))
+        def _wrapper(keys: List[str], df: T) -> T:
+            return func(df.drop(keys, axis=1).reset_index(drop=True))
 
         self.ensure_compatible(df)
         if len(cols) == 0:
@@ -173,10 +175,31 @@ class PandasLikeUtils(Generic[T]):
         params: Dict[str, Any] = {}
         for c in cols:
             params[key_col_name + "null_" + c] = df[c].isnull()
-            params[key_col_name + "fill_" + c] = df[c].fillna(0)
+            params[key_col_name + "fill_" + c] = self.fillna_default(df[c])
         keys = list(params.keys())
-        gdf = df.assign(**params).set_index(keys)
-        return gdf.groupby(keys).apply(_wrapper, **kwargs).reset_index(drop=True)
+        gdf = df.assign(**params)
+        return (
+            gdf.groupby(keys)
+            .apply(lambda df: _wrapper(keys, df), **kwargs)
+            .reset_index(drop=True)
+        )
+
+    def fillna_default(self, col: Any) -> Any:
+        """Fill column with default values according to the dtype of the column.
+
+        :param col: series of a pandas like dataframe
+        :return: filled series
+        """
+        dtype = col.dtype
+        if np.issubdtype(dtype, "datetime64"):
+            return col.fillna(_DEFAULT_DATETIME)
+        if np.issubdtype(dtype, np.str) or np.issubdtype(
+            dtype, np.string_
+        ):  # pragma: no cover
+            return col.fillna("")
+        if np.issubdtype(dtype, np.bool):
+            return col.fillna(False)
+        return col.fillna(0)
 
     def is_compatile_index(self, df: T) -> bool:
         """Check whether the datafame is compatible with the operations inside

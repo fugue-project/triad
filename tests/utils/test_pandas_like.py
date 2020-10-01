@@ -1,12 +1,12 @@
 import json
 import math
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pytest import raises
-from triad.utils.pandas_like import PD_UTILS
+from triad.utils.pandas_like import PD_UTILS, _DEFAULT_DATETIME
 from triad.utils.pyarrow import expression_to_schema
 import pickle
 
@@ -131,6 +131,29 @@ def test_nan_none():
     assert len(df.as_array()) == 0
 
 
+def test_fillna_default():
+    df = pd.DataFrame([["a"], [None]], columns=["x"])
+    s = PD_UTILS.fillna_default(df["x"])
+    assert ["a", 0] == s.tolist()
+
+    df = pd.DataFrame([["a"], ["b"]], columns=["x"])
+    s = PD_UTILS.fillna_default(df["x"].astype(np.str))
+    assert ["a", "b"] == s.tolist()
+
+    dt = datetime.now()
+    df = pd.DataFrame([[dt], [None]], columns=["x"])
+    s = PD_UTILS.fillna_default(df["x"])
+    assert [dt, _DEFAULT_DATETIME] == s.tolist()
+
+    df = pd.DataFrame([[True], [None]], columns=["x"])
+    s = PD_UTILS.fillna_default(df["x"])
+    assert [True, 0] == s.tolist()
+
+    df = pd.DataFrame([[True], [False]], columns=["x"])
+    s = PD_UTILS.fillna_default(df["x"].astype(bool))
+    assert [True, False] == s.tolist()
+
+
 def test_safe_group_by_apply():
     df = DF([["a", 1], ["a", 2], [None, 3]], "b:str,c:long", True)
 
@@ -151,20 +174,6 @@ def test_safe_group_by_apply():
     assert 3 == res.shape[1]
     assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.values.tolist()
 
-    df = DF(
-        [["a", 1.0], [None, 3.0], [None, 3.0], [None, None]], "a:str,b:double", True
-    )
-    res = PD_UTILS.safe_groupby_apply(df.native, ["a", "b"], _m1)
-    PD_UTILS.ensure_compatible(res)
-    assert 4 == res.shape[0]
-    assert 3 == res.shape[1]
-    assert [
-        ["a", 1.0, 1],
-        [None, 3.0, 2],
-        [None, 3.0, 2],
-        [None, float("nan"), 1],
-    ].__repr__() == res.values.tolist().__repr__()
-
     df = DF([[1.0, "a"], [1.0, "b"], [None, "c"], [None, "d"]], "b:double,c:str", True)
     res = PD_UTILS.safe_groupby_apply(df.native, ["b"], _m1)
     assert [
@@ -173,6 +182,62 @@ def test_safe_group_by_apply():
         [float("nan"), "c", 2],
         [float("nan"), "d", 2],
     ].__repr__() == res.values.tolist().__repr__()
+
+
+def test_safe_group_by_apply_special_types():
+    def _m1(df):
+        PD_UTILS.ensure_compatible(df)
+        df["ct"] = df.shape[0]
+        return df
+
+    df = DF(
+        [["a", 1.0], [None, 3.0], [None, 3.0], [None, None]], "a:str,b:double", True
+    )
+    res = PD_UTILS.safe_groupby_apply(df.native, ["a", "b"], _m1)
+    PD_UTILS.ensure_compatible(res)
+    assert 4 == res.shape[0]
+    assert 3 == res.shape[1]
+    DF(
+        [["a", 1.0, 1], [None, 3.0, 2], [None, 3.0, 2], [None, None, 1]],
+        "a:str,b:double,ct:int",
+        True,
+    ).assert_eq(res)
+
+    dt = datetime.now()
+    df = DF([["a", dt], [None, dt], [None, dt], [None, None]], "a:str,b:datetime", True)
+    res = PD_UTILS.safe_groupby_apply(df.native, ["a", "b"], _m1)
+    PD_UTILS.ensure_compatible(res)
+    assert 4 == res.shape[0]
+    assert 3 == res.shape[1]
+    DF(
+        [["a", dt, 1], [None, dt, 2], [None, dt, 2], [None, None, 1]],
+        "a:str,b:datetime,ct:int",
+        True,
+    ).assert_eq(res)
+
+    dt = date(2020, 1, 1)
+    df = DF([["a", dt], [None, dt], [None, dt], [None, None]], "a:str,b:date", True)
+    res = PD_UTILS.safe_groupby_apply(df.native, ["a", "b"], _m1)
+    PD_UTILS.ensure_compatible(res)
+    assert 4 == res.shape[0]
+    assert 3 == res.shape[1]
+    DF(
+        [["a", dt, 1], [None, dt, 2], [None, dt, 2], [None, None, 1]],
+        "a:str,b:date,ct:int",
+        True,
+    ).assert_eq(res)
+
+    dt = date(2020, 1, 1)
+    df = DF([["a", dt], ["b", dt], ["b", dt], ["b", None]], "a:str,b:date", True)
+    res = PD_UTILS.safe_groupby_apply(df.native, ["a", "b"], _m1)
+    PD_UTILS.ensure_compatible(res)
+    assert 4 == res.shape[0]
+    assert 3 == res.shape[1]
+    DF(
+        [["a", dt, 1], ["b", dt, 2], ["b", dt, 2], ["b", None, 1]],
+        "a:str,b:date,ct:int",
+        True,
+    ).assert_eq(res)
 
 
 class DF(object):  # This is a mock
@@ -189,3 +254,6 @@ class DF(object):  # This is a mock
                 self.native, schema=schema, columns=cols, type_safe=type_safe
             )
         )
+
+    def assert_eq(self, df):
+        pd.testing.assert_frame_equal(self.native, df, check_dtype=False)
