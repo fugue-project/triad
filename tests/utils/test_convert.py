@@ -12,6 +12,7 @@ from triad.utils.convert import (
     as_type,
     get_full_type_path,
     str_to_instance,
+    str_to_object,
     str_to_type,
     to_bool,
     to_datetime,
@@ -52,6 +53,25 @@ def test_parse_value_and_unit():
     assert (1.0, "") == _parse_value_and_unit(" 1 ")
     assert (-1.0, "") == _parse_value_and_unit(" -1.0 ")
     assert (-1.0, "m10") == _parse_value_and_unit(" - 1 . 0 m 1 0 ")
+
+
+def test_str_to_object():
+    class _Mock(object):
+        def __init__(self, x=1):
+            self.x = x
+
+    m = _Mock()
+    assert BaseClass == str_to_object("tests.utils.BaseClass")
+    assert BaseClass == str_to_object("tests.utils.convert_examples.BaseClass")
+    assert SubClass == str_to_object("SubClass")
+    assert SubClassSame == str_to_object("SubClassSame")
+    assert RuntimeError == str_to_object("RuntimeError")
+    assert _Mock == str_to_object("_Mock")
+    assert 1 == str_to_object("m.x")
+    assert 1 == str_to_object("m2.x", local_vars={"m2": m})
+    raises(ValueError, lambda: str_to_object(""))
+    raises(ValueError, lambda: str_to_object("xxxx"))
+    raises(ValueError, lambda: str_to_object("xx.xx"))
 
 
 def test_str_to_type():

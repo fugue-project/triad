@@ -1,6 +1,7 @@
 import datetime
 import importlib
 import inspect
+from importlib import util as importlib_util
 from pydoc import locate
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -8,9 +9,102 @@ import numpy as np
 import pandas as pd
 import six
 from ciso8601 import parse_datetime
+from triad.utils.assertion import assert_or_throw
+from triad.utils.string import assert_triad_var_name
 
 EMPTY_ARGS: List[Any] = []
 EMPTY_KWARGS: Dict[str, Any] = {}
+
+
+def get_caller_global_local_vars(
+    global_vars: Optional[Dict[str, Any]] = None,
+    local_vars: Optional[Dict[str, Any]] = None,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Get the caller level global and local variables.
+
+    :param global_vars: overriding global variables, if not None,
+      will return this instead of the caller's globals(), defaults to None
+    :param local_vars: overriding local variables, if not None,
+      will return this instead of the caller's locals(), defaults to None
+    :return: tuple of `global_vars` and `local_vars`
+
+    :Examples:
+
+        .. code-block:: python
+            def caller():
+                x=1
+                assert 1 == get_value("x")
+
+            def get_value(var_name):
+                _, l = get_caller_global_local_vars()
+                assert var_name in l
+                assert var_name not in locals()
+                return l[var_name]
+
+    :Notice:
+
+    This is for internal use, users normally should not call this directly.
+    The concept of this function is very tricky, be careful.
+    """
+    cf = inspect.currentframe()
+    if global_vars is None:
+        global_vars = cf.f_back.f_back.f_globals  # type: ignore
+    if local_vars is None:
+        local_vars = cf.f_back.f_back.f_locals  # type: ignore
+    return global_vars, local_vars  # type: ignore
+
+
+def str_to_object(
+    expr: str,
+    global_vars: Optional[Dict[str, Any]] = None,
+    local_vars: Optional[Dict[str, Any]] = None,
+) -> Any:
+    """Convert string expression to object. The string expression must express
+    a type with relative or full path, or express a local or global instance without
+    brackets or operators.
+
+    :param expr: string expression, see examples below
+    :param global_vars: overriding global variables, if None, it will
+      use the caller's globals(), defaults to None
+    :param local_vars: overriding local variables, if None, it will
+      use the caller's locals(), defaults to None
+    :return: the
+
+    :Examples:
+
+        .. code-block:: python
+            class _Mock(object):
+                def __init__(self, x=1):
+                    self.x = x
+
+            m = _Mock()
+            assert 1 == str_to_object("m.x")
+            assert 1 == str_to_object("m2.x", local_vars={"m2": m})
+            assert RuntimeError == str_to_object("RuntimeError")
+            assert _Mock == str_to_object("_Mock")
+
+    :Notice:
+
+    This is for internal use, users normally should not call this directly.
+    The concept of this function is very tricky, be careful.
+    """
+    try:
+        for p in expr.split("."):
+            assert_triad_var_name(p)
+        _globals, _locals = get_caller_global_local_vars(global_vars, local_vars)
+        if "." not in expr:
+            return eval(expr, _globals, _locals)
+        root = expr.split(".")[0]
+        if root not in _globals and root not in _locals:
+            spec = importlib_util.find_spec(root)
+            assert_or_throw(spec is not None, ValueError(expr))
+            _locals = dict(_locals)
+            _locals[root] = importlib.import_module(root)
+        return eval(expr, _globals, _locals)
+    except ValueError:
+        raise
+    except Exception:
+        raise ValueError(expr)
 
 
 def str_to_type(
