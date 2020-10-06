@@ -19,5 +19,5 @@ class __Dummy__(object):
         super().__init__(*args, **kwargs)
 
 
-def invoke_to_type(exp, first):
-    return to_type(exp, first=first)
+def invoke_to_type(exp):
+    return to_type(exp)
