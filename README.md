@@ -19,6 +19,9 @@ pip install triad
 
 ## Release History
 
+### 0.4.3
+* Refactored `str_to_type`, `str_to_instance` and `to_function` to use `eval`
+
 ### 0.4.2
 * Fix a bug in pandas like safe_groupby_apply
 

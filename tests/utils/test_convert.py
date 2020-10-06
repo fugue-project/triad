@@ -12,6 +12,7 @@ from triad.utils.convert import (
     as_type,
     get_full_type_path,
     str_to_instance,
+    str_to_object,
     str_to_type,
     to_bool,
     to_datetime,
@@ -52,6 +53,29 @@ def test_parse_value_and_unit():
     assert (1.0, "") == _parse_value_and_unit(" 1 ")
     assert (-1.0, "") == _parse_value_and_unit(" -1.0 ")
     assert (-1.0, "m10") == _parse_value_and_unit(" - 1 . 0 m 1 0 ")
+
+
+def test_str_to_object():
+    class _Mock(object):
+        def __init__(self, x=1):
+            self.x = x
+
+        def test(self):
+            assert self.x == str_to_object("self.x")
+
+    m = _Mock()
+    m.test()
+    assert BaseClass == str_to_object("tests.utils.BaseClass")
+    assert BaseClass == str_to_object("tests.utils.convert_examples.BaseClass")
+    assert SubClass == str_to_object("SubClass")
+    assert SubClassSame == str_to_object("SubClassSame")
+    assert RuntimeError == str_to_object("RuntimeError")
+    assert _Mock == str_to_object("_Mock")
+    assert 1 == str_to_object("m.x")
+    assert 1 == str_to_object("m2.x", local_vars={"m2": m})
+    raises(ValueError, lambda: str_to_object(""))
+    raises(ValueError, lambda: str_to_object("xxxx"))
+    raises(ValueError, lambda: str_to_object("xx.xx"))
 
 
 def test_str_to_type():
@@ -96,12 +120,7 @@ def test_obj_to_type():
     raises(TypeError, lambda: to_type("tests.utils.Class2", BaseClass))
 
     assert ex.__Dummy__ is not __Dummy__
-    assert to_type("tests.utils.convert_examples.__Dummy__", first=True) is ex.__Dummy__
-    assert (
-        to_type("tests.utils.convert_examples.__Dummy__", first=False) is ex.__Dummy__
-    )
-    assert ex.invoke_to_type("__Dummy__", first=True) is ex.__Dummy__
-    assert ex.invoke_to_type("__Dummy__", first=False) is __Dummy__
+    assert to_type("tests.utils.convert_examples.__Dummy__") is ex.__Dummy__
 
 
 def test_obj_to_instance():
@@ -125,34 +144,44 @@ def test_obj_to_instance():
 
     assert ex.__Dummy__ is not __Dummy__
     assert type(to_instance("__Dummy__")) is __Dummy__
-    assert (
-        type(to_instance("tests.utils.convert_examples.__Dummy__", first=True))
-        is ex.__Dummy__
-    )
-    assert (
-        type(to_instance("tests.utils.convert_examples.__Dummy__", first=False))
-        is ex.__Dummy__
-    )
+    assert type(to_instance("tests.utils.convert_examples.__Dummy__")) is ex.__Dummy__
+    assert type(to_instance("tests.utils.convert_examples.__Dummy__")) is ex.__Dummy__
 
 
 def test_obj_to_function():
+    def _mock():
+        pass
+
+    assert _mock == to_function("_mock")
+
     f = to_function("dummy_for_test")
-    assert f is dummy_for_test
+    assert f == dummy_for_test
     f = to_function(dummy_for_test)
-    assert f is dummy_for_test
+    assert f == dummy_for_test
     f = to_function("open")
-    assert f is open
+    assert f == open
     f = to_function("tests.utils.test_convert.dummy_for_test")
-    assert f is dummy_for_test
+    assert f == dummy_for_test
     f = to_function("triad.utils.convert.to_instance")
-    assert f is to_instance
+    assert f == to_instance
     raises(AttributeError, lambda: to_function(None))
     raises(AttributeError, lambda: to_function("asdfasdf"))
     raises(AttributeError, lambda: to_function("BaseClass"))
 
-    assert builtins.min is not min
-    assert to_function("min", first=True) is builtins.min
-    assert to_function("min", first=False) is min
+    assert to_function("min") == builtins.min
+
+    class _Mock(object):
+        def x(self, p=10):
+            return p * 10
+
+        @property
+        def xx(self):
+            return 0
+
+    m = _Mock()
+    assert to_function("m.x") == m.x
+    assert 30 == to_function("m.x")(3)
+    raises(AttributeError, lambda: to_function("m.xx"))
 
 
 def test_to_bool():
@@ -234,15 +263,8 @@ def test_get_full_type_path():
 
 
 # This is for test_obj_to_function
-
-
 def dummy_for_test():
     pass
-
-
-# This is to test str_to_function with first=False
-def min() -> bool:
-    return True
 
 
 # This is to test *_to_type with first=False
