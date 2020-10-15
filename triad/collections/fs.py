@@ -76,6 +76,13 @@ class _FSPath(object):
             self._scheme = ""
             self._root = "/"
             self._path = os.path.abspath(path)
+        # Windows
+        if path[0].isupper() or "\\" in path:
+            self._scheme = ""
+            self._root = "/"
+            if path[0].isupper():
+                self._root = os.path.splitdrive(path)[0] + self._root
+            self._path = os.path.splitdrive(path)[1].lstrip("/").lstrip("\\")
         else:
             uri = urlparse(path)
             if uri.scheme == "" and not path.startswith("/"):

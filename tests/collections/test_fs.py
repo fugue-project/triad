@@ -36,6 +36,23 @@ def test__FSPath():
     assert "temp://a" == p.root
     assert "b" == p.relative_path
 
+    p = _FSPath("C:/temp")
+    assert "" == p.scheme
+    assert "C:/" == p.root
+    assert "temp" == p.relative_path
+
+    p = _FSPath("C:\\temp\\")    
+    assert "" == p.scheme
+    assert "C:/" == p.root
+    assert "temp" == p.relative_path
+
+    p = _FSPath("\\temp\\a\\b")    
+    assert "" == p.scheme
+    # Root will be default drive. No way of knowing during test
+    # assert "C:/" == p.root
+    assert "temp\\a\\b" == p.relative_path    
+
+
     raises(ValueError, lambda: _FSPath(None))
     raises(ValueError, lambda: _FSPath(""))
     raises(ValueError, lambda: _FSPath("a.txt"))
