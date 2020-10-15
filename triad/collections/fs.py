@@ -82,7 +82,7 @@ class _FSPath(object):
             self._root = "/"
             if path[0].isupper():
                 self._root = os.path.splitdrive(path)[0] + self._root
-            self._path = os.path.splitdrive(path)[1].lstrip("/").lstrip("\\")
+            self._path = os.path.splitdrive(path)[1].strip("/").strip("\\")
         else:
             uri = urlparse(path)
             if uri.scheme == "" and not path.startswith("/"):
