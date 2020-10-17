@@ -36,6 +36,22 @@ def test__FSPath():
     assert "temp://a" == p.root
     assert "b" == p.relative_path
 
+    # Windows test cases
+    p = _FSPath("c:\\folder\\myfile.txt")
+    assert "" == p.scheme
+    assert "c:/" == p.root
+    assert "folder/myfile.txt" == p.relative_path
+
+    p = _FSPath("\\\\tmp\\tmp.txt")
+    assert "" == p.scheme
+    assert "/" == p.root
+    assert "tmp/tmp.txt" == p.relative_path   
+
+    p = _FSPath("\\\\123.123.123.123\\share\\folder\\myfile.txt")
+    assert "" == p.scheme
+    assert "/" == p.root
+    assert "123.123.123.123/share/folder/myfile.txt" == p.relative_path 
+
     raises(ValueError, lambda: _FSPath(None))
     raises(ValueError, lambda: _FSPath(""))
     raises(ValueError, lambda: _FSPath("a.txt"))
