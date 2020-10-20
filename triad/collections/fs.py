@@ -15,16 +15,13 @@ class FileSystem(MountFS):
     for this class is that all paths must be absolute path with scheme.
     To customize different file systems, you should override `create_fs`
     to provide your own configured file systems.
-
     :Examples:
     >>> fs = FileSystem()
     >>> fs.writetext("mem://from/a.txt", "hello")
     >>> fs.copy("mem://from/a.txt", "mem://to/a.txt")
-
     :Notice:
     If a path is not a local path, it must include the scheme and `netloc`
     (the first element after `://`)
-
     :param auto_close: If `True` (the default), the child filesystems
       will be closed when `MountFS` is closed.
     """
@@ -38,10 +35,8 @@ class FileSystem(MountFS):
     def create_fs(self, root: str) -> FSBase:
         """create a PyFileSystem instance from `root`. `root` is in the
         format of `/` if local path, else `<scheme>://<netloc>`.
-
         You should override this method to provide custom instances, for
         example, if you want to create an S3FS with certain parameters.
-
         :param root: `/` if local path, else `<scheme>://<netloc>`
         """
         if root.startswith("temp://"):
@@ -62,7 +57,7 @@ class FileSystem(MountFS):
                 self._fs_store[fp.root] = self.create_fs(fp.root)
                 self.mount(to_uuid(fp.root), self._fs_store[fp.root])
             self._in_create = False
-        m_path = os.path.join(to_uuid(fp.root), fp.relative_path)
+        m_path = to_uuid(fp.root) + "/" + fp.relative_path
         return super()._delegate(m_path)
 
 

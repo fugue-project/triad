@@ -59,6 +59,14 @@ def test__FSPath():
 
 
 def test_fs(tmpdir):
+    # Tests to read and write with tmpdir without FS
+    tmpfile = os.path.join(tmpdir, "f.txt")
+    f = open(tmpfile, "a")
+    f.write("read test")
+    f.close()
+    f = open(tmpfile, "r")
+    assert f.read() == "read test"
+
     p1 = os.path.join(tmpdir, "a")
     p2 = os.path.join(tmpdir, "b")
     assert not os.path.exists(p1)
