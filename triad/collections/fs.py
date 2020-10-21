@@ -1,6 +1,7 @@
 from threading import RLock
 from typing import Dict, Tuple
 from urllib.parse import urlparse
+from pathlib import PureWindowsPath
 
 from fs import open_fs, tempfs, memoryfs
 from fs.base import FS as FSBase
@@ -14,16 +15,13 @@ class FileSystem(MountFS):
     for this class is that all paths must be absolute path with scheme.
     To customize different file systems, you should override `create_fs`
     to provide your own configured file systems.
-
     :Examples:
     >>> fs = FileSystem()
     >>> fs.writetext("mem://from/a.txt", "hello")
     >>> fs.copy("mem://from/a.txt", "mem://to/a.txt")
-
     :Notice:
     If a path is not a local path, it must include the scheme and `netloc`
     (the first element after `://`)
-
     :param auto_close: If `True` (the default), the child filesystems
       will be closed when `MountFS` is closed.
     """
@@ -37,10 +35,8 @@ class FileSystem(MountFS):
     def create_fs(self, root: str) -> FSBase:
         """create a PyFileSystem instance from `root`. `root` is in the
         format of `/` if local path, else `<scheme>://<netloc>`.
-
         You should override this method to provide custom instances, for
         example, if you want to create an S3FS with certain parameters.
-
         :param root: `/` if local path, else `<scheme>://<netloc>`
         """
         if root.startswith("temp://"):
@@ -61,7 +57,7 @@ class FileSystem(MountFS):
                 self._fs_store[fp.root] = self.create_fs(fp.root)
                 self.mount(to_uuid(fp.root), self._fs_store[fp.root])
             self._in_create = False
-        m_path = os.path.join(to_uuid(fp.root), fp.relative_path)
+        m_path = to_uuid(fp.root) + "/" + fp.relative_path
         return super()._delegate(m_path)
 
 
@@ -70,26 +66,39 @@ class _FSPath(object):
         if path is None:
             raise ValueError("path can't be None")
         path = self._modify_path(path)
-        if path.startswith("file://"):
-            path = path[6:]
-        if path.startswith("/"):
+        if path.startswith("\\\\") or (
+            path[1:].startswith(":\\") and path[0].isalpha()
+        ):
+            path = PureWindowsPath(path).as_uri()[7:]
             self._scheme = ""
-            self._root = "/"
-            self._path = os.path.abspath(path)
+            if path[0] == "/":
+                self._root = path[1:4]
+                path = path[4:]
+            else:
+                self._root = "/"
+                self.path = path[1:]
+            self._path = path.rstrip("/")
         else:
-            uri = urlparse(path)
-            if uri.scheme == "" and not path.startswith("/"):
-                raise ValueError(
-                    f"invalid {path}, must be abs path either local or with scheme"
-                )
-            self._scheme = uri.scheme
-            if uri.netloc == "":
-                raise ValueError(f"invalid path {path}")
-            self._root = uri.scheme + "://" + uri.netloc
-            self._path = uri.path
-        self._path = self._path.lstrip("/")
-        # if self._path == "":
-        #    raise ValueError(f"invalid path {path}")
+            if path.startswith("file://"):
+                path = path[6:]
+            if path.startswith("/"):
+                self._scheme = ""
+                self._root = "/"
+                self._path = os.path.abspath(path)
+            else:
+                uri = urlparse(path)
+                if uri.scheme == "" and not path.startswith("/"):
+                    raise ValueError(
+                        f"invalid {path}, must be abs path either local or with scheme"
+                    )
+                self._scheme = uri.scheme
+                if uri.netloc == "":
+                    raise ValueError(f"invalid path {path}")
+                self._root = uri.scheme + "://" + uri.netloc
+                self._path = uri.path
+            self._path = self._path.lstrip("/")
+            # if self._path == "":
+            #    raise ValueError(f"invalid path {path}")
 
     @property
     def scheme(self) -> str:

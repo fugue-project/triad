@@ -36,6 +36,22 @@ def test__FSPath():
     assert "temp://a" == p.root
     assert "b" == p.relative_path
 
+    # Windows test cases
+    p = _FSPath("c:\\folder\\myfile.txt")
+    assert "" == p.scheme
+    assert "c:/" == p.root
+    assert "folder/myfile.txt" == p.relative_path
+
+    p = _FSPath("\\\\tmp\\tmp.txt")
+    assert "" == p.scheme
+    assert "/" == p.root
+    assert "tmp/tmp.txt" == p.relative_path   
+
+    p = _FSPath("\\\\123.123.123.123\\share\\folder\\myfile.txt")
+    assert "" == p.scheme
+    assert "/" == p.root
+    assert "123.123.123.123/share/folder/myfile.txt" == p.relative_path 
+
     raises(ValueError, lambda: _FSPath(None))
     raises(ValueError, lambda: _FSPath(""))
     raises(ValueError, lambda: _FSPath("a.txt"))
@@ -43,6 +59,14 @@ def test__FSPath():
 
 
 def test_fs(tmpdir):
+    # Tests to read and write with tmpdir without FS
+    tmpfile = os.path.join(tmpdir, "f.txt")
+    f = open(tmpfile, "a")
+    f.write("read test")
+    f.close()
+    f = open(tmpfile, "r")
+    assert f.read() == "read test"
+
     p1 = os.path.join(tmpdir, "a")
     p2 = os.path.join(tmpdir, "b")
     assert not os.path.exists(p1)
