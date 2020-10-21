@@ -22,7 +22,7 @@ pip install triad
 ### 0.4.4
 * Improved FileSystem compatibility with Windows
 * Overwrite expression for Schema class
-*
+* Fix github actions
 
 ### 0.4.3
 * Refactored `str_to_type`, `str_to_instance` and `to_function` to use `eval`
