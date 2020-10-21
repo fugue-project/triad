@@ -288,7 +288,13 @@ def test_schema_transform():
     assert s.transform("*,d:str") == "a:int,b:str,c:bool,d:str"
     assert s.transform("*,d:str - a ") == "b:str,c:bool,d:str"
     assert s.transform("*,d:str - c,,a ") == "b:str,d:str"
+    assert s.transform("*,d:str - c-a") == "b:str,d:str"
     assert s.transform("*,d:str ~ c,,a,x ") == "b:str,d:str"
+    assert s.transform("*,d:str ~ c-a~x") == "b:str,d:str"
+    assert s.transform("* + e:int,b:int,d:str") == "a:int,b:int,c:bool,e:int,d:str"
+    # multiple operations will be applied in order
+    assert s.transform("*+e:int,b:int-c~x,c") == "a:int,b:int,e:int"
+    assert s.transform("* + - ~ ") == s  # no op
     assert s.transform("*", {"d": str}, e=str) == "a:int,b:str,c:bool,d:str,e:str"
     assert s.transform(lambda s: s.fields[0], lambda s: s.fields[2]) == "a:int,c:bool"
     assert s.transform(lambda s: s - ["b"]) == "a:int,c:bool"

@@ -460,7 +460,13 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         >>> s.transform("*",x=str) # a:int,b:int,c:str,x:str
         >>> # subtract
         >>> s.transform("*-c,a") # b:int
+        >>> s.transform("*-c-a") # b:int
         >>> s.transform("*~c,a,x") # b:int  # ~ means exlcude if exists
+        >>> s.transform("*~c~a~x") # b:int  # ~ means exlcude if exists
+        >>> # + means overwrite existing and append new
+        >>> s.transform("*+e:str,b:str,d:str") # a:int,b:str,c:str,e:str,d:str
+        >>> # you can have multiple operations
+        >>> s.transform("*+b:str-a") # b:str,c:str
         >>> # callable
         >>> s.transform(lambda s:s.fields[0]) # a:int
         >>> s.transform(lambda s:s.fields[0], lambda s:s.fields[2]) # a:int,c:str
@@ -471,16 +477,21 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
                 if callable(a):
                     result += a(self)
                 elif isinstance(a, str):
-                    if "~" in a:
-                        aa = a.split("~", 1)
-                        exclude = True
-                    else:
-                        aa = a.split("-", 1)
-                        exclude = False
-                    s = Schema(aa[0].replace("*", str(self)))
-                    if len(aa) == 2:
-                        cols = [x.strip() for x in aa[1].split(",") if x.strip() != ""]
-                        s = s.exclude(cols) if exclude else s - cols
+                    op_pos = [i for i, c in enumerate(a) if c in ["-", "~", "+"]]
+                    op_pos.append(len(a))
+                    s = Schema(a[: op_pos[0]].replace("*", str(self)))
+                    for i in range(0, len(op_pos) - 1):
+                        op, expr = a[op_pos[i]], a[(op_pos[i] + 1) : op_pos[i + 1]]
+                        if op in ["-", "~"]:
+                            cols = [
+                                x.strip() for x in expr.split(",") if x.strip() != ""
+                            ]
+                            s = s.exclude(cols) if op == "~" else s - cols
+                        else:  # +
+                            overwrite = Schema(expr)
+                            s = Schema(
+                                [(k, overwrite.get(k, v)) for k, v in s.items()]
+                            ).union_with(overwrite)
                     result += s
                 else:
                     result += a
