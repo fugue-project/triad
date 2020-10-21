@@ -19,6 +19,11 @@ pip install triad
 
 ## Release History
 
+### 0.4.4
+* Improved FileSystem compatibility with Windows
+* Overwrite expression for Schema class
+*
+
 ### 0.4.3
 * Refactored `str_to_type`, `str_to_instance` and `to_function` to use `eval`
 
