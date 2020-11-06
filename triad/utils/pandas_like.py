@@ -4,7 +4,8 @@ from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeV
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from triad.utils.pyarrow import apply_schema, to_pandas_dtype
+from triad.utils.assertion import assert_or_throw
+from triad.utils.pyarrow import TRIAD_DEFAULT_TIMESTAMP, apply_schema, to_pandas_dtype
 
 T = TypeVar("T", bound=Any)
 _DEFAULT_JOIN_KEYS: List[str] = []
@@ -94,18 +95,29 @@ class PandasLikeUtils(Generic[T]):
         or pd.UInt64Index and without a name, otherwise, `ValueError` will raise.
         """
         self.ensure_compatible(df)
-        if df.columns.dtype != "object":
-            raise ValueError("Pandas dataframe must have named schema")
-        if isinstance(df, pd.DataFrame) and len(df.index) > 0:
-            return pa.Schema.from_pandas(df)
-        fields: List[pa.Field] = []
-        for i in range(df.shape[1]):
-            tp = df.dtypes[i]
-            if tp == np.dtype("object") or tp == np.dtype(str):
-                t = pa.string()
+        assert_or_throw(
+            df.columns.dtype == "object",
+            ValueError("Pandas dataframe must have named schema"),
+        )
+
+        def get_fields() -> Iterable[pa.Field]:
+            if isinstance(df, pd.DataFrame) and len(df.index) > 0:
+                yield from pa.Schema.from_pandas(df, preserve_index=False)
             else:
-                t = pa.from_numpy_dtype(tp)
-            fields.append(pa.field(df.columns[i], t))
+                for i in range(df.shape[1]):
+                    tp = df.dtypes[i]
+                    if tp == np.dtype("object") or tp == np.dtype(str):
+                        t = pa.string()
+                    else:
+                        t = pa.from_numpy_dtype(tp)
+                    yield pa.field(df.columns[i], t)
+
+        fields: List[pa.Field] = []
+        for field in get_fields():
+            if pa.types.is_timestamp(field.type):
+                fields.append(pa.field(field.name, TRIAD_DEFAULT_TIMESTAMP))
+            else:
+                fields.append(field)
         return pa.schema(fields)
 
     def enforce_type(self, df: T, schema: pa.Schema, null_safe: bool = False) -> T:

@@ -19,6 +19,9 @@ pip install triad
 
 ## Release History
 
+### 0.4.5
+* Fixed pandas -> arrow datetime conversion issue
+
 ### 0.4.4
 * Improved FileSystem compatibility with Windows
 * Add overwrite expression for Schema class

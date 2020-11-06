@@ -309,7 +309,7 @@ def _type_to_expression(dt: pa.DataType) -> str:
         return _TYPE_EXPRESSION_R_MAPPING[dt]
     if isinstance(dt, pa.TimestampType):
         if dt.tz is None:
-            return f"timestamp({dt.unit})"
+            return "datetime"
         else:
             return f"timestamp({dt.unit},{dt.tz})"
     if isinstance(dt, pa.Decimal128Type):

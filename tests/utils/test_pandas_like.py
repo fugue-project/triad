@@ -33,10 +33,20 @@ def test_to_schema():
     df = df.astype(dtype={"x": np.int32, "y": np.dtype("str")})
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
 
+    # timestamp test
+    df = pd.DataFrame(
+        [[datetime(2020, 1, 1, 2, 3, 4, 5), date(2020, 2, 2)]], columns=["a", "b"]
+    )
+    assert list(expression_to_schema("a:datetime,b:date")) == list(
+        PD_UTILS.to_schema(df)
+    )
+
     # test index
     df = pd.DataFrame([[3.0, 2], [2.0, 3]], columns=["x", "y"])
     df = df.sort_values(["x"])
-    assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
+    assert list(pa.Schema.from_pandas(df, preserve_index=False)) == list(
+        PD_UTILS.to_schema(df)
+    )
     df.index.name = "x"
     raises(ValueError, lambda: PD_UTILS.to_schema(df))
     df = df.reset_index(drop=True)
@@ -84,6 +94,27 @@ def test_as_array_iterable():
     assert [[1.0, 1]] == df.as_array(type_safe=True)
     assert isinstance(df.as_array()[0][0], float)
     assert isinstance(df.as_array()[0][1], int)
+
+
+def test_as_array_iterable_datetime():
+    df = pd.DataFrame(
+        [[datetime(2020, 1, 1, 2, 3, 4, 5), date(2020, 2, 2)]], columns=["a", "b"]
+    )
+    v1 = list(PD_UTILS.as_array_iterable(df, type_safe=True))[0]
+    v2 = list(
+        PD_UTILS.as_array_iterable(
+            df, schema=expression_to_schema("a:datetime,b:date"), type_safe=True
+        )
+    )[0]
+    assert v1[0] == v2[0]
+    assert not isinstance(v1[0], pd.Timestamp)
+    assert type(v1[0]) == datetime
+    assert type(v1[0]) == type(v2[0])
+
+    assert v1[1] == v2[1]
+    assert not isinstance(v1[1], pd.Timestamp)
+    assert type(v1[1]) == date
+    assert type(v1[1]) == type(v2[1])
 
 
 def test_nested():

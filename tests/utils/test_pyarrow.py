@@ -74,7 +74,10 @@ def test__type_to_expression():
     assert "timestamp(ns,America/New_York)" == _type_to_expression(
         pa.timestamp("ns", "America/New_York")
     )
-    assert "timestamp(s)" == _type_to_expression(pa.timestamp("s"))
+    assert "datetime" == _type_to_expression(pa.timestamp("s"))
+    assert "datetime" == _type_to_expression(pa.timestamp("ns"))
+    assert "datetime" == _type_to_expression(pa.timestamp("ms"))
+    assert "datetime" == _type_to_expression(pa.timestamp("us"))
     assert "decimal(5)" == _type_to_expression(pa.decimal128(5))
     assert "decimal(5,2)" == _type_to_expression(pa.decimal128(5, 2))
     assert "bytes" == _type_to_expression(pa.binary())
@@ -153,7 +156,7 @@ def test_get_eq_func():
         for n in [None, float("nan"), float("inf"), float("-inf")]:
             assert not get_eq_func(t)(None, 1.1)
             assert get_eq_func(t)(None, None)
-    for t in [pa.timestamp("ns")]:
+    for t in [pa.timestamp("ns"), pa.timestamp("us")]:
         for n in [None, pd.NaT]:
             assert not get_eq_func(t)(datetime(2020, 1, 1, 0), datetime(2020, 1, 1, 1))
             assert not get_eq_func(t)(n, datetime(2020, 1, 1, 1))
