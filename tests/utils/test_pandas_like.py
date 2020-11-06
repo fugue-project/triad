@@ -93,15 +93,24 @@ def test_as_array_iterable():
 
 
 def test_as_array_iterable_datetime():
-    df = pd.DataFrame([[datetime(2020, 1, 1, 2, 3, 4, 5)]], columns=["a"])
-    v1 = list(PD_UTILS.as_array_iterable(df, type_safe=True))[0][0]
+    df = pd.DataFrame(
+        [[datetime(2020, 1, 1, 2, 3, 4, 5), date(2020, 2, 2)]], columns=["a", "b"]
+    )
+    v1 = list(PD_UTILS.as_array_iterable(df, type_safe=True))[0]
     v2 = list(
         PD_UTILS.as_array_iterable(
-            df, schema=expression_to_schema("a:datetime"), type_safe=True
+            df, schema=expression_to_schema("a:datetime,b:date"), type_safe=True
         )
-    )[0][0]
-    assert v1 == v2
-    assert type(v1) == type(v2)
+    )[0]
+    assert v1[0] == v2[0]
+    assert not isinstance(v1[0], pd.Timestamp)
+    assert type(v1[0]) == datetime
+    assert type(v1[0]) == type(v2[0])
+
+    assert v1[1] == v2[1]
+    assert not isinstance(v1[1], pd.Timestamp)
+    assert type(v1[1]) == date
+    assert type(v1[1]) == type(v2[1])
 
 
 def test_nested():

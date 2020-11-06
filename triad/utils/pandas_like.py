@@ -99,16 +99,25 @@ class PandasLikeUtils(Generic[T]):
             df.columns.dtype == "object",
             ValueError("Pandas dataframe must have named schema"),
         )
-        fields: List[pa.Field] = []
-        for i in range(df.shape[1]):
-            tp = df.dtypes[i]
-            if tp == np.dtype("object") or tp == np.dtype(str):
-                t = pa.string()
+
+        def get_fields() -> Iterable[pa.Field]:
+            if isinstance(df, pd.DataFrame) and len(df.index) > 0:
+                yield from pa.Schema.from_pandas(df, preserve_index=False)
             else:
-                t = pa.from_numpy_dtype(tp)
-            if pa.types.is_timestamp(t):
-                t = TRIAD_DEFAULT_TIMESTAMP
-            fields.append(pa.field(df.columns[i], t))
+                for i in range(df.shape[1]):
+                    tp = df.dtypes[i]
+                    if tp == np.dtype("object") or tp == np.dtype(str):
+                        t = pa.string()
+                    else:
+                        t = pa.from_numpy_dtype(tp)
+                    yield pa.field(df.columns[i], t)
+
+        fields: List[pa.Field] = []
+        for field in get_fields():
+            if pa.types.is_timestamp(field.type):
+                fields.append(pa.field(field.name, TRIAD_DEFAULT_TIMESTAMP))
+            else:
+                fields.append(field)
         return pa.schema(fields)
 
     def enforce_type(self, df: T, schema: pa.Schema, null_safe: bool = False) -> T:
