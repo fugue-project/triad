@@ -34,8 +34,12 @@ def test_to_schema():
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
 
     # timestamp test
-    df = pd.DataFrame([[datetime(2020, 1, 1, 2, 3, 4, 5)]], columns=["a"])
-    assert list(expression_to_schema("a:datetime")) == list(PD_UTILS.to_schema(df))
+    df = pd.DataFrame(
+        [[datetime(2020, 1, 1, 2, 3, 4, 5), date(2020, 2, 2)]], columns=["a", "b"]
+    )
+    assert list(expression_to_schema("a:datetime,b:date")) == list(
+        PD_UTILS.to_schema(df)
+    )
 
     # test index
     df = pd.DataFrame([[3.0, 2], [2.0, 3]], columns=["x", "y"])

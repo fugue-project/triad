@@ -1,6 +1,6 @@
 import math
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, date
 
 import pandas as pd
 import pyarrow as pa
@@ -34,8 +34,10 @@ def test_schema_init():
 
 
 def test_schema_datetime():
-    df = pd.DataFrame([[datetime(2020, 1, 1, 2, 3, 4, 5)]], columns=["a"])
-    assert Schema(df) == "a:datetime"
+    df = pd.DataFrame(
+        [[datetime(2020, 1, 1, 2, 3, 4, 5), date(2020, 2, 2)]], columns=["a", "b"]
+    )
+    assert Schema(df) == "a:datetime,b:date"
 
 
 def test_schema_properties():
