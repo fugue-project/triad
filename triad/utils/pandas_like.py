@@ -4,7 +4,8 @@ from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeV
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from triad.utils.pyarrow import apply_schema, to_pandas_dtype
+from triad.utils.assertion import assert_or_throw
+from triad.utils.pyarrow import TRIAD_DEFAULT_TIMESTAMP, apply_schema, to_pandas_dtype
 
 T = TypeVar("T", bound=Any)
 _DEFAULT_JOIN_KEYS: List[str] = []
@@ -94,10 +95,10 @@ class PandasLikeUtils(Generic[T]):
         or pd.UInt64Index and without a name, otherwise, `ValueError` will raise.
         """
         self.ensure_compatible(df)
-        if df.columns.dtype != "object":
-            raise ValueError("Pandas dataframe must have named schema")
-        if isinstance(df, pd.DataFrame) and len(df.index) > 0:
-            return pa.Schema.from_pandas(df)
+        assert_or_throw(
+            df.columns.dtype == "object",
+            ValueError("Pandas dataframe must have named schema"),
+        )
         fields: List[pa.Field] = []
         for i in range(df.shape[1]):
             tp = df.dtypes[i]
@@ -105,6 +106,8 @@ class PandasLikeUtils(Generic[T]):
                 t = pa.string()
             else:
                 t = pa.from_numpy_dtype(tp)
+            if pa.types.is_timestamp(t):
+                t = TRIAD_DEFAULT_TIMESTAMP
             fields.append(pa.field(df.columns[i], t))
         return pa.schema(fields)
 
