@@ -162,6 +162,20 @@ def test_nan_none():
     assert len(df.as_array()) == 0
 
 
+def test_boolean_enforce():
+    df = DF([[1, True], [2, False], [3, None]], "b:int,c:bool", True)
+    arr = df.as_array(type_safe=True)
+    assert [[1, True], [2, False], [3, None]] == arr
+
+    df = DF([[1, 1], [2, 0]], "b:int,c:bool", True)
+    arr = df.as_array(type_safe=True)
+    assert [[1, True], [2, False]] == arr
+
+    df = DF([[1, "trUe"], [2, "False"], [3, None]], "b:int,c:bool", True)
+    arr = df.as_array(type_safe=True)
+    assert [[1, True], [2, False], [3, None]] == arr
+
+
 def test_fillna_default():
     df = pd.DataFrame([["a"], [None]], columns=["x"])
     s = PD_UTILS.fillna_default(df["x"])
