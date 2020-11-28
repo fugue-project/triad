@@ -120,7 +120,9 @@ class PandasLikeUtils(Generic[T]):
                 fields.append(field)
         return pa.schema(fields)
 
-    def enforce_type(self, df: T, schema: pa.Schema, null_safe: bool = False) -> T:
+    def enforce_type(  # noqa: C901
+        self, df: T, schema: pa.Schema, null_safe: bool = False
+    ) -> T:
         """Enforce the pandas like dataframe to comply with `schema`.
 
         :param df: pandas like dataframe
@@ -134,6 +136,8 @@ class PandasLikeUtils(Generic[T]):
         each value in the column is either None or an integer, however, due to the
         behavior of pandas like dataframes, the type of the columns may
         no longer be `int64`
+
+        This method does not enforce struct and list types
         """
         if self.empty(df):
             return df
@@ -142,14 +146,22 @@ class PandasLikeUtils(Generic[T]):
         for v in schema:
             s = df[v.name]
             if pa.types.is_string(v.type):
-                ns = s[s.isnull()].index.tolist()
-                s = s.astype(str)
-                s.iloc[ns] = None
-            elif pa.types.is_integer(v.type) or pa.types.is_boolean(v.type):
-                ns = s[s.isnull()].index.tolist()
-                s = s.fillna(0).astype(v.type.to_pandas_dtype())
-                s.iloc[ns] = None
-            elif not pa.types.is_struct(v.type):
+                ns = s.isnull()
+                s = s.astype(str).mask(ns, None)
+            elif pa.types.is_boolean(v.type):
+                ns = s.isnull()
+                if pd.api.types.is_string_dtype(s.dtype):
+                    try:
+                        s = s.str.lower() == "true"
+                    except AttributeError:
+                        s = s.fillna(0).astype(bool)
+                else:
+                    s = s.fillna(0).astype(bool)
+                s = s.mask(ns, None)
+            elif pa.types.is_integer(v.type):
+                ns = s.isnull()
+                s = s.fillna(0).astype(v.type.to_pandas_dtype()).mask(ns, None)
+            elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
                 s = s.astype(v.type.to_pandas_dtype())
             df[v.name] = s
         return df
