@@ -45,12 +45,12 @@ def test__FSPath():
     p = _FSPath("\\\\tmp\\tmp.txt")
     assert "" == p.scheme
     assert "/" == p.root
-    assert "tmp/tmp.txt" == p.relative_path   
+    assert "tmp/tmp.txt" == p.relative_path
 
     p = _FSPath("\\\\123.123.123.123\\share\\folder\\myfile.txt")
     assert "" == p.scheme
     assert "/" == p.root
-    assert "123.123.123.123/share/folder/myfile.txt" == p.relative_path 
+    assert "123.123.123.123/share/folder/myfile.txt" == p.relative_path
 
     raises(ValueError, lambda: _FSPath(None))
     raises(ValueError, lambda: _FSPath(""))
@@ -92,7 +92,31 @@ def test_fs(tmpdir):
     fs.copy("mem://from/a.txt", "mem://to/a.txt")
     assert "hello" == fs.readtext("mem://to/a.txt")
     assert 7 == fs.create_called
-    
+
+
+def test_glob(tmpdir):
+    fs = FileSystem()
+    os.makedirs(os.path.join(str(tmpdir), "d1"))
+    os.makedirs(os.path.join(str(tmpdir), "d2", "d2"))
+    f = open(os.path.join(str(tmpdir), "d1", "f1.txt"), "a")
+    f.write("read test")
+    f.close()
+    f = open(os.path.join(str(tmpdir), "d2", "d2", "f2.txt"), "a")
+    f.write("read test")
+    f.close()
+    assert {
+        os.path.join(str(tmpdir), "d1", "f1.txt"),
+        os.path.join(str(tmpdir), "d2", "d2", "f2.txt"),
+    } == {x.path for x in fs.glob("**/*.txt", path=str(tmpdir))}
+
+    fs.makedirs("mem://a/d1")
+    fs.makedirs("mem://a/d2/d2")
+    fs.touch("mem://a/d1/f3.txt")
+    fs.touch("mem://a/d2/d2/f4.txt")
+    assert {"mem://a/d1/f3.txt", "mem://a/d2/d2/f4.txt"} == {
+        x.path for x in fs.glob("**/*.txt", path="mem://a")
+    }
+
 
 class MockFS(FileSystem):
     def __init__(self):
