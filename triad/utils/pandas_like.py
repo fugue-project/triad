@@ -215,7 +215,7 @@ class PandasLikeUtils(Generic[T]):
         :return: filled series
         """
         dtype = col.dtype
-        if np.issubdtype(dtype, "datetime64"):
+        if np.issubdtype(dtype, np.datetime64):
             return col.fillna(_DEFAULT_DATETIME)
         if np.issubdtype(dtype, np.str) or np.issubdtype(
             dtype, np.string_

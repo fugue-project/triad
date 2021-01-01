@@ -19,6 +19,10 @@ pip install triad
 
 ## Release History
 
+### 0.4.7
+
+* Fix numpy warning
+
 ### 0.4.6
 
 * Improve pandas like utils `enforce` method to handle str -> bool
