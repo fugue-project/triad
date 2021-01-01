@@ -217,11 +217,11 @@ class PandasLikeUtils(Generic[T]):
         dtype = col.dtype
         if np.issubdtype(dtype, np.datetime64):
             return col.fillna(_DEFAULT_DATETIME)
-        if np.issubdtype(dtype, np.str) or np.issubdtype(
+        if np.issubdtype(dtype, np.str_) or np.issubdtype(
             dtype, np.string_
         ):  # pragma: no cover
             return col.fillna("")
-        if np.issubdtype(dtype, np.bool):
+        if np.issubdtype(dtype, np.bool_):
             return col.fillna(False)
         return col.fillna(0)
 

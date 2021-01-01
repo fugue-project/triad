@@ -182,7 +182,7 @@ def test_fillna_default():
     assert ["a", 0] == s.tolist()
 
     df = pd.DataFrame([["a"], ["b"]], columns=["x"])
-    s = PD_UTILS.fillna_default(df["x"].astype(np.str))
+    s = PD_UTILS.fillna_default(df["x"].astype(np.str_))
     assert ["a", "b"] == s.tolist()
 
     dt = datetime.now()
