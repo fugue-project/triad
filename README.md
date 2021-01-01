@@ -19,7 +19,7 @@ pip install triad
 
 ## Release History
 
-### 0.4.7
+### 0.4.8
 
 * Fix numpy warning
 
