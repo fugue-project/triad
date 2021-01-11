@@ -22,6 +22,8 @@ from triad.utils.convert import (
     to_timedelta,
     to_type,
 )
+import urllib  # must keep for testing purpose
+import urllib.request  # must keep for testing purpose
 
 
 def test_to_size():
@@ -93,6 +95,24 @@ def test_str_to_type():
     assert RuntimeError == str_to_type("RuntimeError")
     assert RuntimeError == str_to_type("RuntimeError", Exception)
     raises(TypeError, lambda: str_to_type("RuntimeError", int))
+
+    # test a full type path that only root was imported
+    str_to_type("urllib.request.OpenerDirector")
+
+    # test a full type path that was never imported
+    str_to_type("shutil.Error")
+    str_to_type("http.HTTPStatus")
+
+    # class and subclass
+    class T(object):
+        def __init__(self):
+            self.x = 10
+
+        class _TS(object):
+            pass
+
+    assert T == str_to_type("T")
+    assert T._TS == str_to_type("T._TS")
 
 
 def test_str_to_instance():
