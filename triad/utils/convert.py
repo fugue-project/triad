@@ -1,7 +1,7 @@
 import datetime
 import importlib
 import inspect
-from importlib import util as importlib_util
+from types import ModuleType
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -96,15 +96,14 @@ def str_to_object(
         _globals, _locals = get_caller_global_local_vars(global_vars, local_vars)
         if "." not in expr:
             return eval(expr, _globals, _locals)
-        root = expr.split(".")[0]
-        if root not in _globals and root not in _locals:
-            spec = importlib_util.find_spec(root)
-            assert_or_throw(spec is not None, ValueError(expr))
-            _locals = dict(_locals)
-            _locals[root] = importlib.import_module(root)
-        return eval(expr, _globals, _locals)
+        parts = expr.split(".")
+        v = _locals.get(parts[0], _globals.get(parts[0], None))
+        if v is not None and not isinstance(v, ModuleType):
+            return eval(expr, _globals, _locals)
+        root = ".".join(parts[:-1])
+        return getattr(importlib.import_module(root), parts[-1])
     except ValueError:
-        raise
+        raise  # pragma: no cover
     except Exception:
         raise ValueError(expr)
 

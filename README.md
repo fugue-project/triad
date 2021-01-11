@@ -19,6 +19,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.0
+
+* Fix to_type on full type path
+
 ### 0.4.9
 
 * Fix numpy warning
