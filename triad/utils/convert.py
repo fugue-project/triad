@@ -18,6 +18,8 @@ EMPTY_KWARGS: Dict[str, Any] = {}
 def get_caller_global_local_vars(
     global_vars: Optional[Dict[str, Any]] = None,
     local_vars: Optional[Dict[str, Any]] = None,
+    start: int = -1,
+    end: int = -1,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Get the caller level global and local variables.
 
@@ -25,6 +27,10 @@ def get_caller_global_local_vars(
       will return this instead of the caller's globals(), defaults to None
     :param local_vars: overriding local variables, if not None,
       will return this instead of the caller's locals(), defaults to None
+    :param start: start stack level (from 0 to any negative number),
+      defaults to -1 which is one level above where this function is invoked
+    :param end: end stack level (from ``start`` to any smaller negative number),
+      defaults to -1 which is one level above where this function is invoked
     :return: tuple of `global_vars` and `local_vars`
 
     :Examples:
@@ -43,13 +49,52 @@ def get_caller_global_local_vars(
     :Notice:
 
     This is for internal use, users normally should not call this directly.
-    The concept of this function is very tricky, be careful.
+
+    If merging multiple levels, the variables on closer level
+    (to where it is invoked) will overwrite the further levels values if there
+    is overlap.
+
+    :Examples:
+
+        .. code-block:: python
+            def f1():
+                x=1
+
+                def f2():
+                    x=2
+
+                    def f3():
+                        _, l = get_caller_global_local_vars(start=-1,end=-2)
+                        assert 2 == l["x"]
+
+                        _, l = get_caller_global_local_vars(start=-2,end=-2)
+                        assert 1 == l["x"]
+
+                f2()
+            f1()
     """
-    cf = inspect.currentframe()
+    assert_or_throw(start <= 0, ValueError(f"{start} > 0"))
+    assert_or_throw(end <= start, ValueError(f"{end} > {start}"))
+    stack = inspect.currentframe().f_back  # type: ignore
+    p = 0
+    while p > start and stack is not None:
+        stack = stack.f_back
+        p -= 1
+    g_arr: List[Dict[str, Any]] = []
+    l_arr: List[Dict[str, Any]] = []
+    while p >= end and stack is not None:
+        g_arr.insert(0, stack.f_globals)
+        l_arr.insert(0, stack.f_locals)
+        stack = stack.f_back
+        p -= 1
     if global_vars is None:
-        global_vars = cf.f_back.f_back.f_globals  # type: ignore
+        global_vars = {}
+        for d in g_arr:
+            global_vars.update(d)
     if local_vars is None:
-        local_vars = cf.f_back.f_back.f_locals  # type: ignore
+        local_vars = {}
+        for d in l_arr:
+            local_vars.update(d)
     return global_vars, local_vars  # type: ignore
 
 
