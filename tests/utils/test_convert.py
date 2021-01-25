@@ -1,15 +1,19 @@
 import builtins
+import urllib  # must keep for testing purpose
+import urllib.request  # must keep for testing purpose
 from datetime import date, datetime, timedelta
 
 import numpy as np
 import pandas as pd
 import tests.utils.convert_examples as ex
 from pytest import raises
-from tests.utils.convert_examples import BaseClass, Class2, SubClass
+from tests.utils.convert_examples import BaseClass, Class2
+from tests.utils.convert_examples import SubClass
 from tests.utils.convert_examples import SubClass as SubClassSame
 from triad.utils.convert import (
     _parse_value_and_unit,
     as_type,
+    get_caller_global_local_vars,
     get_full_type_path,
     str_to_instance,
     str_to_object,
@@ -22,8 +26,8 @@ from triad.utils.convert import (
     to_timedelta,
     to_type,
 )
-import urllib  # must keep for testing purpose
-import urllib.request  # must keep for testing purpose
+
+_GLOBAL_DUMMY = 1
 
 
 def test_to_size():
@@ -280,6 +284,68 @@ def test_get_full_type_path():
     assert "builtins.int" == get_full_type_path(123)
     assert "builtins.str" == get_full_type_path("ad")
     assert "tests.utils.test_convert.__Dummy__" == get_full_type_path(__Dummy__())
+
+
+def test_get_caller_global_local_vars():
+    def f1():
+        f1__var = 1
+        f2__var = 2
+        f3__var = 3
+
+        def f2():
+            f2__var = 22
+
+            def f3():
+                f3__var = 33
+
+                def f4():
+                    f4__var = 44
+                    g, l = get_caller_global_local_vars(None, None, start=0, end=0)
+                    assert "f4__var" in l
+                    assert 44 == l["f4__var"]
+                    assert "f3__var" not in l
+                    assert 1 == g["_GLOBAL_DUMMY"]
+
+                    g, l = get_caller_global_local_vars(None, None, start=0, end=-1)
+                    assert "f4__var" in l
+                    assert "f3__var" in l
+                    assert 33 == l["f3__var"]
+
+                    g, l = get_caller_global_local_vars(None, None, start=-2, end=-2)
+                    assert "f4__var" not in l
+                    assert "f3__var" not in l
+                    assert 22 == l["f2__var"]
+
+                    g, l = get_caller_global_local_vars(None, None, start=-2, end=-3)
+                    assert "f4__var" not in l
+                    assert 22 == l["f2__var"]
+                    assert 1 == l["f1__var"]
+                    assert 3 == l["f3__var"]
+
+                    g, l = get_caller_global_local_vars(None, None, start=0, end=-100)
+                    assert 22 == l["f2__var"]
+                    assert 1 == l["f1__var"]
+                    assert 33 == l["f3__var"]
+                    assert 44 == l["f4__var"]
+                    assert 1 == g["_GLOBAL_DUMMY"]
+
+                    g, l = get_caller_global_local_vars(
+                        {"k": 1}, None, start=0, end=-100
+                    )
+                    assert 22 == l["f2__var"]
+                    assert 1 == l["f1__var"]
+                    assert 33 == l["f3__var"]
+                    assert 44 == l["f4__var"]
+                    assert 1 == g["k"]
+                    assert "_GLOBAL_DUMMY" not in g
+
+                f4()
+
+            f3()
+
+        f2()
+
+    f1()
 
 
 # This is for test_obj_to_function
