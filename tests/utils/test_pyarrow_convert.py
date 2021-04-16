@@ -190,6 +190,7 @@ def test_convert_to_list_shallow():
     _assert_raise(pd.NaT, "[int]")
     _assert_raise(FLOAT_NAN, "[int]")
     _assert_raise(True, "[int]")
+    _assert_raise(np.ndarray([1,2]), "[int]", [1,2])
 
 
 def test_convert_to_list_deep():
