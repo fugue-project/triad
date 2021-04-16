@@ -485,6 +485,8 @@ def _to_pylist(
         return None
     if isinstance(obj, str) and str_as_json:
         obj = json.loads(obj)
+    if isinstance(obj, np.ndarray):
+        obj = obj.tolist()
     if not isinstance(obj, List):
         raise TypeError(f"{obj} is not list")
     if copy:
