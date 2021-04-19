@@ -19,6 +19,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.2
+
+* For pyarrow data conversion, support np.ndarray -> list
+
 ### 0.5.1
 
 * Update get_caller_global_local_vars to access any stack
