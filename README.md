@@ -19,6 +19,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.3
+
+* Lazy evaluation for `assert_or_throw`
+
 ### 0.5.2
 
 * For pyarrow data conversion, support np.ndarray -> list

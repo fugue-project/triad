@@ -36,6 +36,7 @@ def get_caller_global_local_vars(
     :Examples:
 
         .. code-block:: python
+
             def caller():
                 x=1
                 assert 1 == get_value("x")
@@ -57,6 +58,7 @@ def get_caller_global_local_vars(
     :Examples:
 
         .. code-block:: python
+
             def f1():
                 x=1
 
@@ -119,6 +121,7 @@ def str_to_object(
     :Examples:
 
         .. code-block:: python
+
             class _Mock(object):
                 def __init__(self, x=1):
                     self.x = x
