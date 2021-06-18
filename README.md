@@ -19,6 +19,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.4
+
+* Make `FileSystem` work for windows
+
 ### 0.5.3
 
 * Lazy evaluation for `assert_or_throw`
