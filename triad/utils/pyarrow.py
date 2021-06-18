@@ -134,6 +134,8 @@ def to_pa_datatype(obj: Any) -> pa.DataType:
         return obj
     if isinstance(obj, str):
         return _parse_type(obj)
+    if issubclass(obj, int):
+        return pa.int64()
     if issubclass(obj, datetime):
         return TRIAD_DEFAULT_TIMESTAMP
     if issubclass(obj, date):

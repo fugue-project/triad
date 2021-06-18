@@ -1,13 +1,18 @@
-from threading import RLock
-from typing import Dict, Tuple
-from urllib.parse import urlparse
+import re
 from pathlib import PureWindowsPath
+from threading import RLock
+from typing import Any, Dict, Tuple
+from urllib.parse import urlparse
 
-from fs import open_fs, tempfs, memoryfs
-from fs.base import FS as FSBase
-from fs.mountfs import MountFS
 from triad.utils.hash import to_uuid
-import os
+
+import fs
+from fs import memoryfs, open_fs, tempfs
+from fs.base import FS as FSBase
+from fs.glob import BoundGlobber, Globber
+from fs.mountfs import MountFS
+
+_SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
 
 
 class FileSystem(MountFS):
@@ -47,6 +52,11 @@ class FileSystem(MountFS):
             return fs
         return open_fs(root)
 
+    @property
+    def glob(self):
+        """A globber object"""
+        return _BoundGlobber(self)
+
     def _delegate(self, path) -> Tuple[FSBase, str]:
         with self._fs_lock:
             if self._in_create:  # pragma: no cover
@@ -61,44 +71,59 @@ class FileSystem(MountFS):
         return super()._delegate(m_path)
 
 
+class _BoundGlobber(BoundGlobber):
+    def __call__(
+        self,
+        pattern: Any,
+        path: str = "/",
+        namespaces: Any = None,
+        case_sensitive: bool = True,
+        exclude_dirs: Any = None,
+    ) -> Globber:
+        fp = _FSPath(path)
+        _path = fs.path.join(fp._root, fp._path) if fp.is_windows else path
+        return super().__call__(
+            pattern,
+            path=_path,
+            namespaces=namespaces,
+            case_sensitive=case_sensitive,
+            exclude_dirs=exclude_dirs,
+        )
+
+
 class _FSPath(object):
     def __init__(self, path: str):
         if path is None:
             raise ValueError("path can't be None")
-        path = self._modify_path(path)
-        if path.startswith("\\\\") or (
-            path[1:].startswith(":\\") and path[0].isalpha()
-        ):
-            path = PureWindowsPath(path).as_uri()[7:]
+        path = _modify_path(path)
+        self._is_windows = False
+        if _is_windows(path):
             self._scheme = ""
-            if path[0] == "/":
-                self._root = path[1:4]
-                path = path[4:]
-            else:
-                self._root = "/"
-                self.path = path[1:]
-            self._path = path.rstrip("/")
+            self._root = path[:3]
+            self._path = path[4:]
+            self._is_windows = True
+        elif path.startswith("/"):
+            self._scheme = ""
+            self._root = "/"
+            self._path = fs.path.abspath(path)
         else:
-            if path.startswith("file://"):
-                path = path[6:]
-            if path.startswith("/"):
-                self._scheme = ""
-                self._root = "/"
-                self._path = os.path.abspath(path)
-            else:
-                uri = urlparse(path)
-                if uri.scheme == "" and not path.startswith("/"):
-                    raise ValueError(
-                        f"invalid {path}, must be abs path either local or with scheme"
-                    )
-                self._scheme = uri.scheme
-                if uri.netloc == "":
-                    raise ValueError(f"invalid path {path}")
-                self._root = uri.scheme + "://" + uri.netloc
-                self._path = uri.path
-            self._path = self._path.lstrip("/")
-            # if self._path == "":
-            #    raise ValueError(f"invalid path {path}")
+            uri = urlparse(path)
+            if uri.scheme == "" and not path.startswith("/"):
+                raise ValueError(
+                    f"invalid {path}, must be abs path either local or with scheme"
+                )
+            self._scheme = uri.scheme
+            if uri.netloc == "":
+                raise ValueError(f"invalid path {path}")
+            self._root = uri.scheme + "://" + uri.netloc
+            self._path = uri.path
+        self._path = self._path.lstrip("/")
+        # if self._path == "":
+        #    raise ValueError(f"invalid path {path}")
+
+    @property
+    def is_windows(self) -> bool:
+        return self._is_windows
 
     @property
     def scheme(self) -> str:
@@ -112,11 +137,47 @@ class _FSPath(object):
     def relative_path(self) -> str:
         return self._path
 
-    def _modify_path(self, path: str) -> str:
-        """to fix things like /s3:/a/b.txt -> s3://a/b.txt"""
-        if path.startswith("/"):
-            p = path.find("/", 1)
-            if p > 1 and path[p - 1] == ":":
-                scheme = path[1 : p - 1]
-                return scheme + "://" + path[p + 1 :]
-        return path
+
+def _modify_path(path: str) -> str:
+    """to fix things like /s3:/a/b.txt -> s3://a/b.txt"""
+    if path.startswith("/"):
+        s = _SCHEME_PREFIX.search(path[1:])
+        if s is not None:
+            colon = s.end()
+            scheme = path[1:colon]
+            if colon + 1 == len(path):  # /C: or /s3:
+                return scheme + "://"
+            if path[colon + 1] == "/":  # /s3:/a/b.txt
+                path = scheme + "://" + path[colon + 1 :].lstrip("/")
+            elif path[colon + 1] == "\\":  # /c:\a\b.txt
+                path = scheme + ":\\\\" + path[colon + 1 :].lstrip("\\")
+    if path.startswith("file:///"):
+        path = path[8:]
+    elif path.startswith("file://"):
+        path = path[6:]
+    if path.startswith("\\\\"):
+        # windows \\10.100.168.1\...
+        raise NotImplementedError(f"path {path} is not supported")
+    if path != "" and path[0].isalpha():
+        if len(path) == 2 and path[1] == ":":
+            # C: => C:/
+            return path[0] + "://"
+        if path[1:].startswith(":\\\\"):
+            # C:\\a\b\c => C:/a/b/c
+            return path[0] + "://" + path[4:].replace("\\", "/")
+        if path[1:].startswith(":\\"):
+            # C:\a\b\c => C:/a/b/c
+            return path[0] + "://" + path[3:].replace("\\", "/")
+        if path[1:].startswith("://"):
+            # C://a/b/c => C:/a/b/c
+            return path[0] + "://" + path[4:]
+        if path[1:].startswith(":/"):
+            # C://a/b/c => C:/a/b/c
+            return path[0] + "://" + path[3:]
+    return path
+
+
+def _is_windows(path: str) -> bool:
+    if len(path) < 4:
+        return False
+    return path[0].isalpha() and path[1] == ":" and path[2] == "/" and path[3] == "/"
