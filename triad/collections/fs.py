@@ -1,5 +1,4 @@
 import re
-from pathlib import PureWindowsPath
 from threading import RLock
 from typing import Any, Dict, Tuple
 from urllib.parse import urlparse
@@ -138,7 +137,7 @@ class _FSPath(object):
         return self._path
 
 
-def _modify_path(path: str) -> str:
+def _modify_path(path: str) -> str:  # noqa: C901
     """to fix things like /s3:/a/b.txt -> s3://a/b.txt"""
     if path.startswith("/"):
         s = _SCHEME_PREFIX.search(path[1:])
