@@ -22,13 +22,13 @@ class FileSystem(MountFS):
     to provide your own configured file systems.
 
     :Examples:
-    
+
     >>> fs = FileSystem()
     >>> fs.writetext("mem://from/a.txt", "hello")
     >>> fs.copy("mem://from/a.txt", "mem://to/a.txt")
-    
+
     .. note::
-    
+
         If a path is not a local path, it must include the scheme and `netloc`
         (the first element after `://`)
         :param auto_close: If `True` (the default), the child filesystems
@@ -129,7 +129,7 @@ class _FSPath(object):
         if _is_windows(path):
             self._scheme = ""
             self._root = path[:3]
-            self._path = path[4:]
+            self._path = path[3:]
             self._is_windows = True
         elif path.startswith("/"):
             self._scheme = ""
@@ -175,11 +175,11 @@ def _modify_path(path: str) -> str:  # noqa: C901
             colon = s.end()
             scheme = path[1:colon]
             if colon + 1 == len(path):  # /C: or /s3:
-                return scheme + "://"
-            if path[colon + 1] == "/":  # /s3:/a/b.txt
+                path = scheme + "://"
+            elif path[colon + 1] == "/":  # /s3:/a/b.txt
                 path = scheme + "://" + path[colon + 1 :].lstrip("/")
             elif path[colon + 1] == "\\":  # /c:\a\b.txt
-                path = scheme + ":\\\\" + path[colon + 1 :].lstrip("\\")
+                path = scheme + ":\\" + path[colon + 1 :].lstrip("\\")
     if path.startswith("file:///"):
         path = path[8:]
     elif path.startswith("file://"):
@@ -190,23 +190,17 @@ def _modify_path(path: str) -> str:  # noqa: C901
     if path != "" and path[0].isalpha():
         if len(path) == 2 and path[1] == ":":
             # C: => C:/
-            return path[0] + "://"
-        if path[1:].startswith(":\\\\"):
-            # C:\\a\b\c => C:/a/b/c
-            return path[0] + "://" + path[4:].replace("\\", "/")
+            return path[0] + ":/"
         if path[1:].startswith(":\\"):
             # C:\a\b\c => C:/a/b/c
-            return path[0] + "://" + path[3:].replace("\\", "/")
-        if path[1:].startswith("://"):
-            # C://a/b/c => C:/a/b/c
-            return path[0] + "://" + path[4:]
+            return path[0] + ":/" + path[3:].replace("\\", "/").lstrip("/")
         if path[1:].startswith(":/"):
-            # C://a/b/c => C:/a/b/c
-            return path[0] + "://" + path[3:]
+            # C:/a/b/c => C:/a/b/c
+            return path[0] + ":/" + path[3:].lstrip("/")
     return path
 
 
 def _is_windows(path: str) -> bool:
-    if len(path) < 4:
+    if len(path) < 3:
         return False
-    return path[0].isalpha() and path[1] == ":" and path[2] == "/" and path[3] == "/"
+    return path[0].isalpha() and path[1] == ":" and path[2] == "/"

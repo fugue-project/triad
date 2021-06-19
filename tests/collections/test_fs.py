@@ -7,29 +7,27 @@ from triad.collections.fs import FileSystem, _FSPath, _modify_path, _is_windows
 
 
 def test_modify_path():
-    assert "c://" == _modify_path("/c:")
+    assert "c:/" == _modify_path("/c:")
     assert "s3://" == _modify_path("/s3:")
-    assert "C://" == _modify_path("/C:\\")
-    assert "C://a" == _modify_path("/C:\\a")
-    assert "C://" == _modify_path("/C:\\\\")
-    assert "C://a/b" == _modify_path("/C:\\\\a\\b")
-    assert "C://" == _modify_path("/C:/")
-    assert "C://a" == _modify_path("/C:/a")
-    assert "C://" == _modify_path("/C://")
-    assert "C://a/b" == _modify_path("/C://a/b")
+    assert "C:/" == _modify_path("/C:\\")
+    assert "C:/a" == _modify_path("/C:\\a")
+    assert "C:/" == _modify_path("/C:\\\\")
+    assert "C:/a/b" == _modify_path("/C:\\\\a\\b")
+    assert "C:/" == _modify_path("/C:/")
+    assert "C:/a" == _modify_path("/C:/a")
+    assert "C:/" == _modify_path("/C://")
+    assert "C:/a/b" == _modify_path("/C://a/b")
 
     assert "/" == _modify_path("file://")
     assert "/a/b" == _modify_path("file://a/b")
-    assert "c://a/b" == _modify_path("file:///c:/a/b")
-    assert "C://" == _modify_path("C://")
-    assert "c://x" == _modify_path("c://x")
-    assert "c://" == _modify_path("c:/")
-    assert "c://x" == _modify_path("c:/x")
-    assert "c://" == _modify_path("c:")
-    assert "c://" == _modify_path("c:\\")
-    assert "c://x/" == _modify_path("c:\\x\\")
-    assert "c://" == _modify_path("c:\\\\")
-    assert "c://x/b" == _modify_path("c:\\\\x\\b")
+    assert "c:/a/b" == _modify_path("file:///c:/a/b")
+    assert "C:/" == _modify_path("C://")
+    assert "c:/x" == _modify_path("c://x")
+    assert "c:/" == _modify_path("c:/")
+    assert "c:/x" == _modify_path("c:/x")
+    assert "c:/" == _modify_path("c:")
+    assert "c:/" == _modify_path("c:\\")
+    assert "c:/x/" == _modify_path("c:\\x\\")
     raises(NotImplementedError, lambda: _modify_path("\\\\10.0.0.1\1"))
 
 
@@ -38,9 +36,9 @@ def test_is_windows():
     assert not _is_windows("c")
     assert not _is_windows("c:")
     assert not _is_windows("c:\\")
-    assert not _is_windows("c:/")
+    assert _is_windows("c:/")
     assert _is_windows("c://")
-    assert _is_windows("c://x")
+    assert _is_windows("c:/x")
 
 
 def test__FSPath():
@@ -77,12 +75,6 @@ def test__FSPath():
 
     # Windows test cases
     p = _FSPath("c:\\folder\\myfile.txt")
-    assert "" == p.scheme
-    assert "c:/" == p.root
-    assert "folder/myfile.txt" == p.relative_path
-    assert p.is_windows
-
-    p = _FSPath("c:\\\\folder\\myfile.txt")
     assert "" == p.scheme
     assert "c:/" == p.root
     assert "folder/myfile.txt" == p.relative_path
