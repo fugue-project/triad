@@ -22,6 +22,8 @@ pip install triad
 ### 0.5.4
 
 * Make `FileSystem` work for windows
+* Make full compatible with Windows
+* Add windows tests
 
 ### 0.5.3
 
