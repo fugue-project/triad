@@ -7,17 +7,24 @@
 [![Coverage Status](https://coveralls.io/repos/github/fugue-project/triad/badge.svg)](https://coveralls.io/github/fugue-project/triad)
 [![Doc](https://readthedocs.org/projects/triad/badge)](https://triad.readthedocs.org)
 
-[Join Fugue-Project on Slack](https://join.slack.com/t/fugue-project/shared_invite/zt-he6tcazr-OCkj2GEv~J9UYoZT3FPM4g)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/fugue-project/shared_invite/zt-jl0pcahu-KdlSOgi~fP50TZWmNxdWYQ)
 
 A collection of python utility functions for [Fugue projects](https://github.com/fugue-project)
 
 ## Installation
-```
+
+```bash
 pip install triad
 ```
 
 
 ## Release History
+
+### 0.5.4
+
+* Make `FileSystem` work for windows
+* Make triad fullly compatible with Windows
+* Add windows tests
 
 ### 0.5.3
 

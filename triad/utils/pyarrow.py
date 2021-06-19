@@ -132,6 +132,14 @@ def to_pa_datatype(obj: Any) -> pa.DataType:
     """
     if isinstance(obj, pa.DataType):
         return obj
+    if obj is bool:
+        return pa.bool_()
+    if obj is int:
+        return pa.int64()
+    if obj is float:
+        return pa.float64()
+    if obj is str:
+        return pa.string()
     if isinstance(obj, str):
         return _parse_type(obj)
     if issubclass(obj, datetime):

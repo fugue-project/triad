@@ -1,12 +1,48 @@
-import os
+import fs as pfs
 from os.path import exists
+import os
 
 from pytest import raises
-from triad.collections.fs import FileSystem, _FSPath
+from triad.collections.fs import FileSystem, _FSPath, _modify_path, _is_windows
+
+
+def test_modify_path():
+    assert "c:/" == _modify_path("/c:")
+    assert "s3://" == _modify_path("/s3:")
+    assert "C:/" == _modify_path("/C:\\")
+    assert "C:/a" == _modify_path("/C:\\a")
+    assert "C:/" == _modify_path("/C:\\\\")
+    assert "C:/a/b" == _modify_path("/C:\\\\a\\b")
+    assert "C:/" == _modify_path("/C:/")
+    assert "C:/a" == _modify_path("/C:/a")
+    assert "C:/" == _modify_path("/C://")
+    assert "C:/a/b" == _modify_path("/C://a/b")
+
+    assert "/" == _modify_path("file://")
+    assert "/a/b" == _modify_path("file://a/b")
+    assert "c:/a/b" == _modify_path("file:///c:/a/b")
+    assert "C:/" == _modify_path("C://")
+    assert "c:/x" == _modify_path("c://x")
+    assert "c:/" == _modify_path("c:/")
+    assert "c:/x" == _modify_path("c:/x")
+    assert "c:/" == _modify_path("c:")
+    assert "c:/" == _modify_path("c:\\")
+    assert "c:/x/" == _modify_path("c:\\x\\")
+    raises(NotImplementedError, lambda: _modify_path("\\\\10.0.0.1\1"))
+
+
+def test_is_windows():
+    assert not _is_windows("")
+    assert not _is_windows("c")
+    assert not _is_windows("c:")
+    assert not _is_windows("c:\\")
+    assert _is_windows("c:/")
+    assert _is_windows("c://")
+    assert _is_windows("c:/x")
 
 
 def test__FSPath():
-    p = _FSPath("/a//b.txt")
+    p = _FSPath("/a/b.txt")
     assert "" == p.scheme
     assert "/" == p.root
     assert "a/b.txt" == p.relative_path
@@ -35,22 +71,31 @@ def test__FSPath():
     assert "temp" == p.scheme
     assert "temp://a" == p.root
     assert "b" == p.relative_path
+    assert not p.is_windows
 
     # Windows test cases
     p = _FSPath("c:\\folder\\myfile.txt")
     assert "" == p.scheme
     assert "c:/" == p.root
     assert "folder/myfile.txt" == p.relative_path
+    assert p.is_windows
 
-    p = _FSPath("\\\\tmp\\tmp.txt")
+    p = _FSPath("c://folder/myfile.txt")
     assert "" == p.scheme
-    assert "/" == p.root
-    assert "tmp/tmp.txt" == p.relative_path
+    assert "c:/" == p.root
+    assert "folder/myfile.txt" == p.relative_path
+    assert p.is_windows
 
-    p = _FSPath("\\\\123.123.123.123\\share\\folder\\myfile.txt")
+    p = _FSPath("c:/folder/myfile.txt")
     assert "" == p.scheme
-    assert "/" == p.root
-    assert "123.123.123.123/share/folder/myfile.txt" == p.relative_path
+    assert "c:/" == p.root
+    assert "folder/myfile.txt" == p.relative_path
+    assert p.is_windows
+
+    raises(
+        NotImplementedError,
+        lambda: _FSPath("\\\\123.123.123.123\\share\\folder\\myfile.txt"),
+    )
 
     raises(ValueError, lambda: _FSPath(None))
     raises(ValueError, lambda: _FSPath(""))
@@ -59,6 +104,7 @@ def test__FSPath():
 
 
 def test_fs(tmpdir):
+    tmpdir = str(tmpdir)
     # Tests to read and write with tmpdir without FS
     tmpfile = os.path.join(tmpdir, "f.txt")
     f = open(tmpfile, "a")
@@ -69,32 +115,51 @@ def test_fs(tmpdir):
 
     p1 = os.path.join(tmpdir, "a")
     p2 = os.path.join(tmpdir, "b")
-    assert not os.path.exists(p1)
-    assert not os.path.exists(p2)
+    assert not exists(p1)
+    assert not exists(p2)
     fs = MockFS()
     fs.makedirs(p1)
     fs.makedirs(p2)
-    assert os.path.exists(p1) and os.path.isdir(p1)
-    assert os.path.exists(p2) and os.path.isdir(p2)
+    assert fs.exists(p1) and exists(p1) and os.path.isdir(p1)
+    assert fs.exists(p2) and exists(p2) and os.path.isdir(p2)
     assert 1 == fs.create_called
+    fs.create_called = 0
     fs.makedirs("temp://x/y")
     fs.makedirs("temp://y/z")
-    assert 3 == fs.create_called
+    assert 2 == fs.create_called
     fs.makedirs("mem://x/y")
     fs.makedirs("mem://y/z")
-    assert 5 == fs.create_called
+    assert 4 == fs.create_called
     fs.writetext(os.path.join(p1, "a.txt"), "xyz")
     fs.copy(os.path.join(p1, "a.txt"), "mem://y/z/a.txt")
     assert "xyz" == fs.readtext("mem://y/z/a.txt")
     assert not fs.exists("mem://y/z/w/a.txt")
-    assert 5 == fs.create_called
+    assert 4 == fs.create_called
     fs.writetext("mem://from/a.txt", "hello")
     fs.copy("mem://from/a.txt", "mem://to/a.txt")
     assert "hello" == fs.readtext("mem://to/a.txt")
-    assert 7 == fs.create_called
+    assert 6 == fs.create_called
+
+
+def test_multiple_writes(tmpdir):
+    fs = FileSystem()
+    path = os.path.join(tmpdir, "a.txt")
+    fs.writetext(path, "1")
+    fs.writetext(path, "2")
+    assert "2" == fs.readtext(path)
+
+    # auto close is important
+    d2 = os.path.join(tmpdir, "x", "y")
+    ff = FileSystem(auto_close=False).makedirs(d2, recreate=True)
+    ff.writetext("a.txt", "3")
+    ff.writetext("a.txt", "4")
+    ff = FileSystem(auto_close=False).makedirs(d2, recreate=True)
+    ff.writetext("a.txt", "5")
+    assert "5" == ff.readtext("a.txt")
 
 
 def test_glob(tmpdir):
+    tmpdir = str(tmpdir)
     fs = FileSystem()
     os.makedirs(os.path.join(str(tmpdir), "d1"))
     os.makedirs(os.path.join(str(tmpdir), "d2", "d2"))
@@ -105,8 +170,8 @@ def test_glob(tmpdir):
     f.write("read test")
     f.close()
     assert {
-        os.path.join(str(tmpdir), "d1", "f1.txt"),
-        os.path.join(str(tmpdir), "d2", "d2", "f2.txt"),
+        pfs.path.join(str(tmpdir), "d1", "f1.txt").replace("\\", "/"),
+        pfs.path.join(str(tmpdir), "d2", "d2", "f2.txt").replace("\\", "/"),
     } == {x.path for x in fs.glob("**/*.txt", path=str(tmpdir))}
 
     fs.makedirs("mem://a/d1")
