@@ -12,7 +12,8 @@
 A collection of python utility functions for [Fugue projects](https://github.com/fugue-project)
 
 ## Installation
-```
+
+```bash
 pip install triad
 ```
 
@@ -22,7 +23,7 @@ pip install triad
 ### 0.5.4
 
 * Make `FileSystem` work for windows
-* Make full compatible with Windows
+* Make triad fullly compatible with Windows
 * Add windows tests
 
 ### 0.5.3
