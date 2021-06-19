@@ -11,6 +11,7 @@ from fs import memoryfs, open_fs, tempfs
 from fs.base import FS as FSBase
 from fs.glob import BoundGlobber, Globber
 from fs.mountfs import MountFS
+from fs.subfs import SubFS
 
 _SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
 
@@ -20,15 +21,19 @@ class FileSystem(MountFS):
     for this class is that all paths must be absolute path with scheme.
     To customize different file systems, you should override `create_fs`
     to provide your own configured file systems.
+
     :Examples:
+    
     >>> fs = FileSystem()
     >>> fs.writetext("mem://from/a.txt", "hello")
     >>> fs.copy("mem://from/a.txt", "mem://to/a.txt")
-    :Notice:
-    If a path is not a local path, it must include the scheme and `netloc`
-    (the first element after `://`)
-    :param auto_close: If `True` (the default), the child filesystems
-      will be closed when `MountFS` is closed.
+    
+    .. note::
+    
+        If a path is not a local path, it must include the scheme and `netloc`
+        (the first element after `://`)
+        :param auto_close: If `True` (the default), the child filesystems
+        will be closed when `MountFS` is closed.
     """
 
     def __init__(self, auto_close: bool = True):
@@ -69,6 +74,31 @@ class FileSystem(MountFS):
             self._in_create = False
         m_path = to_uuid(fp.root) + "/" + fp.relative_path
         return super()._delegate(m_path)
+
+    def makedirs(
+        self, path: str, permissions: Any = None, recreate: bool = False
+    ) -> SubFS:
+        """Make a directory, and any missing intermediate directories.
+
+        .. note::
+
+            This overrides the base ``makedirs``
+
+        :param path: path to directory from root.
+        :param permissions: initial permissions, or `None` to use defaults.
+        :recreate: if `False` (the default), attempting to
+          create an existing directory will raise an error. Set
+          to `True` to ignore existing directories.
+        :return: a sub-directory filesystem.
+
+        :raises fs.errors.DirectoryExists: if the path is already
+          a directory, and ``recreate`` is `False`.
+        :raises fs.errors.DirectoryExpected: if one of the ancestors
+          in the path is not a directory.
+        """
+        self.check()
+        fs, _path = self._delegate(path)
+        return fs.makedirs(_path, permissions=permissions, recreate=recreate)
 
 
 class _BoundGlobber(BoundGlobber):

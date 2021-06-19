@@ -93,6 +93,8 @@ def test_to_pa_datatype():
     assert pa.int32() == to_pa_datatype("int")
     assert pa.int64() == to_pa_datatype(int)
     assert pa.float64() == to_pa_datatype(float)
+    assert pa.string() == to_pa_datatype(str)
+    assert pa.bool_() == to_pa_datatype(bool)
     assert pa.float64() == to_pa_datatype(np.float64)
     assert TRIAD_DEFAULT_TIMESTAMP == to_pa_datatype(datetime)
     assert pa.date32() == to_pa_datatype(date)

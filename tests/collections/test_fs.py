@@ -130,6 +130,7 @@ def test_fs(tmpdir):
     fs.makedirs(p2)
     assert fs.exists(p1) and exists(p1) and os.path.isdir(p1)
     assert fs.exists(p2) and exists(p2) and os.path.isdir(p2)
+    assert 1 == fs.create_called
     fs.create_called = 0
     fs.makedirs("temp://x/y")
     fs.makedirs("temp://y/z")
@@ -148,6 +149,23 @@ def test_fs(tmpdir):
     assert 6 == fs.create_called
 
 
+def test_multiple_writes(tmpdir):
+    fs = FileSystem()
+    path = os.path.join(tmpdir, "a.txt")
+    fs.writetext(path, "1")
+    fs.writetext(path, "2")
+    assert "2" == fs.readtext(path)
+
+    # auto close is important
+    d2 = os.path.join(tmpdir, "x", "y")
+    ff = FileSystem(auto_close=False).makedirs(d2, recreate=True)
+    ff.writetext("a.txt", "3")
+    ff.writetext("a.txt", "4")
+    ff = FileSystem(auto_close=False).makedirs(d2, recreate=True)
+    ff.writetext("a.txt", "5")
+    assert "5" == ff.readtext("a.txt")
+
+
 def test_glob(tmpdir):
     tmpdir = str(tmpdir)
     fs = FileSystem()
@@ -160,8 +178,8 @@ def test_glob(tmpdir):
     f.write("read test")
     f.close()
     assert {
-        pfs.path.join(str(tmpdir), "d1", "f1.txt").replace("\\","/"),
-        pfs.path.join(str(tmpdir), "d2", "d2", "f2.txt").replace("\\","/"),
+        pfs.path.join(str(tmpdir), "d1", "f1.txt").replace("\\", "/"),
+        pfs.path.join(str(tmpdir), "d2", "d2", "f2.txt").replace("\\", "/"),
     } == {x.path for x in fs.glob("**/*.txt", path=str(tmpdir))}
 
     fs.makedirs("mem://a/d1")
