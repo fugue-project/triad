@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.5
+
+* Change pandas_list enforce_type df construction
+
 ### 0.5.4
 
 * Make `FileSystem` work for windows
