@@ -143,6 +143,7 @@ class PandasLikeUtils(Generic[T]):
             return df
         if not null_safe:
             return df.astype(dtype=to_pandas_dtype(schema))
+        data: Dict[str, Any] = {}
         for v in schema:
             s = df[v.name]
             if pa.types.is_string(v.type):
@@ -163,8 +164,8 @@ class PandasLikeUtils(Generic[T]):
                 s = s.fillna(0).astype(v.type.to_pandas_dtype()).mask(ns, None)
             elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
                 s = s.astype(v.type.to_pandas_dtype())
-            df[v.name] = s
-        return df
+            data[v.name] = s
+        return pd.DataFrame(data)
 
     def safe_groupby_apply(
         self,
