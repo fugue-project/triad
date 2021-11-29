@@ -1,10 +1,11 @@
 import math
 from collections import OrderedDict
-from datetime import datetime, date
+from datetime import date, datetime
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
-import numpy as np
+from pandas.core.dtypes.common import is_integer_dtype
 from pytest import raises
 from triad.collections.schema import Schema, SchemaError
 from triad.exceptions import InvalidOperationError, NoneArgumentError
@@ -50,7 +51,8 @@ def test_schema_properties():
         == s.pyarrow_schema
     )
     assert s.pyarrow_schema == s.pyarrow_schema
-    assert dict(a=np.int32, b=np.dtype(str)) == s.pd_dtype
+    assert pd.api.types.is_integer_dtype(s.pd_dtype["a"])
+    assert pd.api.types.is_string_dtype(s.pd_dtype["b"])
     assert s.pandas_dtype == s.pd_dtype
 
 

@@ -1,11 +1,12 @@
 import json
 import pickle
 from datetime import date, datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Type
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from pandas.core.dtypes.base import ExtensionDtype
 from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
 from triad.utils.iter import EmptyAwareIterable, Slicer
@@ -67,6 +68,31 @@ _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
     pa.binary(): "bytes",
 }
 
+_PANDAS_EXTENSION_TYPE_TO_PA_MAP: Dict[Type[ExtensionDtype], pa.DataType] = {
+    pd.Int8Dtype: pa.int8(),
+    pd.UInt8Dtype: pa.uint8(),
+    pd.Int16Dtype: pa.int16(),
+    pd.UInt16Dtype: pa.uint16(),
+    pd.Int32Dtype: pa.int32(),
+    pd.UInt32Dtype: pa.uint32(),
+    pd.Int64Dtype: pa.int64(),
+    pd.UInt64Dtype: pa.uint64(),
+    pd.StringDtype: pa.string(),
+    pd.BooleanDtype: pa.bool_(),
+}
+
+_PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
+    pa.int8(): pd.Int8Dtype(),
+    pa.uint8(): pd.UInt8Dtype(),
+    pa.int16(): pd.Int16Dtype(),
+    pa.uint16(): pd.UInt16Dtype(),
+    pa.int32(): pd.Int32Dtype(),
+    pa.uint32(): pd.UInt32Dtype(),
+    pa.int64(): pd.Int64Dtype(),
+    pa.uint64(): pd.UInt64Dtype(),
+    pa.string(): pd.StringDtype(),
+    pa.bool_(): pd.BooleanDtype(),
+}
 
 _SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", ":"}
 
@@ -123,7 +149,7 @@ def schema_to_expression(schema: pa.Schema) -> pa.Schema:
     return ",".join(_field_to_expression(x) for x in list(schema))
 
 
-def to_pa_datatype(obj: Any) -> pa.DataType:
+def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     """Convert an object to pyarrow DataType
 
     :param obj: any object
@@ -142,6 +168,10 @@ def to_pa_datatype(obj: Any) -> pa.DataType:
         return pa.string()
     if isinstance(obj, str):
         return _parse_type(obj)
+    if isinstance(obj, ExtensionDtype) or issubclass(obj, ExtensionDtype):
+        pt = obj if not isinstance(obj, ExtensionDtype) else type(obj)
+        if pt in _PANDAS_EXTENSION_TYPE_TO_PA_MAP:
+            return _PANDAS_EXTENSION_TYPE_TO_PA_MAP[pt]
     if issubclass(obj, datetime):
         return TRIAD_DEFAULT_TIMESTAMP
     if issubclass(obj, date):
@@ -149,10 +179,44 @@ def to_pa_datatype(obj: Any) -> pa.DataType:
     return pa.from_numpy_dtype(np.dtype(obj))
 
 
-def to_pandas_dtype(schema: pa.Schema) -> Dict[str, np.dtype]:
+def to_single_pandas_dtype(
+    pa_type: pa.DataType, use_extension_types: bool = False
+) -> Dict[str, np.dtype]:
+    """convert a pyarrow data type to a pandas datatype.
+    Currently, struct type is not supported
+
+    :param schema: the pyarrow schema
+    :param use_extension_types: whether to use pandas extension
+        data types, defaults to False
+    :return: the pandas data type
+    """
+    if use_extension_types:
+        return (
+            _PA_TO_PANDAS_EXTENSION_TYPE_MAP[pa_type]
+            if pa_type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
+            else pa_type.to_pandas_dtype()
+        )
+    return np.dtype(str) if pa.types.is_string(pa_type) else pa_type.to_pandas_dtype()
+
+
+def to_pandas_dtype(
+    schema: pa.Schema, use_extension_types: bool = False
+) -> Dict[str, np.dtype]:
     """convert as `dtype` dict for pandas dataframes.
     Currently, struct type is not supported
+
+    :param schema: the pyarrow schema
+    :param use_extension_types: whether to use pandas extension
+        data types, defaults to False
+    :return: the pandas data type dictionary
     """
+    if use_extension_types:
+        return {
+            f.name: _PA_TO_PANDAS_EXTENSION_TYPE_MAP[f.type]
+            if f.type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
+            else f.type.to_pandas_dtype()
+            for f in schema
+        }
     return {
         f.name: np.dtype(str)
         if pa.types.is_string(f.type)
