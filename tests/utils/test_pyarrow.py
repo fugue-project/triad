@@ -5,6 +5,7 @@ import pandas as pd
 import pyarrow as pa
 from pytest import raises
 from triad.utils.pyarrow import (
+    TRIAD_DEFAULT_TIMESTAMP,
     SchemaedDataPartitioner,
     _parse_type,
     _type_to_expression,
@@ -14,8 +15,9 @@ from triad.utils.pyarrow import (
     schema_to_expression,
     schemas_equal,
     to_pa_datatype,
+    to_pandas_dtype,
+    to_single_pandas_dtype,
     validate_column_name,
-    TRIAD_DEFAULT_TIMESTAMP
 )
 
 
@@ -101,8 +103,65 @@ def test_to_pa_datatype():
     assert pa.date32() == to_pa_datatype("date")
     assert pa.binary() == to_pa_datatype("bytes")
     assert pa.binary() == to_pa_datatype("binary")
+
+    assert pa.int8() == to_pa_datatype(pd.Int8Dtype)
+    assert pa.int8() == to_pa_datatype(pd.Int8Dtype())
+    assert pa.int16() == to_pa_datatype(pd.Int16Dtype)
+    assert pa.int16() == to_pa_datatype(pd.Int16Dtype())
+    assert pa.int32() == to_pa_datatype(pd.Int32Dtype)
+    assert pa.int32() == to_pa_datatype(pd.Int32Dtype())
+    assert pa.int64() == to_pa_datatype(pd.Int64Dtype)
+    assert pa.int64() == to_pa_datatype(pd.Int64Dtype())
+
+    assert pa.uint8() == to_pa_datatype(pd.UInt8Dtype)
+    assert pa.uint8() == to_pa_datatype(pd.UInt8Dtype())
+    assert pa.uint16() == to_pa_datatype(pd.UInt16Dtype)
+    assert pa.uint16() == to_pa_datatype(pd.UInt16Dtype())
+    assert pa.uint32() == to_pa_datatype(pd.UInt32Dtype)
+    assert pa.uint32() == to_pa_datatype(pd.UInt32Dtype())
+    assert pa.uint64() == to_pa_datatype(pd.UInt64Dtype)
+    assert pa.uint64() == to_pa_datatype(pd.UInt64Dtype())
+
+    assert pa.string() == to_pa_datatype(pd.StringDtype)
+    assert pa.string() == to_pa_datatype(pd.StringDtype())
+
+    assert pa.bool_() == to_pa_datatype(pd.BooleanDtype)
+    assert pa.bool_() == to_pa_datatype(pd.BooleanDtype())
+
     raises(TypeError, lambda: to_pa_datatype(123))
     raises(TypeError, lambda: to_pa_datatype(None))
+
+
+def test_to_single_pandas_dtype():
+    assert np.bool_ == to_single_pandas_dtype(pa.bool_(), False)
+    assert np.int16 == to_single_pandas_dtype(pa.int16(), False)
+    assert np.uint32 == to_single_pandas_dtype(pa.uint32(), False)
+    assert np.float32 == to_single_pandas_dtype(pa.float32(), False)
+    assert np.dtype(str) == to_single_pandas_dtype(pa.string(), False)
+    assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), False)
+
+    assert pd.BooleanDtype() == to_single_pandas_dtype(pa.bool_(), True)
+    assert pd.Int16Dtype() == to_single_pandas_dtype(pa.int16(), True)
+    assert pd.UInt32Dtype() == to_single_pandas_dtype(pa.uint32(), True)
+    assert np.float32 == to_single_pandas_dtype(pa.float32(), True)
+    assert pd.StringDtype() == to_single_pandas_dtype(pa.string(), True)
+    assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), True)
+
+
+def test_to_pandas_dtype():
+    schema = expression_to_schema("a:bool,b:int,c:double,d:string,e:datetime")
+    res = to_pandas_dtype(schema, False)
+    assert np.bool_ == res["a"]
+    assert np.int32 == res["b"]
+    assert np.float64 == res["c"]
+    assert np.dtype("<U") == res["d"]
+    assert np.dtype("<M8[ns]") == res["e"]
+    res = to_pandas_dtype(schema, True)
+    assert pd.BooleanDtype() == res["a"]
+    assert pd.Int32Dtype() == res["b"]
+    assert np.float64 == res["c"]
+    assert pd.StringDtype() == res["d"]
+    assert np.dtype("<M8[ns]") == res["e"]
 
 
 def test_is_supported():

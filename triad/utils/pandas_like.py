@@ -3,9 +3,15 @@ from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeV
 
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 from triad.utils.assertion import assert_or_throw
-from triad.utils.pyarrow import TRIAD_DEFAULT_TIMESTAMP, apply_schema, to_pandas_dtype
+from triad.utils.pyarrow import (
+    TRIAD_DEFAULT_TIMESTAMP,
+    apply_schema,
+    to_pandas_dtype,
+    to_single_pandas_dtype,
+)
+
+import pyarrow as pa
 
 T = TypeVar("T", bound=Any)
 _DEFAULT_JOIN_KEYS: List[str] = []
@@ -142,7 +148,7 @@ class PandasLikeUtils(Generic[T]):
         if self.empty(df):
             return df
         if not null_safe:
-            return df.astype(dtype=to_pandas_dtype(schema))
+            return df.astype(dtype=to_pandas_dtype(schema, use_extension_types=False))
         data: Dict[str, Any] = {}
         for v in schema:
             s = df[v.name]
@@ -161,9 +167,14 @@ class PandasLikeUtils(Generic[T]):
                 s = s.mask(ns, None)
             elif pa.types.is_integer(v.type):
                 ns = s.isnull()
-                s = s.fillna(0).astype(v.type.to_pandas_dtype()).mask(ns, None)
+                s = (
+                    s.fillna(0)
+                    .astype(int)
+                    .astype(to_single_pandas_dtype(v.type))
+                    .mask(ns, None)
+                )
             elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
-                s = s.astype(v.type.to_pandas_dtype())
+                s = s.astype(to_single_pandas_dtype(v.type))
             data[v.name] = s
         return pd.DataFrame(data)
 

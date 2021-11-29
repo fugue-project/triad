@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.6
+
+* Prepare to support [pandas extension data types](https://pandas.pydata.org/docs/user_guide/basics.html#basics-dtypes)
+
 ### 0.5.5
 
 * Change pandas_list enforce_type df construction
