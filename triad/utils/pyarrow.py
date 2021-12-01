@@ -1,17 +1,18 @@
 import json
 import pickle
 from datetime import date, datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 from pandas.core.dtypes.base import ExtensionDtype
 from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
 from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
 from triad.utils.string import validate_triad_var_name
+
+import pyarrow as pa
 
 TRIAD_DEFAULT_TIMESTAMP = pa.timestamp("us")
 
@@ -68,17 +69,17 @@ _TYPE_EXPRESSION_R_MAPPING: Dict[pa.DataType, str] = {
     pa.binary(): "bytes",
 }
 
-_PANDAS_EXTENSION_TYPE_TO_PA_MAP: Dict[Type[ExtensionDtype], pa.DataType] = {
-    pd.Int8Dtype: pa.int8(),
-    pd.UInt8Dtype: pa.uint8(),
-    pd.Int16Dtype: pa.int16(),
-    pd.UInt16Dtype: pa.uint16(),
-    pd.Int32Dtype: pa.int32(),
-    pd.UInt32Dtype: pa.uint32(),
-    pd.Int64Dtype: pa.int64(),
-    pd.UInt64Dtype: pa.uint64(),
-    pd.StringDtype: pa.string(),
-    pd.BooleanDtype: pa.bool_(),
+_PANDAS_EXTENSION_TYPE_TO_PA_MAP: Dict[ExtensionDtype, pa.DataType] = {
+    pd.Int8Dtype(): pa.int8(),
+    pd.UInt8Dtype(): pa.uint8(),
+    pd.Int16Dtype(): pa.int16(),
+    pd.UInt16Dtype(): pa.uint16(),
+    pd.Int32Dtype(): pa.int32(),
+    pd.UInt32Dtype(): pa.uint32(),
+    pd.Int64Dtype(): pa.int64(),
+    pd.UInt64Dtype(): pa.uint64(),
+    pd.StringDtype(): pa.string(),
+    pd.BooleanDtype(): pa.bool_(),
 }
 
 _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
@@ -156,6 +157,8 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     :raises TypeError: if unable to convert
     :return: an instance of pd.DataType
     """
+    if obj is None:
+        raise TypeError("obj can't be None")
     if isinstance(obj, pa.DataType):
         return obj
     if obj is bool:
@@ -168,13 +171,12 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
         return pa.string()
     if isinstance(obj, str):
         return _parse_type(obj)
-    if isinstance(obj, ExtensionDtype) or issubclass(obj, ExtensionDtype):
-        pt = obj if not isinstance(obj, ExtensionDtype) else type(obj)
-        if pt in _PANDAS_EXTENSION_TYPE_TO_PA_MAP:
-            return _PANDAS_EXTENSION_TYPE_TO_PA_MAP[pt]
-    if issubclass(obj, datetime):
+    if isinstance(obj, ExtensionDtype):
+        if obj in _PANDAS_EXTENSION_TYPE_TO_PA_MAP:
+            return _PANDAS_EXTENSION_TYPE_TO_PA_MAP[obj]
+    if type(obj) == type and issubclass(obj, datetime):
         return TRIAD_DEFAULT_TIMESTAMP
-    if issubclass(obj, date):
+    if type(obj) == type and issubclass(obj, date):
         return pa.date32()
     return pa.from_numpy_dtype(np.dtype(obj))
 
