@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.8
+
+* Make ciso8601 a soft dependency on windows
+
 ### 0.5.7
 
 * Fix pandas extension data types bug

@@ -7,7 +7,13 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import six
-from ciso8601 import parse_datetime
+
+try:
+    from ciso8601 import parse_datetime
+
+    _HAS_CISO8601 = True
+except ImportError:
+    _HAS_CISO8601 = False
 from triad.utils.assertion import assert_or_throw
 from triad.utils.string import assert_triad_var_name
 
@@ -361,7 +367,9 @@ def to_bool(obj: Any) -> bool:
 
 def to_datetime(obj: Any) -> datetime.datetime:
     """Convert an object to python datetime. If the object is a
-    string, it will use `ciso8601.parse_datetime` to parse
+    string, then if ciso8601 is installed then it will use
+    ``ciso8601.parse_datetime`` to parse else it will use
+    ``pandas.to_datetime`` to parse, which can be a lot slower.
 
     :param obj: object
     :raises TypeError: if failed to convert
@@ -375,7 +383,11 @@ def to_datetime(obj: Any) -> datetime.datetime:
         return datetime.datetime(obj.year, obj.month, obj.day)
     if isinstance(obj, str):
         try:
-            return parse_datetime(obj)
+            return (
+                parse_datetime(obj)
+                if _HAS_CISO8601
+                else pd.to_datetime(obj).to_pydatetime()
+            )
         except Exception as e:
             raise TypeError(f"{obj} can't convert to datetime", e)
     raise TypeError(f"{type(obj)} {obj} can't convert to datetime")
