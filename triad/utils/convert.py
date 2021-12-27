@@ -12,7 +12,7 @@ try:
     from ciso8601 import parse_datetime
 
     _HAS_CISO8601 = True
-except ImportError:
+except ImportError:  # pragma: no cover
     _HAS_CISO8601 = False
 from triad.utils.assertion import assert_or_throw
 from triad.utils.string import assert_triad_var_name

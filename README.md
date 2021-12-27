@@ -4,7 +4,7 @@
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/triad.svg)](https://pypi.python.org/pypi/triad/)
 [![PyPI license](https://img.shields.io/pypi/l/triad.svg)](https://pypi.python.org/pypi/triad/)
 [![PyPI version](https://badge.fury.io/py/triad.svg)](https://pypi.python.org/pypi/triad/)
-[![Coverage Status](https://coveralls.io/repos/github/fugue-project/triad/badge.svg)](https://coveralls.io/github/fugue-project/triad)
+[![codecov](https://codecov.io/gh/fugue-project/triad/branch/master/graph/badge.svg?token=DGKPXDIG8M)](https://codecov.io/gh/fugue-project/triad)
 [![Doc](https://readthedocs.org/projects/triad/badge)](https://triad.readthedocs.org)
 
 [![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/fugue-project/shared_invite/zt-jl0pcahu-KdlSOgi~fP50TZWmNxdWYQ)
@@ -23,6 +23,7 @@ pip install triad
 ### 0.5.8
 
 * Make ciso8601 a soft dependency on windows
+* Switch to codecov
 
 ### 0.5.7
 
