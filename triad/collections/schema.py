@@ -49,24 +49,30 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
     The column name must follow the rules
     by :func:`~triad.utils.pyarrow.validate_column_name`
 
-    :Examples:
-    >>> Schema("a:int,b:int")
-    >>> Schema("a:int","b:int")
-    >>> Schema(a=int,b=str) # == Schema("a:long,b:str")
-    >>> Schema(dict(a=int,b=str)) # == Schema("a:long,b:str")
-    >>> Schema([(a,int),(b,str)]) # == Schema("a:long,b:str")
-    >>> Schema((a,int),(b,str)) # == Schema("a:long,b:str")
-    >>> Schema("a:[int],b:{x:int,y:{z:[str],w:byte}},c:[{x:str}]")
+    .. admonition:: Examples
 
-    :Notice:
-    * For supported pyarrow.DataTypes see :func:`~triad.utils.pyarrow.is_supported`
-    * If you use python type as data type (e.g. `Schema(a=int,b=str)`) be aware
-        the data type different. (e.g. python `int` type -> pyarrow `long`/`int64` type)
-    * When not readonly, only `append` is allowed, `update` or `remove` are disallowed
-    * When readonly, no modification on the existing schema is allowed
-    * `append`, `update` and `remove` are always allowed when creating a new object
-    * InvalidOperationError will be raised for disallowed operations
-    * At most one of `*args` and `**kwargs` can be set
+        .. code-block:: python
+
+            Schema("a:int,b:int")
+            Schema("a:int","b:int")
+            Schema(a=int,b=str) # == Schema("a:long,b:str")
+            Schema(dict(a=int,b=str)) # == Schema("a:long,b:str")
+            Schema([(a,int),(b,str)]) # == Schema("a:long,b:str")
+            Schema((a,int),(b,str)) # == Schema("a:long,b:str")
+            Schema("a:[int],b:{x:int,y:{z:[str],w:byte}},c:[{x:str}]")
+
+    .. note::
+
+        * For supported pyarrow.DataTypes see :func:`~triad.utils.pyarrow.is_supported`
+        * If you use python type as data type (e.g. `Schema(a=int,b=str)`) be aware
+          the data type different. (e.g. python `int` type -> pyarrow `long`/`int64`
+          type)
+        * When not readonly, only `append` is allowed, `update` or `remove` are
+          disallowed
+        * When readonly, no modification on the existing schema is allowed
+        * `append`, `update` and `remove` are always allowed when creating a new object
+        * InvalidOperationError will be raised for disallowed operations
+        * At most one of `*args` and `**kwargs` can be set
 
     :param args: one or multiple schema like objects, which will be combined in order
     :param kwargs: key value pairs for the schema
@@ -451,25 +457,28 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         :raises SchemaError: if there is any exception
         :return: transformed schema
 
-        :Examples:
-        >>> s=Schema("a:int,b:int,c:str")
-        >>> s.transform("x:str") # x:str
-        >>> # add
-        >>> s.transform("*,x:str") # a:int,b:int,c:str,x:str
-        >>> s.transform("*","x:str") # a:int,b:int,c:str,x:str
-        >>> s.transform("*",x=str) # a:int,b:int,c:str,x:str
-        >>> # subtract
-        >>> s.transform("*-c,a") # b:int
-        >>> s.transform("*-c-a") # b:int
-        >>> s.transform("*~c,a,x") # b:int  # ~ means exlcude if exists
-        >>> s.transform("*~c~a~x") # b:int  # ~ means exlcude if exists
-        >>> # + means overwrite existing and append new
-        >>> s.transform("*+e:str,b:str,d:str") # a:int,b:str,c:str,e:str,d:str
-        >>> # you can have multiple operations
-        >>> s.transform("*+b:str-a") # b:str,c:str
-        >>> # callable
-        >>> s.transform(lambda s:s.fields[0]) # a:int
-        >>> s.transform(lambda s:s.fields[0], lambda s:s.fields[2]) # a:int,c:str
+        .. admonition:: Examples
+
+            .. code-block:: python
+
+                s=Schema("a:int,b:int,c:str")
+                s.transform("x:str") # x:str
+                # add
+                s.transform("*,x:str") # a:int,b:int,c:str,x:str
+                s.transform("*","x:str") # a:int,b:int,c:str,x:str
+                s.transform("*",x=str) # a:int,b:int,c:str,x:str
+                # subtract
+                s.transform("*-c,a") # b:int
+                s.transform("*-c-a") # b:int
+                s.transform("*~c,a,x") # b:int  # ~ means exlcude if exists
+                s.transform("*~c~a~x") # b:int  # ~ means exlcude if exists
+                # + means overwrite existing and append new
+                s.transform("*+e:str,b:str,d:str") # a:int,b:str,c:str,e:str,d:str
+                # you can have multiple operations
+                s.transform("*+b:str-a") # b:str,c:str
+                # callable
+                s.transform(lambda s:s.fields[0]) # a:int
+                s.transform(lambda s:s.fields[0], lambda s:s.fields[2]) # a:int,c:str
         """
         try:
             result = Schema()

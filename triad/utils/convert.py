@@ -7,7 +7,13 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import six
-from ciso8601 import parse_datetime
+
+try:
+    from ciso8601 import parse_datetime
+
+    _HAS_CISO8601 = True
+except ImportError:  # pragma: no cover
+    _HAS_CISO8601 = False
 from triad.utils.assertion import assert_or_throw
 from triad.utils.string import assert_triad_var_name
 
@@ -33,7 +39,7 @@ def get_caller_global_local_vars(
       defaults to -1 which is one level above where this function is invoked
     :return: tuple of `global_vars` and `local_vars`
 
-    :Examples:
+    .. admonition:: Examples
 
         .. code-block:: python
 
@@ -55,7 +61,7 @@ def get_caller_global_local_vars(
     (to where it is invoked) will overwrite the further levels values if there
     is overlap.
 
-    :Examples:
+    .. admonition:: Examples
 
         .. code-block:: python
 
@@ -114,11 +120,11 @@ def str_to_object(
       use the caller's globals(), defaults to None
     :param local_vars: overriding local variables, if None, it will
       use the caller's locals(), defaults to None
-    :return: the
+    :return: the object
 
     :raises ValueError: unable to find a matching object
 
-    :Examples:
+    .. admonition:: Examples
 
         .. code-block:: python
 
@@ -132,11 +138,11 @@ def str_to_object(
             assert RuntimeError == str_to_object("RuntimeError")
             assert _Mock == str_to_object("_Mock")
 
-    :Notice:
+    .. note::
 
-    This function is to dynamically load an object from string expression.
-    If you write that string expression as python code at the same location, it
-    should generate the same result.
+        This function is to dynamically load an object from string expression.
+        If you write that string expression as python code at the same location, it
+        should generate the same result.
     """
     try:
         for p in expr.split("."):
@@ -198,11 +204,11 @@ def str_to_instance(
     global_vars: Optional[Dict[str, Any]] = None,
     local_vars: Optional[Dict[str, Any]] = None,
 ) -> Any:
-    """Use :func:'~triad.utils.convert.str_to_type' to find a matching type
+    """Use :func:`~triad.utils.convert.str_to_type` to find a matching type
     and instantiate
 
-    :param s: see :func:'~triad.utils.convert.str_to_type'
-    :param expected_base_type: see :func:'~triad.utils.convert.str_to_type'
+    :param s: see :func:`~triad.utils.convert.str_to_type`
+    :param expected_base_type: see :func:`~triad.utils.convert.str_to_type`
     :param args: args to instantiate the type
     :param kwargs: kwargs to instantiate the type
     :param global_vars: overriding global variables, if None, it will
@@ -224,12 +230,12 @@ def to_type(
     local_vars: Optional[Dict[str, Any]] = None,
 ) -> type:
     """Convert an object `s` to `type`
-    * if `s` is `str`: see :func:'~triad.utils.convert.str_to_type'
+    * if `s` is `str`: see :func:`~triad.utils.convert.str_to_type`
     * if `s` is `type`: check `expected_base_type` and return itself
     * else: check `expected_base_type` and return itself
 
-    :param s: see :func:'~triad.utils.convert.str_to_type'
-    :param expected_base_type: see :func:'~triad.utils.convert.str_to_type'
+    :param s: see :func:`~triad.utils.convert.str_to_type`
+    :param expected_base_type: see :func:`~triad.utils.convert.str_to_type`
     :param global_vars: overriding global variables, if None, it will
       use the caller's globals(), defaults to None
     :param local_vars: overriding local variables, if None, it will
@@ -260,11 +266,11 @@ def to_instance(
     global_vars: Optional[Dict[str, Any]] = None,
     local_vars: Optional[Dict[str, Any]] = None,
 ) -> Any:
-    """If s is str or type, then use :func:'~triad.utils.convert.to_type' to find
+    """If s is str or type, then use :func:`~triad.utils.convert.to_type` to find
     matching type and instantiate. Otherwise return s if it matches constraints
 
-    :param s: see :func:'~triad.utils.convert.to_type'
-    :param expected_base_type: see :func:'~triad.utils.convert.to_type'
+    :param s: see :func:`~triad.utils.convert.to_type`
+    :param expected_base_type: see :func:`~triad.utils.convert.to_type`
     :param args: args to instantiate the type
     :param kwargs: kwargs to instantiate the type
     :param global_vars: overriding global variables, if None, it will
@@ -361,7 +367,9 @@ def to_bool(obj: Any) -> bool:
 
 def to_datetime(obj: Any) -> datetime.datetime:
     """Convert an object to python datetime. If the object is a
-    string, it will use `ciso8601.parse_datetime` to parse
+    string, then if ciso8601 is installed then it will use
+    ``ciso8601.parse_datetime`` to parse else it will use
+    ``pandas.to_datetime`` to parse, which can be a lot slower.
 
     :param obj: object
     :raises TypeError: if failed to convert
@@ -375,7 +383,11 @@ def to_datetime(obj: Any) -> datetime.datetime:
         return datetime.datetime(obj.year, obj.month, obj.day)
     if isinstance(obj, str):
         try:
-            return parse_datetime(obj)
+            return (
+                parse_datetime(obj)
+                if _HAS_CISO8601
+                else pd.to_datetime(obj).to_pydatetime()
+            )
         except Exception as e:
             raise TypeError(f"{obj} can't convert to datetime", e)
     raise TypeError(f"{type(obj)} {obj} can't convert to datetime")

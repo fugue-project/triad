@@ -11,7 +11,9 @@ pytest
 pytest-cov
 pytest-mock
 sphinx
+sphinx-autodoc-typehints
 sphinx-rtd-theme
+furo
 
 cloudpickle
 

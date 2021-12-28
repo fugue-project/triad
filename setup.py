@@ -17,7 +17,13 @@ setup(
     author_email="goodwanghan@gmail.com",
     keywords="fugue util utils utility utilities",
     url="http://github.com/fugue-project/triad",
-    install_requires=["pandas", "six", "ciso8601", "pyarrow", "fs"],
+    install_requires=[
+        "pandas",
+        "six",
+        "ciso8601; platform_system!='Windows'",
+        "pyarrow",
+        "fs",
+    ],
     extras_require={},
     classifiers=[
         # "3 - Alpha", "4 - Beta" or "5 - Production/Stable"
