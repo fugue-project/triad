@@ -10,7 +10,7 @@ def assert_or_throw(bool_exp: bool, exception: Any = None) -> None:
         will be stringfied and instantiate an AssertionError, or a function
         that can generate the supported data types
 
-    :Examples:
+    .. admonition:: Examples
 
         .. code-block:: python
 

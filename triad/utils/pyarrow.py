@@ -121,9 +121,12 @@ def expression_to_schema(expr: str) -> pa.Schema:
     Whitespaces will be removed. The format of the expression is json
     without any double quotes
 
-    :Examples:
-    >>> expression_to_schema("a:int,b:int")
-    >>> expression_to_schema("a:[int],b:{x:int,y:{z:[str],w:byte}}")
+    .. admonition:: Examples
+
+        .. code-block:: python
+
+            expression_to_schema("a:int,b:int")
+            expression_to_schema("a:[int],b:{x:int,y:{z:[str],w:byte}}")
 
     :param expr: schema expression
     :raises SyntaxError: if there is syntax issue or unknown types
@@ -141,7 +144,7 @@ def expression_to_schema(expr: str) -> pa.Schema:
 
 def schema_to_expression(schema: pa.Schema) -> pa.Schema:
     """Convert pyarrow.Schema to Triad schema expression
-    see :func:~triad.utils.pyarrow.expression_to_schema""
+    see :func:`~triad.utils.pyarrow.expression_to_schema`
 
     :param schema: pyarrow schema
     :raises NotImplementedError: if there some type is not supported by Triad

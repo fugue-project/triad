@@ -21,11 +21,13 @@ class FileSystem(MountFS):
     To customize different file systems, you should override `create_fs`
     to provide your own configured file systems.
 
-    :Examples:
+    .. admonition:: Examples
 
-    >>> fs = FileSystem()
-    >>> fs.writetext("mem://from/a.txt", "hello")
-    >>> fs.copy("mem://from/a.txt", "mem://to/a.txt")
+        .. code-block:: python
+
+            fs = FileSystem()
+            fs.writetext("mem://from/a.txt", "hello")
+            fs.copy("mem://from/a.txt", "mem://to/a.txt")
 
     .. note::
 

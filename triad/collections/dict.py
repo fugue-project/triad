@@ -25,9 +25,11 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
 
     @property
     def readonly(self) -> bool:
+        """Whether this dict is readonly"""
         return self._readonly
 
     def set_readonly(self) -> None:
+        """Make this dict readonly"""
         self._readonly = True
 
     def index_of_key(self, key: Any) -> int:
@@ -87,7 +89,7 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
     def equals(self, other: Any, with_order: bool):
         """Compare with another object
 
-        :param other: for possible types, see :func:"~triad.utils.iter.to_kv_iterable"
+        :param other: for possible types, see :func:`~triad.utils.iter.to_kv_iterable`
         :param with_order: whether to compare order
         :return: whether they equal
         """
@@ -160,10 +162,10 @@ class IndexedOrderedDict(OrderedDict, Dict[KT, VT]):
 
 
 class ParamDict(IndexedOrderedDict[str, Any]):
-    """Parameter dictionary, a subclass of `IndexedOrderedDict`, keys must be string
+    """Parameter dictionary, a subclass of ``IndexedOrderedDict``, keys must be string
 
-    :param data: for possible types, see :func:"~triad.utils.iter.to_kv_iterable"
-    :param deep: whether to deep copy `data`
+    :param data: for possible types, see :func:`~triad.utils.iter.to_kv_iterable`
+    :param deep: whether to deep copy ``data``
     """
 
     OVERWRITE = 0
@@ -186,15 +188,16 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         return super().__getitem__(key)  # type: ignore
 
     def get(self, key: Union[int, str], default: Any) -> Any:  # type: ignore
-        """Get value by `key`, and the value must be a subtype of the type of `default`
-        (which can't be None). If the `key` is not found, return `default`.
+        """Get value by ``key``, and the value must be a subtype of the type of
+        ``default``(which can't be None). If the ``key`` is not found,
+        return ``default``.
 
         :param key: the key to search
         :raises NoneArgumentError: if default is None
-        :raises TypeError: if the value can't be converted to the type of `default`
+        :raises TypeError: if the value can't be converted to the type of ``default``
 
-        :return: the value by `key`, and the value must be a subtype of the type of
-        `default`. If `key` is not found, return `default`
+        :return: the value by ``key``, and the value must be a subtype of the type of
+            ``default``. If ``key`` is not found, return `default`
         """
         assert_arg_not_none(default, "default")
         if (isinstance(key, str) and key in self) or isinstance(key, int):
@@ -202,30 +205,30 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         return default
 
     def get_or_none(self, key: Union[int, str], expected_type: type) -> Any:
-        """Get value by `key`, and the value must be a subtype of `expected_type`
+        """Get value by `key`, and the value must be a subtype of ``expected_type``
 
         :param key: the key to search
         :param expected_type: expected return value type
 
-        :raises TypeError: if the value can't be converted to`expected_type`
+        :raises TypeError: if the value can't be converted to ``expected_type``
 
-        :return: if `key` is not found, None. Otherwise if the value can be converted
-            to `expected_type`, return the converted value, otherwise raise exception
+        :return: if ``key`` is not found, None. Otherwise if the value can be converted
+            to ``expected_type``, return the converted value, otherwise raise exception
         """
         return self._get_or(key, expected_type, throw=False)
 
     def get_or_throw(self, key: Union[int, str], expected_type: type) -> Any:
-        """Get value by `key`, and the value must be a subtype of `expected_type`.
-        If `key` is not found or value can't be converted to `expected_type`, raise
+        """Get value by ``key``, and the value must be a subtype of ``expected_type``.
+        If ``key`` is not found or value can't be converted to ``expected_type``, raise
         exception
 
         :param key: the key to search
         :param expected_type: expected return value type
 
-        :raises KeyError: if `key` is not found
-        :raises TypeError: if the value can't be converted to `expected_type`
+        :raises KeyError: if ``key`` is not found
+        :raises TypeError: if the value can't be converted to ``expected_type``
 
-        :return: only when `key` is found and can be converted to `expected_type`,
+        :return: only when ``key`` is found and can be converted to ``expected_type``,
             return the converted value
         """
         return self._get_or(key, expected_type, throw=True)
@@ -245,14 +248,14 @@ class ParamDict(IndexedOrderedDict[str, Any]):
         self, other: Any, on_dup: int = 0, deep: bool = True
     ) -> "ParamDict":
         """Update dictionary with another object (for possible types,
-        see :func:"~triad.utils.iter.to_kv_iterable")
+        see :func:`~triad.utils.iter.to_kv_iterable`)
 
-        :param other: for possible types, see :func:"~triad.utils.iter.to_kv_iterable"
-        :param on_dup: one of `ParamDict.OVERWRITE`, `ParamDict.THROW`
-            and `ParamDict.IGNORE`
+        :param other: for possible types, see :func:`~triad.utils.iter.to_kv_iterable`
+        :param on_dup: one of ``ParamDict.OVERWRITE``, ``ParamDict.THROW``
+            and ``ParamDict.IGNORE``
 
-        :raises KeyError: if using `ParamDict.THROW` and other contains existing keys
-        :raises ValueError: if `on_dup` is invalid
+        :raises KeyError: if using ``ParamDict.THROW`` and other contains existing keys
+        :raises ValueError: if ``on_dup`` is invalid
         :return: itself
         """
         self._pre_update("update", True)

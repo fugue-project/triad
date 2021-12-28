@@ -24,6 +24,7 @@ pip install triad
 
 * Make ciso8601 a soft dependency on windows
 * Switch to codecov
+* Improve documents, change to Furo theme
 
 ### 0.5.7
 

@@ -9,12 +9,15 @@ def to_uuid(*args: Any) -> str:
     If an object contains `__uuid__` method, it will call that method to get the uuid
     for that object.
 
-    :Examples:
-    >>> to_uuid([1,2,3])
-    >>> to_uuid(1,2,3)
-    >>> to_uuid(dict(a=1,b="z"))
+    .. admonition:: Examples
 
-    :param *args: arbitrary input
+        .. code-block:: python
+
+            to_uuid([1,2,3])
+            to_uuid(1,2,3)
+            to_uuid(dict(a=1,b="z"))
+
+    :param args: arbitrary input
 
     :return: uuid string
     """
