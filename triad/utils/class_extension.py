@@ -85,7 +85,11 @@ def extensible_class(class_type: Type) -> Type:
 
             @extensible_class
             class A:
-                pass
+
+                # It's recommended to implement __getattr__ so that
+                # PyLint will not complain about the dynamically added methods
+                def __getattr__(self, name):
+                    raise NotImplementedError
 
             @extension_method
             def method(obj:A):
@@ -121,7 +125,11 @@ def extension_method(
 
             @extensible_class
             class A:
-                pass
+
+                # It's recommended to implement __getattr__ so that
+                # PyLint will not complain about the dynamically added methods
+                def __getattr__(self, name):
+                    raise NotImplementedError
 
             # The simplest way to use this decorator, the first argument of
             # the method must be annotated, and the annotated type is the
