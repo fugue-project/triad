@@ -96,6 +96,11 @@ def extensible_class(class_type: Type) -> Type:
                 return 1
 
             assert 1 == A().method()
+
+    .. note::
+
+        If the method name is already in the original class, a ValueError will be
+        thrown. You can't modify any built-in attribute.
     """
     _CLASS_EXTENSIONS.register_type(class_type)
     return class_type
@@ -148,6 +153,11 @@ def extension_method(
                 return 2 + b
 
             assert 5 == A().m3(3)
+
+    .. note::
+
+        If the method name is already in the original class, a ValueError will be
+        thrown. You can't modify any built-in attribute.
     """
     if func is not None:  # @extension_method
         _CLASS_EXTENSIONS.add_method(
