@@ -98,6 +98,10 @@ def test_class_extension():
     assert 2 == A().em()
     assert 2 == A().em1()
     assert 7 == A().em2(4)
+    # call second time
+    assert 2 == A().em()
+    assert 2 == A().em1()
+    assert 7 == A().em2(4)
 
     assert "aaa" == A.a.__doc__
     assert "aaaem" == A.em.__doc__
