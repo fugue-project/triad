@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.5.9
+
+* Create `extensible_class` and `extension_method` decos
+
 ### 0.5.8
 
 * Make ciso8601 a soft dependency on windows
