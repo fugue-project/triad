@@ -17,9 +17,6 @@ def _get_first_arg_type(func: Callable) -> Any:
             anno != inspect.Parameter.empty,
             ValueError(f"the first argument must be annotated in {func}"),
         )
-        assert_or_throw(
-            type(anno) == type(int), ValueError(f"{anno} is not a data type")
-        )
         return anno
     raise ValueError(f"{func} does not have any input parameter")
 

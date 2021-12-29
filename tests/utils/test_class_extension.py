@@ -5,10 +5,22 @@ from triad.utils.class_extension import (
 )
 from pytest import raises
 from typing import Any, Optional
+from abc import abstractmethod, ABC
 
 
 class AA:
     pass
+
+
+class AB(ABC):
+    @abstractmethod
+    def t(self):
+        pass
+
+
+class AC(AB):
+    def t(self):
+        return 1
 
 
 def test_get_first_arg_type():
@@ -45,14 +57,7 @@ def test_get_first_arg_type():
     def f6(x: Any):
         pass
 
-    # first arg must be a valid type
-    raises(ValueError, lambda: _get_first_arg_type(f6))
-
-    def f7(x: Optional[AA]):
-        pass
-
-    # first arg must be a valid type
-    raises(ValueError, lambda: _get_first_arg_type(f7))
+    assert _get_first_arg_type(f6) == Any
 
     def f8(x: int):
         pass
@@ -69,11 +74,21 @@ def test_get_first_arg_type():
 
     assert _get_first_arg_type(f10) == AA
 
+    def f11(x: "AB"):
+        pass
+
+    assert _get_first_arg_type(f11) == AB
+
+    def f12(x: "AC"):
+        pass
+
+    assert _get_first_arg_type(f12) == AC
+
 
 def test_class_extension():
     @extensible_class
-    class A:
-        def a(self):
+    class A(AB):
+        def t(self):
             """aaa"""
             return 1
 
@@ -83,17 +98,17 @@ def test_class_extension():
     @extension_method(class_type=A)
     def em(a):
         """aaaem"""
-        return a.a() * 2
+        return a.t() * 2
 
     @extension_method(name="em1")
     def xx(a: A):
         """aaaem"""
-        return a.a() * 2
+        return a.t() * 2
 
     @extension_method
     def em2(a: A, b):
         """aaaem2"""
-        return a.a() * 3 + b
+        return a.t() * 3 + b
 
     assert 2 == A().em()
     assert 2 == A().em1()
@@ -103,7 +118,7 @@ def test_class_extension():
     assert 2 == A().em1()
     assert 7 == A().em2(4)
 
-    assert "aaa" == A.a.__doc__
+    assert "aaa" == A.t.__doc__
     assert "aaaem" == A.em.__doc__
     assert "aaaem2" == A.em2.__doc__
 
@@ -112,16 +127,16 @@ def test_class_extension():
         @extension_method
         def a(a):
             """aaaem"""
-            return a.a() * 2
+            return a.t() * 2
 
     with raises(ValueError):  # conflicts with registered
 
         @extension_method(name="em")
         def xz(a: A):
             """aaaem"""
-            return a.a() * 2
+            return a.t() * 2
 
     @extension_method(on_dup="ignore", name="em")
     def xy(a: A):
         """aaaem"""
-        return a.a() * 2
+        return a.t() * 2

@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.0
+
+* Fix extensible class bugs
+
 ### 0.5.9
 
 * Create `extensible_class` and `extension_method` decos
