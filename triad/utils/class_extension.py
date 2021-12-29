@@ -17,9 +17,6 @@ def _get_first_arg_type(func: Callable) -> Any:
             anno != inspect.Parameter.empty,
             ValueError(f"the first argument must be annotated in {func}"),
         )
-        assert_or_throw(
-            type(anno) == type(int), ValueError(f"{anno} is not a data type")
-        )
         return anno
     raise ValueError(f"{func} does not have any input parameter")
 
@@ -85,13 +82,22 @@ def extensible_class(class_type: Type) -> Type:
 
             @extensible_class
             class A:
-                pass
+
+                # It's recommended to implement __getattr__ so that
+                # PyLint will not complain about the dynamically added methods
+                def __getattr__(self, name):
+                    raise NotImplementedError
 
             @extension_method
             def method(obj:A):
                 return 1
 
             assert 1 == A().method()
+
+    .. note::
+
+        If the method name is already in the original class, a ValueError will be
+        thrown. You can't modify any built-in attribute.
     """
     _CLASS_EXTENSIONS.register_type(class_type)
     return class_type
@@ -121,7 +127,11 @@ def extension_method(
 
             @extensible_class
             class A:
-                pass
+
+                # It's recommended to implement __getattr__ so that
+                # PyLint will not complain about the dynamically added methods
+                def __getattr__(self, name):
+                    raise NotImplementedError
 
             # The simplest way to use this decorator, the first argument of
             # the method must be annotated, and the annotated type is the
@@ -140,6 +150,11 @@ def extension_method(
                 return 2 + b
 
             assert 5 == A().m3(3)
+
+    .. note::
+
+        If the method name is already in the original class, a ValueError will be
+        thrown. You can't modify any built-in attribute.
     """
     if func is not None:  # @extension_method
         _CLASS_EXTENSIONS.add_method(
