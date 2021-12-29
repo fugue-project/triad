@@ -10,6 +10,14 @@ triad.utils.assertion
    :undoc-members:
    :show-inheritance:
 
+triad.utils.class\_extension
+----------------------------
+
+.. automodule:: triad.utils.class_extension
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 triad.utils.convert
 -------------------
 
