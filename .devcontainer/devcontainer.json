@@ -1,14 +1,6 @@
 {
-	"name": "Python 3",
-	"build": {
-		"dockerfile": "Dockerfile",
-		"context": "..",
-		"args": {
-			"VARIANT": "3.7",
-			"INSTALL_NODE": "false",
-			"NODE_VERSION": "lts/*"
-		}
-	},
+	"name": "Fugue Development Environment",
+	"image": "fugueproject/devenv:0.4.4",
 	"settings": {
 		"terminal.integrated.shell.linux": "/bin/bash",
 		"python.pythonPath": "/usr/local/bin/python",
@@ -30,7 +22,8 @@
 	"forwardPorts": [
 		8888
 	],
-	"postCreateCommand": [
-		"make devenv"
+	"postCreateCommand": "make devenv",
+	"mounts": [
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
 	]
 }

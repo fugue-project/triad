@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.1
+
+* Support Python 3.10
+
 ### 0.6.0
 
 * Fix extensible class bugs
