@@ -20,3 +20,5 @@ cloudpickle
 # publish to pypi
 wheel
 twine
+
+types-six

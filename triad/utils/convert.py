@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import six
+import six  # type: ignore
 
 try:
     from ciso8601 import parse_datetime
