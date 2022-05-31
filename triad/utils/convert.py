@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import six  # type: ignore
 
-try:
+try:  # pragma: no cover
     from ciso8601 import parse_datetime
 
     _HAS_CISO8601 = True

@@ -20,11 +20,10 @@ setup(
     install_requires=[
         "pandas",
         "six",
-        "ciso8601; platform_system!='Windows'",
         "pyarrow",
         "fs",
     ],
-    extras_require={},
+    extras_require={"ciso8601": ["ciso8601"]},
     classifiers=[
         # "3 - Alpha", "4 - Beta" or "5 - Production/Stable"
         "Development Status :: 3 - Alpha",
