@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.2
+
+* Make ciso8601 totally optional
+
 ### 0.6.1
 
 * Support Python 3.10
