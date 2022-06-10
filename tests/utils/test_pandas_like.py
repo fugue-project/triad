@@ -285,6 +285,15 @@ def test_safe_group_by_apply_special_types():
     ).assert_eq(res)
 
 
+def test_is_compatile_index():
+    df = DF([["a", 1], [None, 2]], "a:str,b:int", True)
+    assert PD_UTILS.is_compatile_index(df.native)
+    tdf = df.native.sort_values("a")
+    assert PD_UTILS.is_compatile_index(tdf)
+    tdf = tdf.set_index("a")
+    assert not PD_UTILS.is_compatile_index(tdf)
+
+
 class DF(object):  # This is a mock
     def __init__(self, data, schema, enforce=False):
         s = expression_to_schema(schema)
