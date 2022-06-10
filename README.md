@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.3
+
+* Fix pandas warning on pd.Int64Index
+
 ### 0.6.2
 
 * Make ciso8601 totally optional

@@ -244,7 +244,9 @@ class PandasLikeUtils(Generic[T]):
         :param df: pandas like dataframe
         :return: if it is compatible
         """
-        return isinstance(df.index, (pd.RangeIndex, pd.Int64Index, pd.UInt64Index))
+        return (
+            isinstance(df.index, pd.RangeIndex) or df.index.inferred_type == "integer"
+        )
 
     def ensure_compatible(self, df: T) -> None:
         """Check whether the datafame is compatible with the operations inside
