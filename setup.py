@@ -22,6 +22,7 @@ setup(
         "six",
         "pyarrow",
         "fs",
+        "importlib-metadata; python_version < '3.8'",
     ],
     extras_require={"ciso8601": ["ciso8601"]},
     classifiers=[
