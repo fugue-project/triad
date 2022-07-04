@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.4
+
+* Add function dispatcher
+
 ### 0.6.3
 
 * Fix pandas warning on pd.Int64Index
