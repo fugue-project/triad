@@ -26,6 +26,14 @@ triad.utils.convert
    :undoc-members:
    :show-inheritance:
 
+triad.utils.dispatcher
+----------------------
+
+.. automodule:: triad.utils.dispatcher
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 triad.utils.hash
 ----------------
 
