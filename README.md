@@ -20,6 +20,11 @@ pip install triad
 
 ## Release History
 
+### 0.6.5
+
+* Add SerializableRLock
+* Add decorator run_once
+
 ### 0.6.4
 
 * Add function dispatcher
