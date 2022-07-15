@@ -1,7 +1,7 @@
 import itertools
 import logging
 from functools import update_wrapper
-from typing import Any, Callable, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 try:
     from importlib.metadata import entry_points  # type:ignore
@@ -233,6 +233,18 @@ class ConditionalDispatcher:
         self._preloaded = False
         update_wrapper(self, default_func)
 
+    def __getstate__(self) -> Dict[str, Any]:
+        return {
+            k: v
+            for k, v in self.__dict__.items()
+            if k in ["_func", "_funcs", "_entry_point"]
+        }
+
+    def __setstate__(self, data: Dict[str, Any]) -> None:
+        for k, v in data.items():
+            setattr(self, k, v)
+        self._preloaded = False
+
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         """The abstract method to mimic the function call"""
         raise NotImplementedError  # pragma: no cover
@@ -272,11 +284,16 @@ class ConditionalDispatcher:
         .. note::
 
             The order to be matched is determined by both the priority
-            and the order of registration. **Children with higher priority values
-            will be matched earlier, and later registrations will
-            be matched earlier**. So if you want to register a function
-            but want to ignore when there is a conflict, then set
-            ``priority`` to a lower number than 1.0, and vice versa.
+            and the order of registration.
+
+            * The default priority is 1.0
+            * Children with higher priority values will be matched earlier
+            * When ``priority>0`` then later registrations will be matched earlier
+            * When ``priority<=0`` then earlier registrations will be matched earlier
+
+            So if you want to 'overwrite' the existed matches, set priority to be
+            greater than 1.0. If you want to 'ignore' the current if there are other
+            matches, set priority to 0.0.
 
         :param func: a child function to be used when matching
         :param matcher: a function determines whether it is a match
@@ -285,7 +302,7 @@ class ConditionalDispatcher:
             **higher value means higher priority**, defaults to 1.0
         """
         n = len(self._funcs)
-        self._funcs.append((-priority, -n, matcher, func))
+        self._funcs.append((-priority, n if priority <= 0.0 else -n, matcher, func))
         self._funcs.sort()
 
     def candidate(
@@ -298,11 +315,16 @@ class ConditionalDispatcher:
         .. note::
 
             The order to be matched is determined by both the priority
-            and the order of registration. **Children with higher priority values
-            will be matched earlier, and later registrations will
-            be matched earlier**. So if you want to register a function
-            but want to ignore when there is a conflict, then set
-            ``priority`` to a lower number than 1.0, and vice versa.
+            and the order of registration.
+
+            * The default priority is 1.0
+            * Children with higher priority values will be matched earlier
+            * When ``priority>0`` then later registrations will be matched earlier
+            * When ``priority<=0`` then earlier registrations will be matched earlier
+
+            So if you want to 'overwrite' the existed matches, set priority to be
+            greater than 1.0. If you want to 'ignore' the current if there are other
+            matches, set priority to 0.0.
 
         .. seealso::
 
@@ -326,7 +348,9 @@ class ConditionalDispatcher:
             logger = logging.getLogger(self._func.__name__)
             for plugin in _entry_points().get(self._entry_point, []):
                 try:
-                    plugin.load()
+                    res = plugin.load()
+                    if callable(res):
+                        res()
                     logger.debug("loaded %s", plugin)
                 except Exception as e:  # pragma: no cover
                     logger.debug("failed to load %s: %s", plugin, e)

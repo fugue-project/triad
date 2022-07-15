@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.6
+
+* Improve conditional_dispatcher
+
 ### 0.6.5
 
 * Add SerializableRLock

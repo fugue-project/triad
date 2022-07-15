@@ -7,6 +7,7 @@ from triad.utils.dispatcher import (
     run_at_def,
 )
 from pkg_resources import EntryPoint, get_distribution
+import cloudpickle
 
 
 def test_run_at_def():
@@ -62,7 +63,7 @@ def test_conditional_dispatcher():
         raise Exception
 
     f1.register(
-        matcher=lambda a, *args, **kwargs: isinstance(a, str),
+        matcher=lambda a, b, **kwargs: isinstance(a, str) and isinstance(b, int),
         func=lambda a, b: len(a) + b,
     )
     f1.register(
@@ -70,16 +71,17 @@ def test_conditional_dispatcher():
         func=lambda a, b: len(a) + b,
     )
     f1.register(
-        matcher=lambda a, *args, **kwargs: isinstance(a, str),
+        matcher=lambda a, *args, **kwargs: isinstance(a, str)
+        and isinstance(args[0], int),
         func=lambda a, b: len(a) + b + 5,
     )
 
-    @f1.candidate(lambda a, b: isinstance(a, int))
+    @f1.candidate(lambda a, b: isinstance(a, int) and isinstance(b, int))
     def f3(a: int, b: int):
         return a + b
 
     f1.register(
-        matcher=lambda a, *args, **kwargs: isinstance(a, str),
+        matcher=lambda a, b, **kwargs: isinstance(a, str) and isinstance(b, int),
         func=lambda a, b: len(a) + b - 1,
         priority=2,
     )
@@ -89,7 +91,8 @@ def test_conditional_dispatcher():
     assert 6 == f1("abcd", 3)
 
     f1.register(
-        matcher=lambda a, *args, **kwargs: isinstance(a, str),
+        matcher=lambda a, *args, **kwargs: isinstance(a, str)
+        and isinstance(args[0], int),
         func=lambda a, b: len(a) + b - 2,
         priority=2,
     )
@@ -102,6 +105,39 @@ def test_conditional_dispatcher():
 
     with raises(NotImplementedError):
         f2(True, True)
+
+    @f1.candidate(lambda a, b: isinstance(a, int) and isinstance(b, int))
+    def f4(a: int, b: int):
+        return a**b
+
+    ff1 = cloudpickle.loads(cloudpickle.dumps(f1))
+    assert 8 == ff1(2, 3)
+
+    @f1.candidate(lambda a, b: isinstance(a, int) and isinstance(b, int))
+    def f5(a: int, b: int):
+        return a * b + 1
+
+    assert 7 == f1(2, 3)
+
+    # ignore case
+    @f1.candidate(lambda a, b: isinstance(a, str) and isinstance(b, str), priority=0)
+    def f6(a, b):
+        return 6
+
+    @f1.candidate(lambda a, b: isinstance(a, str) and isinstance(b, str), priority=0)
+    def f7(a, b):  # this should take no effect
+        return 7
+
+    assert 6 == f1("xx", "yy")
+
+    f1.register(  # this should overwrite
+        matcher=lambda a, *args, **kwargs: isinstance(a, str)
+        and isinstance(args[0], int),
+        func=lambda a, b: len(a) + b - 10,
+        priority=2.0,
+    )
+
+    assert -3 == f1("abcd", 3)
 
 
 def test_conditional_broadcaster():
@@ -149,9 +185,13 @@ def test_preload(mocker):
                     get_distribution("triad"),
                 ),
                 EntryPoint.parse(
+                    "dummy=tests.utils.dispatcher_examples.examples:register2",
+                    get_distribution("triad"),
+                ),
+                EntryPoint.parse(
                     "dummy2=tests.utils.dispatcher_examples.invalid",
                     get_distribution("triad"),
-                )
+                ),
             ]
         },
     )
@@ -161,3 +201,4 @@ def test_preload(mocker):
     assert 1 == dtest(1)
     assert 2 == dtest("ab")
     assert 2 == dtest(dict(a=1, b=2))
+    assert 100 == dtest(None)
