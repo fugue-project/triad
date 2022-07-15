@@ -16,6 +16,14 @@ def dtest3(a: dict) -> int:
     return len(a)
 
 
+def dtest4(a) -> int:
+    return 100
+
+
 @run_at_def
 def register():
     dtest.register(dtest3, lambda x: isinstance(x, dict))
+
+
+def register2():
+    dtest.register(dtest4, lambda x: x is None)
