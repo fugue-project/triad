@@ -411,7 +411,7 @@ def _parse_types(v: Any):
     elif isinstance(v, List):
         assert_or_throw(1 == len(v), SyntaxError(f"{v} is not a valid list type"))
         return pa.list_(_parse_types(v[0]))
-    else:
+    else:  # pragma: no cover
         raise SyntaxError("{v} is not a valid type")
 
 
