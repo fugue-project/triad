@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.7
+
+* Parse nested fields in `expression_to_schema` util
+
 ### 0.6.6
 
 * Improve conditional_dispatcher
