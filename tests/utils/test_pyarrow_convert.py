@@ -201,6 +201,7 @@ def test_convert_to_list_deep():
     _test_convert_nested(
         '[{"b":{"c":["1"]}}]', "[{a:int,b:{c:[int]}}]", [dict(a=None, b=dict(c=[1]))]
     )
+    _test_convert_nested([d], "[[int]]", [[1]])
     _assert_raise(["x"], "[int]", True)
     _assert_raise(1, "[int]", True)
 
