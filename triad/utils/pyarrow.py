@@ -403,22 +403,23 @@ def _type_to_expression(dt: pa.DataType) -> str:
     raise NotImplementedError(f"{dt} is not supported")
 
 
+def _parse_types(v: Any):
+    if isinstance(v, str):
+        return _parse_type(v)
+    elif isinstance(v, Dict):
+        return pa.struct(_construct_struct(v))
+    elif isinstance(v, List):
+        assert_or_throw(1 == len(v), SyntaxError(f"{v} is not a valid list type"))
+        return pa.list_(_parse_types(v[0]))
+    else:  # pragma: no cover
+        raise SyntaxError("{v} is not a valid type")
+
+
 def _construct_struct(obj: Dict[str, Any]) -> Iterable[pa.Field]:
     for k, v in obj.items():
         if not validate_column_name(k):
             raise SyntaxError(f"{k} is not a valid field name")
-        if isinstance(v, str):
-            yield pa.field(k, _parse_type(v))
-        elif isinstance(v, Dict):
-            yield pa.field(k, pa.struct(_construct_struct(v)))
-        elif isinstance(v, List):
-            assert_or_throw(1 == len(v), SyntaxError(f"{v} is not a valid list type"))
-            if isinstance(v[0], str):
-                yield pa.field(k, pa.list_(_parse_type(v[0])))
-            else:
-                yield pa.field(k, pa.list_(pa.struct(_construct_struct(v[0]))))
-        else:  # pragma: no cover
-            raise SyntaxError(f"{k} {v} is not a valid field")
+        yield pa.field(k, _parse_types(v))
 
 
 def _parse_type(expr: str) -> pa.DataType:
