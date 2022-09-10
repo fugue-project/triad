@@ -591,6 +591,18 @@ def _to_pylist(
         return obj
 
 
+def _to_pymap(
+    key_f: Callable, value_f: Callable, obj: Any, str_as_json: bool = True
+) -> Any:
+    if obj is None:
+        return None
+    if isinstance(obj, str) and str_as_json:
+        obj = json.loads(obj)
+    if not isinstance(obj, Dict):
+        raise TypeError(f"{obj} is not dict")
+    return {key_f(k): value_f(v) for k, v in obj.items()}
+
+
 def _no_op_convert(obj: Any) -> Any:  # pragma: no cover
     return obj
 
@@ -637,29 +649,38 @@ class _TypeConverter(object):
             return [self._to_pytype[i](data[i]) for i in range(len(data))]
 
     def _build_field_converter(self, f: pa.Field) -> Callable[[Any], Any]:
-        if f.type in _TypeConverter._CONVERTERS:
-            return _TypeConverter._CONVERTERS[f.type]
-        elif pa.types.is_timestamp(f.type):
+        try:
+            return self._build_type_converter(f.type)
+        except Exception:  # pragma: no cover
+            raise NotImplementedError(f"{f} type is not supported")
+
+    def _build_type_converter(self, tp: pa.DataType) -> Callable[[Any], Any]:
+        if tp in _TypeConverter._CONVERTERS:
+            return _TypeConverter._CONVERTERS[tp]
+        elif pa.types.is_timestamp(tp):
             return _to_pydatetime
-        elif pa.types.is_decimal(f.type):
+        elif pa.types.is_decimal(tp):
             raise NotImplementedError("decimal conversion is not supported")
-        elif pa.types.is_struct(f.type):
+        elif pa.types.is_struct(tp):
             if not self._deep:
                 return lambda x: _assert_pytype(dict, x)
             else:
-                converters = {
-                    x.name: self._build_field_converter(x) for x in list(f.type)
-                }
+                converters = {x.name: self._build_field_converter(x) for x in list(tp)}
                 return lambda x: _to_pydict(converters, x, self._str_as_json)
-        elif pa.types.is_list(f.type):
+        elif pa.types.is_list(tp):
             if not self._deep:
                 return lambda x: _assert_pytype(list, x)
             else:
-                converter = self._build_field_converter(
-                    pa.field("e", f.type.value_type)
-                )
+                converter = self._build_type_converter(tp.value_type)
                 return lambda x: _to_pylist(converter, x, self._copy, self._str_as_json)
-        raise NotImplementedError(f"{f} type is not supported")  # pragma: no cover
+        elif pa.types.is_map(tp):
+            if not self._deep:
+                return lambda x: _assert_pytype(dict, x)
+            else:
+                k = self._build_type_converter(tp.key_type)
+                v = self._build_type_converter(tp.item_type)
+                return lambda x: _to_pymap(k, v, x, self._str_as_json)
+        raise NotImplementedError  # pragma: no cover
 
 
 def _none_eq(o1: Any, o2: Any) -> bool:

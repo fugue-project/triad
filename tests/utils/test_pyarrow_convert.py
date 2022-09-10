@@ -112,8 +112,8 @@ def test_convert_to_binary():
     pdt = pd.Timestamp("2020-01-01T02:03:04")
 
     _test_convert(None, "bytes", None)
-    _test_convert(b'\x0e\x15', "bytes", b'\x0e\x15')
-    _test_convert(bytearray(b'\x0e\x15'), "bytes", b'\x0e\x15')
+    _test_convert(b"\x0e\x15", "bytes", b"\x0e\x15")
+    _test_convert(bytearray(b"\x0e\x15"), "bytes", b"\x0e\x15")
     _test_convert(False, "bytes", pickle.dumps(False))
     _test_convert("true", "bytes", pickle.dumps("true"))
     _test_convert(pd.NaT, "bytes", pickle.dumps(pd.NaT))
@@ -190,7 +190,7 @@ def test_convert_to_list_shallow():
     _assert_raise(pd.NaT, "[int]")
     _assert_raise(FLOAT_NAN, "[int]")
     _assert_raise(True, "[int]")
-    _assert_raise(np.ndarray([1,2]), "[int]", [1,2])
+    _assert_raise(np.ndarray([1, 2]), "[int]", [1, 2])
 
 
 def test_convert_to_list_deep():
@@ -204,6 +204,28 @@ def test_convert_to_list_deep():
     _test_convert_nested([d], "[[int]]", [[1]])
     _assert_raise(["x"], "[int]", True)
     _assert_raise(1, "[int]", True)
+
+
+def test_convert_to_map_shallow():
+    d = {"a": 1}
+    _test_convert(None, "<str,int>", None)
+    _test_convert(d, "<str,int>", d)
+    _test_convert({}, "<str,int>", {})
+    _assert_raise("1", "<str,int>")
+    _assert_raise("abc", "<str,int>")
+    _assert_raise(pd.NaT, "<str,int>")
+    _assert_raise(FLOAT_NAN, "<str,int>")
+    _assert_raise(True, "<str,int>")
+    _assert_raise(np.ndarray([1, 2]), "<str,int>")
+
+
+def test_convert_to_map_deep():
+    d = {"a": "1"}
+    _test_convert_nested(None, "<str,int>", None)
+    _test_convert_nested(d, "<str,int>", {"a": 1})
+    _test_convert_nested('{"a":{"b":"1"}}', "<str,<str,int>>", {"a": {"b": 1}})
+    _assert_raise({"a": "x"}, "<str,int>", True)
+    _assert_raise(1, "<str,int>", True)
 
 
 def _test_convert(orig, expected_type, expected_value):
