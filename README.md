@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.6.8
+
+* Add map type support to Schema
+
 ### 0.6.7
 
 * Parse nested fields in `expression_to_schema` util

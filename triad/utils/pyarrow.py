@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
 from pandas.core.dtypes.base import ExtensionDtype
-from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
 from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
@@ -95,7 +94,7 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
     pa.bool_(): pd.BooleanDtype(),
 }
 
-_SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", ":"}
+_SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", "<", ">", ":"}
 
 
 def validate_column_name(expr: str) -> bool:
@@ -118,6 +117,10 @@ def expression_to_schema(expr: str) -> pa.Schema:
     If col_type is a struct type, the syntax should
     be `{col_name:col_type[,col_name:col_type]+}`
 
+    If col_type is a map type, the syntax should
+    be `<key_type,value_type>`
+
+
     Whitespaces will be removed. The format of the expression is json
     without any double quotes
 
@@ -126,7 +129,7 @@ def expression_to_schema(expr: str) -> pa.Schema:
         .. code-block:: python
 
             expression_to_schema("a:int,b:int")
-            expression_to_schema("a:[int],b:{x:int,y:{z:[str],w:byte}}")
+            expression_to_schema("a:[int],b:{x:<int,int>,y:{z:[str],w:byte}}")
 
     :param expr: schema expression
     :raises SyntaxError: if there is syntax issue or unknown types
@@ -239,7 +242,7 @@ def is_supported(data_type: pa.DataType, throw: bool = False) -> bool:
     """
     if data_type in _TYPE_EXPRESSION_R_MAPPING:
         return True
-    tp = (pa.Decimal128Type, pa.TimestampType, pa.StructType, pa.ListType)
+    tp = (pa.Decimal128Type, pa.TimestampType, pa.StructType, pa.ListType, pa.MapType)
     if isinstance(data_type, tp):
         return True
     if not throw:
@@ -400,6 +403,10 @@ def _type_to_expression(dt: pa.DataType) -> str:
     if isinstance(dt, pa.ListType):
         f = _type_to_expression(dt.value_type)
         return "[" + f + "]"
+    if isinstance(dt, pa.MapType):
+        k = _type_to_expression(dt.key_type)
+        v = _type_to_expression(dt.item_type)
+        return "<" + k + "," + v + ">"
     raise NotImplementedError(f"{dt} is not supported")
 
 
@@ -409,10 +416,13 @@ def _parse_types(v: Any):
     elif isinstance(v, Dict):
         return pa.struct(_construct_struct(v))
     elif isinstance(v, List):
-        assert_or_throw(1 == len(v), SyntaxError(f"{v} is not a valid list type"))
-        return pa.list_(_parse_types(v[0]))
+        if len(v) == 1:
+            return pa.list_(_parse_types(v[0]))
+        elif len(v) == 3 and v[0] is None:
+            return pa.map_(_parse_types(v[1]), _parse_types(v[2]))
+        raise SyntaxError(f"{v} is neither a list type nor a map type")
     else:  # pragma: no cover
-        raise SyntaxError("{v} is not a valid type")
+        raise SyntaxError(f"{v} is not a valid type")
 
 
 def _construct_struct(obj: Dict[str, Any]) -> Iterable[pa.Field]:
@@ -449,6 +459,7 @@ def _parse_type_function(expr: str) -> Tuple[str, List[str]]:
 
 
 def _parse_tokens(expr: str) -> Iterable[str]:
+    # parse to tokens that can construct a valid json string
     expr += ","
     last = 0
     skip = False
@@ -461,7 +472,12 @@ def _parse_tokens(expr: str) -> Iterable[str]:
             s = expr[last:i].strip()
             if s != "":
                 yield '"' + s + '"'
-            yield expr[i]
+            if expr[i] == "<":  # <str,int> => [null,"str","int"]
+                yield "[null,"
+            elif expr[i] == ">":
+                yield "]"
+            else:
+                yield expr[i]
             last = i + 1
 
 

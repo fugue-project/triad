@@ -25,6 +25,7 @@ def test_schema_init():
         == "a:long,b:str,c:int,d:datetime,e:str"
     )
     assert Schema(" a:{x:int32, y:str},b:[datetime]") == "a:{x:int,y:str},b:[datetime]"
+    assert Schema(" a:< str, int >,b:[datetime]") == "a:<str,int>,b:[datetime]"
     pa_schema = pa.schema([pa.field("123", pa.int32()), pa.field("b", pa.string())])
     raises(SchemaError, lambda: Schema(pa_schema))
     raises(SchemaError, lambda: Schema("a:int", b=str))
@@ -301,6 +302,10 @@ def test_schema_transform():
     assert s.transform("*,d:str ~ c,,a,x ") == "b:str,d:str"
     assert s.transform("*,d:str ~ c-a~x") == "b:str,d:str"
     assert s.transform("* + e:int,b:int,d:str") == "a:int,b:int,c:bool,e:int,d:str"
+    assert (
+        s.transform("*,d:[int],e:{b:str},f:<str,int>")
+        == "a:int,b:str,c:bool,d:[int],e:{b:str},f:<str,int>"
+    )
     # multiple operations will be applied in order
     assert s.transform("*+e:int,b:int-c~x,c") == "a:int,b:int,e:int"
     assert s.transform("* + - ~ ") == s  # no op
