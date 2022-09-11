@@ -598,9 +598,11 @@ def _to_pymap(
         return None
     if isinstance(obj, str) and str_as_json:
         obj = json.loads(obj)
-    if not isinstance(obj, Dict):
-        raise TypeError(f"{obj} is not dict")
-    return {key_f(k): value_f(v) for k, v in obj.items()}
+    if isinstance(obj, Dict):
+        return [(key_f(k), value_f(v)) for k, v in obj.items()]
+    if isinstance(obj, list):
+        return [(key_f(k), value_f(v)) for k, v in obj]
+    raise NotImplementedError(f"{obj} can't be converted to map")
 
 
 def _no_op_convert(obj: Any) -> Any:  # pragma: no cover

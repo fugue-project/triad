@@ -207,9 +207,9 @@ def test_convert_to_list_deep():
 
 
 def test_convert_to_map_shallow():
-    d = {"a": 1}
     _test_convert(None, "<str,int>", None)
-    _test_convert(d, "<str,int>", d)
+    _test_convert({"a": 1}, "<str,int>", {"a": 1})
+    _test_convert([("a", 1)], "<str,int>", [("a", 1)])
     _test_convert({}, "<str,int>", {})
     _assert_raise("1", "<str,int>")
     _assert_raise("abc", "<str,int>")
@@ -220,10 +220,10 @@ def test_convert_to_map_shallow():
 
 
 def test_convert_to_map_deep():
-    d = {"a": "1"}
     _test_convert_nested(None, "<str,int>", None)
-    _test_convert_nested(d, "<str,int>", {"a": 1})
-    _test_convert_nested('{"a":{"b":"1"}}', "<str,<str,int>>", {"a": {"b": 1}})
+    _test_convert_nested({"a": "1", "b": 1}, "<str,int>", [("a", 1), ("b", 1)])
+    _test_convert_nested([("a", "1")], "<str,int>", [("a", 1)])
+    _test_convert_nested('{"a":{"b":"1"}}', "<str,<str,int>>", [("a", [("b", 1)])])
     _assert_raise({"a": "x"}, "<str,int>", True)
     _assert_raise(1, "<str,int>", True)
 
