@@ -548,7 +548,7 @@ def _to_pybytes(obj: Any) -> Any:
     return pickle.dumps(obj)
 
 
-def _assert_pytype(pytype: type, obj: Any) -> Any:
+def _assert_pytype(pytype: Any, obj: Any) -> Any:
     if obj is None or isinstance(obj, pytype):
         return obj
     raise TypeError(f"{obj} is not {pytype}")
@@ -677,7 +677,7 @@ class _TypeConverter(object):
                 return lambda x: _to_pylist(converter, x, self._copy, self._str_as_json)
         elif pa.types.is_map(tp):
             if not self._deep:
-                return lambda x: _assert_pytype(dict, x)
+                return lambda x: _assert_pytype((dict, list), x)
             else:
                 k = self._build_type_converter(tp.key_type)
                 v = self._build_type_converter(tp.item_type)
