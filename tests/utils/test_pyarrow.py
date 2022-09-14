@@ -45,6 +45,8 @@ def test_expression_conversion():
         "a : [{ x : int32 , y : [string] }] , b : [ uint8 ] ",
         "a:[{x:int,y:[str]}],b:[ubyte]",
     )
+    _assert_from_expr("a : < str , int32 > , b : int", "a:<str,int>,b:int")
+    _assert_from_expr("a : < str , [int32] > , b : int", "a:<str,[int]>,b:int")
     _assert_from_expr("a:decimal(5,2)")
     _assert_from_expr("a:bytes,b:bytes")
     _assert_from_expr("a:bytes,b: binary", "a:bytes,b:bytes")
@@ -56,6 +58,11 @@ def test_expression_conversion():
     raises(SyntaxError, lambda: expression_to_schema("a:int,b:{x:int,x:str}"))
     raises(SyntaxError, lambda: expression_to_schema("_:int"))
     raises(SyntaxError, lambda: expression_to_schema("__:int"))
+    raises(SyntaxError, lambda: expression_to_schema("a:[int,str]"))
+    raises(SyntaxError, lambda: expression_to_schema("a:[]"))
+    raises(SyntaxError, lambda: expression_to_schema("a:<>"))
+    raises(SyntaxError, lambda: expression_to_schema("a:<int>"))
+    raises(SyntaxError, lambda: expression_to_schema("a:<int,str,str>"))
 
 
 def test__parse_type():
@@ -165,6 +172,7 @@ def test_is_supported():
     assert not is_supported(pa.binary(1))
     assert is_supported(pa.struct([pa.field("a", pa.int32())]))
     assert is_supported(pa.list_(pa.int32()))
+    assert is_supported(pa.map_(pa.int32(), pa.string()))
     raises(NotImplementedError, lambda: is_supported(pa.date64(), throw=True))
 
 
@@ -230,6 +238,12 @@ def test_get_eq_func():
     assert not get_eq_func(t)([0], [1])
     assert not get_eq_func(t)(None, [1])
     assert get_eq_func(t)([1], [1])
+    assert get_eq_func(t)(None, None)
+    t = pa.map_(pa.string(), pa.int32())
+    assert not get_eq_func(t)({"a": 0}, {"a": 1})
+    assert not get_eq_func(t)({"a": 0}, {"b": 0})
+    assert not get_eq_func(t)(None, {"b": 0})
+    assert get_eq_func(t)({"a": 0}, {"a": 0})
     assert get_eq_func(t)(None, None)
 
 

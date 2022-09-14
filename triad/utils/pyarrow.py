@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
 from pandas.core.dtypes.base import ExtensionDtype
-from triad.utils.assertion import assert_or_throw
 from triad.utils.convert import as_type
 from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
@@ -95,7 +94,7 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
     pa.bool_(): pd.BooleanDtype(),
 }
 
-_SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", ":"}
+_SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", "<", ">", ":"}
 
 
 def validate_column_name(expr: str) -> bool:
@@ -118,6 +117,10 @@ def expression_to_schema(expr: str) -> pa.Schema:
     If col_type is a struct type, the syntax should
     be `{col_name:col_type[,col_name:col_type]+}`
 
+    If col_type is a map type, the syntax should
+    be `<key_type,value_type>`
+
+
     Whitespaces will be removed. The format of the expression is json
     without any double quotes
 
@@ -126,7 +129,7 @@ def expression_to_schema(expr: str) -> pa.Schema:
         .. code-block:: python
 
             expression_to_schema("a:int,b:int")
-            expression_to_schema("a:[int],b:{x:int,y:{z:[str],w:byte}}")
+            expression_to_schema("a:[int],b:{x:<int,int>,y:{z:[str],w:byte}}")
 
     :param expr: schema expression
     :raises SyntaxError: if there is syntax issue or unknown types
@@ -239,7 +242,7 @@ def is_supported(data_type: pa.DataType, throw: bool = False) -> bool:
     """
     if data_type in _TYPE_EXPRESSION_R_MAPPING:
         return True
-    tp = (pa.Decimal128Type, pa.TimestampType, pa.StructType, pa.ListType)
+    tp = (pa.Decimal128Type, pa.TimestampType, pa.StructType, pa.ListType, pa.MapType)
     if isinstance(data_type, tp):
         return True
     if not throw:
@@ -400,6 +403,10 @@ def _type_to_expression(dt: pa.DataType) -> str:
     if isinstance(dt, pa.ListType):
         f = _type_to_expression(dt.value_type)
         return "[" + f + "]"
+    if isinstance(dt, pa.MapType):
+        k = _type_to_expression(dt.key_type)
+        v = _type_to_expression(dt.item_type)
+        return "<" + k + "," + v + ">"
     raise NotImplementedError(f"{dt} is not supported")
 
 
@@ -409,10 +416,13 @@ def _parse_types(v: Any):
     elif isinstance(v, Dict):
         return pa.struct(_construct_struct(v))
     elif isinstance(v, List):
-        assert_or_throw(1 == len(v), SyntaxError(f"{v} is not a valid list type"))
-        return pa.list_(_parse_types(v[0]))
+        if len(v) == 1:
+            return pa.list_(_parse_types(v[0]))
+        elif len(v) == 3 and v[0] is None:
+            return pa.map_(_parse_types(v[1]), _parse_types(v[2]))
+        raise SyntaxError(f"{v} is neither a list type nor a map type")
     else:  # pragma: no cover
-        raise SyntaxError("{v} is not a valid type")
+        raise SyntaxError(f"{v} is not a valid type")
 
 
 def _construct_struct(obj: Dict[str, Any]) -> Iterable[pa.Field]:
@@ -449,6 +459,7 @@ def _parse_type_function(expr: str) -> Tuple[str, List[str]]:
 
 
 def _parse_tokens(expr: str) -> Iterable[str]:
+    # parse to tokens that can construct a valid json string
     expr += ","
     last = 0
     skip = False
@@ -461,7 +472,12 @@ def _parse_tokens(expr: str) -> Iterable[str]:
             s = expr[last:i].strip()
             if s != "":
                 yield '"' + s + '"'
-            yield expr[i]
+            if expr[i] == "<":  # <str,int> => [null,"str","int"]
+                yield "[null,"
+            elif expr[i] == ">":
+                yield "]"
+            else:
+                yield expr[i]
             last = i + 1
 
 
@@ -532,7 +548,7 @@ def _to_pybytes(obj: Any) -> Any:
     return pickle.dumps(obj)
 
 
-def _assert_pytype(pytype: type, obj: Any) -> Any:
+def _assert_pytype(pytype: Any, obj: Any) -> Any:
     if obj is None or isinstance(obj, pytype):
         return obj
     raise TypeError(f"{obj} is not {pytype}")
@@ -573,6 +589,20 @@ def _to_pylist(
         for i in range(len(obj)):
             obj[i] = converter(obj[i])
         return obj
+
+
+def _to_pymap(
+    key_f: Callable, value_f: Callable, obj: Any, str_as_json: bool = True
+) -> Any:
+    if obj is None:
+        return None
+    if isinstance(obj, str) and str_as_json:
+        obj = json.loads(obj)
+    if isinstance(obj, Dict):
+        return [(key_f(k), value_f(v)) for k, v in obj.items()]
+    if isinstance(obj, list):
+        return [(key_f(k), value_f(v)) for k, v in obj]
+    raise NotImplementedError(f"{obj} can't be converted to map")
 
 
 def _no_op_convert(obj: Any) -> Any:  # pragma: no cover
@@ -621,29 +651,38 @@ class _TypeConverter(object):
             return [self._to_pytype[i](data[i]) for i in range(len(data))]
 
     def _build_field_converter(self, f: pa.Field) -> Callable[[Any], Any]:
-        if f.type in _TypeConverter._CONVERTERS:
-            return _TypeConverter._CONVERTERS[f.type]
-        elif pa.types.is_timestamp(f.type):
+        try:
+            return self._build_type_converter(f.type)
+        except Exception:  # pragma: no cover
+            raise NotImplementedError(f"{f} type is not supported")
+
+    def _build_type_converter(self, tp: pa.DataType) -> Callable[[Any], Any]:
+        if tp in _TypeConverter._CONVERTERS:
+            return _TypeConverter._CONVERTERS[tp]
+        elif pa.types.is_timestamp(tp):
             return _to_pydatetime
-        elif pa.types.is_decimal(f.type):
+        elif pa.types.is_decimal(tp):
             raise NotImplementedError("decimal conversion is not supported")
-        elif pa.types.is_struct(f.type):
+        elif pa.types.is_struct(tp):
             if not self._deep:
                 return lambda x: _assert_pytype(dict, x)
             else:
-                converters = {
-                    x.name: self._build_field_converter(x) for x in list(f.type)
-                }
+                converters = {x.name: self._build_field_converter(x) for x in list(tp)}
                 return lambda x: _to_pydict(converters, x, self._str_as_json)
-        elif pa.types.is_list(f.type):
+        elif pa.types.is_list(tp):
             if not self._deep:
                 return lambda x: _assert_pytype(list, x)
             else:
-                converter = self._build_field_converter(
-                    pa.field("e", f.type.value_type)
-                )
+                converter = self._build_type_converter(tp.value_type)
                 return lambda x: _to_pylist(converter, x, self._copy, self._str_as_json)
-        raise NotImplementedError(f"{f} type is not supported")  # pragma: no cover
+        elif pa.types.is_map(tp):
+            if not self._deep:
+                return lambda x: _assert_pytype((dict, list), x)
+            else:
+                k = self._build_type_converter(tp.key_type)
+                v = self._build_type_converter(tp.item_type)
+                return lambda x: _to_pymap(k, v, x, self._str_as_json)
+        raise NotImplementedError  # pragma: no cover
 
 
 def _none_eq(o1: Any, o2: Any) -> bool:
