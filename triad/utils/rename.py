@@ -6,6 +6,28 @@ from .string import validate_triad_var_name
 
 
 def normalize_names(names: List[Any]) -> Dict[Any, str]:
+    """Normalize dataframe column names to follow Fugue column naming
+    rules. It only operates on names that are not valid to Fugue.
+
+    It tries to minimize the changes to the original name. Special characters
+    will be converted to ``_``, but if this does not provide a valid and
+    unique column name, more transformation will be done.
+
+    .. note::
+
+        This is a temporary solution before :class:`~.triad.collections.schema.Schema`
+        can take arbitrary names
+
+    .. admonition:: Examples
+
+        * ``[0,1]`` => ``{0:"_0", 1:"_1"}``
+        * ``["1a","2b"]`` => ``{"1a":"_1a", "2b":"_2b"}``
+        * ``["*a","-a"]`` => ``{"*a":"_a", "-a":"_a_1"}``
+
+    :param names: the columns names of a dataframe
+    :return: the rename operations as a dict, key is the original column
+        name, value is the new valid name.
+    """
     assert_or_throw(len(names) > 0, ValueError("names is empty"))
     assert_or_throw(
         len(set(names)) == len(names), ValueError(f"duplicated names found in {names}")
