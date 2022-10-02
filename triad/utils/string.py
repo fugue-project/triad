@@ -5,7 +5,7 @@ def validate_triad_var_name(expr: str) -> bool:
     :param expr: column name expression
     :return: whether it is valid
     """
-    if not isinstance(expr, str) or not expr.isidentifier():
+    if not isinstance(expr, str) or not expr.isidentifier() or not expr.isascii():
         return False
     return expr.strip("_") != ""
 
@@ -18,5 +18,6 @@ def assert_triad_var_name(expr: str) -> str:
     :raises AssertionError: if the expression is invalid
     :return: the expression string
     """
-    assert validate_triad_var_name(expr), f"{expr} is not a valid Triad variable name"
-    return expr
+    if validate_triad_var_name(expr):
+        return expr
+    raise AssertionError(f"{expr} is not a valid Triad variable name")

@@ -74,6 +74,14 @@ triad.utils.pyarrow
    :undoc-members:
    :show-inheritance:
 
+triad.utils.rename
+------------------
+
+.. automodule:: triad.utils.rename
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 triad.utils.string
 ------------------
 
