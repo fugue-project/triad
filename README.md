@@ -20,6 +20,11 @@ pip install triad
 
 ## Release History
 
+### 0.6.9
+
+* Remove Python 3.6 support
+* Add dataframe rename utils
+
 ### 0.6.8
 
 * Add map type support to Schema
