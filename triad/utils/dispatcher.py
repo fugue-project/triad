@@ -1,12 +1,19 @@
 import itertools
 import logging
+import sys
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-try:
-    from importlib.metadata import entry_points  # type:ignore
-except ImportError:  # pragma: no cover
-    from importlib_metadata import entry_points  # type:ignore
+if sys.version_info >= (3, 8):
+    from importlib.metadata import entry_points, EntryPoint
+
+    _IMPORTLIB_META_VERSION: Any = ()
+else:  # pragma: no cover
+    from importlib_metadata import entry_points, version, EntryPoint
+
+    _IMPORTLIB_META_VERSION = tuple(
+        int(i) for i in version("importlib_metadata").split(".")[:2]
+    )
 
 
 def run_at_def(run_at_def_func: Optional[Callable] = None, **kwargs: Any) -> Callable:
@@ -346,7 +353,7 @@ class ConditionalDispatcher:
     def _preload(self) -> None:
         if self._entry_point is not None and not self._preloaded:
             logger = logging.getLogger(self._func.__name__)
-            for plugin in _entry_points().get(self._entry_point, []):
+            for plugin in _entry_points_for(self._entry_point):
                 try:
                     res = plugin.load()
                     if callable(res):
@@ -363,5 +370,8 @@ class ConditionalDispatcher:
             return False
 
 
-def _entry_points() -> Any:
-    return entry_points()
+def _entry_points_for(key: str) -> List[EntryPoint]:  # pragma: no cover
+    if sys.version_info >= (3, 10) or _IMPORTLIB_META_VERSION >= (3, 6):
+        return entry_points().select(group=key)  # type: ignore
+    else:
+        return entry_points().get(key, {})  # type: ignore

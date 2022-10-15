@@ -177,23 +177,21 @@ def test_conditional_broadcaster():
 
 def test_preload(mocker):
     mocker.patch(
-        "triad.utils.dispatcher._entry_points",
-        return_value={
-            "tests.plugins": [
-                EntryPoint.parse(
-                    "dummy=tests.utils.dispatcher_examples.examples",
-                    get_distribution("triad"),
-                ),
-                EntryPoint.parse(
-                    "dummy=tests.utils.dispatcher_examples.examples:register2",
-                    get_distribution("triad"),
-                ),
-                EntryPoint.parse(
-                    "dummy2=tests.utils.dispatcher_examples.invalid",
-                    get_distribution("triad"),
-                ),
-            ]
-        },
+        "triad.utils.dispatcher._entry_points_for",
+        return_value=[
+            EntryPoint.parse(
+                "dummy=tests.utils.dispatcher_examples.examples",
+                get_distribution("triad"),
+            ),
+            EntryPoint.parse(
+                "dummy=tests.utils.dispatcher_examples.examples:register2",
+                get_distribution("triad"),
+            ),
+            EntryPoint.parse(
+                "dummy2=tests.utils.dispatcher_examples.invalid",
+                get_distribution("triad"),
+            ),
+        ],
     )
 
     from tests.utils.dispatcher_examples import dtest
