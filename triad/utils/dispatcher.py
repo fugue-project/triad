@@ -1,12 +1,8 @@
 import itertools
-import logging
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-try:
-    from importlib.metadata import entry_points  # type:ignore
-except ImportError:  # pragma: no cover
-    from importlib_metadata import entry_points  # type:ignore
+from .entry_points import load_entry_point
 
 
 def run_at_def(run_at_def_func: Optional[Callable] = None, **kwargs: Any) -> Callable:
@@ -230,7 +226,6 @@ class ConditionalDispatcher:
             Tuple[float, int, Callable[..., bool], Callable[..., Any]]
         ] = []
         self._entry_point = entry_point
-        self._preloaded = False
         update_wrapper(self, default_func)
 
     def __getstate__(self) -> Dict[str, Any]:
@@ -243,7 +238,6 @@ class ConditionalDispatcher:
     def __setstate__(self, data: Dict[str, Any]) -> None:
         for k, v in data.items():
             setattr(self, k, v)
-        self._preloaded = False
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         """The abstract method to mimic the function call"""
@@ -344,24 +338,11 @@ class ConditionalDispatcher:
         return _run
 
     def _preload(self) -> None:
-        if self._entry_point is not None and not self._preloaded:
-            logger = logging.getLogger(self._func.__name__)
-            for plugin in _entry_points().get(self._entry_point, []):
-                try:
-                    res = plugin.load()
-                    if callable(res):
-                        res()
-                    logger.debug("loaded %s", plugin)
-                except Exception as e:  # pragma: no cover
-                    logger.debug("failed to load %s: %s", plugin, e)
-            self._preloaded = True
+        if self._entry_point is not None:
+            load_entry_point(self._entry_point)
 
     def _match(self, m: Callable[..., bool], *args: Any, **kwargs: Any) -> bool:
         try:
             return m(*args, **kwargs)
         except Exception:
             return False
-
-
-def _entry_points() -> Any:
-    return entry_points()
