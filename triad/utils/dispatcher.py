@@ -1,19 +1,8 @@
 import itertools
-import logging
-import sys
 from functools import update_wrapper
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-if sys.version_info >= (3, 8):
-    from importlib.metadata import entry_points, EntryPoint
-
-    _IMPORTLIB_META_VERSION: Any = ()
-else:  # pragma: no cover
-    from importlib_metadata import entry_points, version, EntryPoint
-
-    _IMPORTLIB_META_VERSION = tuple(
-        int(i) for i in version("importlib_metadata").split(".")[:2]
-    )
+from .entry_points import load_entry_point
 
 
 def run_at_def(run_at_def_func: Optional[Callable] = None, **kwargs: Any) -> Callable:
@@ -237,7 +226,6 @@ class ConditionalDispatcher:
             Tuple[float, int, Callable[..., bool], Callable[..., Any]]
         ] = []
         self._entry_point = entry_point
-        self._preloaded = False
         update_wrapper(self, default_func)
 
     def __getstate__(self) -> Dict[str, Any]:
@@ -250,7 +238,6 @@ class ConditionalDispatcher:
     def __setstate__(self, data: Dict[str, Any]) -> None:
         for k, v in data.items():
             setattr(self, k, v)
-        self._preloaded = False
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         """The abstract method to mimic the function call"""
@@ -351,27 +338,11 @@ class ConditionalDispatcher:
         return _run
 
     def _preload(self) -> None:
-        if self._entry_point is not None and not self._preloaded:
-            logger = logging.getLogger(self._func.__name__)
-            for plugin in _entry_points_for(self._entry_point):
-                try:
-                    res = plugin.load()
-                    if callable(res):
-                        res()
-                    logger.debug("loaded %s", plugin)
-                except Exception as e:  # pragma: no cover
-                    logger.debug("failed to load %s: %s", plugin, e)
-            self._preloaded = True
+        if self._entry_point is not None:
+            load_entry_point(self._entry_point)
 
     def _match(self, m: Callable[..., bool], *args: Any, **kwargs: Any) -> bool:
         try:
             return m(*args, **kwargs)
         except Exception:
             return False
-
-
-def _entry_points_for(key: str) -> List[EntryPoint]:  # pragma: no cover
-    if sys.version_info >= (3, 10) or _IMPORTLIB_META_VERSION >= (3, 6):
-        return entry_points().select(group=key)  # type: ignore
-    else:
-        return entry_points().get(key, {})  # type: ignore

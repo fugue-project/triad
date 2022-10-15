@@ -177,7 +177,7 @@ def test_conditional_broadcaster():
 
 def test_preload(mocker):
     mocker.patch(
-        "triad.utils.dispatcher._entry_points_for",
+        "triad.utils.entry_points._entry_points_for",
         return_value=[
             EntryPoint.parse(
                 "dummy=tests.utils.dispatcher_examples.examples",
