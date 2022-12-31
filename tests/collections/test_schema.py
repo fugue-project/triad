@@ -26,13 +26,20 @@ def test_schema_init():
     )
     assert Schema(" a:{x:int32, y:str},b:[datetime]") == "a:{x:int,y:str},b:[datetime]"
     assert Schema(" a:< str, int >,b:[datetime]") == "a:<str,int>,b:[datetime]"
-    pa_schema = pa.schema([pa.field("123", pa.int32()), pa.field("b", pa.string())])
-    raises(SchemaError, lambda: Schema(pa_schema))
     raises(SchemaError, lambda: Schema("a:int", b=str))
+    raises(SyntaxError, lambda: Schema("a:int,a:str"))
     assert 0 == len(Schema())
     assert 0 == len(Schema([]))
     assert 0 == len(Schema(None))
     assert 0 == len(Schema(""))
+
+    pa_schema = pa.schema([pa.field("123", pa.int32()), pa.field("b", pa.string())])
+    assert str(Schema(pa_schema)) == "`123`:int,b:str"
+    assert str(Schema("123:int,b:str")) == "`123`:int,b:str"
+    assert str(Schema("`a b` :int,b:str")) == "`a b`:int,b:str"
+    assert Schema(**{"": int, "b": str}) == "``:long,b:str"
+    assert Schema({"a b": int, "b": str}) == "`a b`:long,b:str"
+    assert Schema("a b:long", "b:str") == "`a b`:long,b:str"
 
 
 def test_schema_datetime():
@@ -70,14 +77,12 @@ def test_schema_setter():
     with raises(SchemaError):
         a["b"] = "str"  # Update is not allowed
     with raises(SchemaError):
-        a["123"] = "int"  # Col name is invalid
-    with raises(SchemaError):
         a["x"] = pa.field("y", pa.int32())  # key!=field.name
     with raises(SchemaError):
         a["y"] = pa.large_binary()  # unsupported types
     a["c"] = str
-    a["d"] = pa.field("d", pa.int32())
-    assert a == "a:int,b:str,c:str,d:int"
+    a["a b"] = pa.field("a b", pa.int32())
+    assert a == "a:int,b:str,c:str,`a b`:int"
 
 
 def test_schema_eq():
@@ -95,13 +100,16 @@ def test_schema_eq():
 
 
 def test_schema_contains():
-    s = Schema("a:int,b:str")
+    s = Schema("a:int,b:str,``:str")
     assert None not in s
+    assert "" in s
     assert s in s
     assert "a" in s
     assert "c" not in s
     assert "a:int" in s
     assert "a:long" not in s
+    assert "``:str" in s
+    assert pa.field("", pa.string()) in s
     assert pa.field("a", pa.int32()) in s
     assert pa.field("aa", pa.int32()) not in s
     assert pa.field("a", pa.int64()) not in s
@@ -171,15 +179,13 @@ def test_schema_remove():
 
 
 def test_schema_extract():
-    s = Schema("a:int,b:str,c:int")
+    s = Schema("a:int,b:str,c:int,``:int")
     t = s.extract(s)
     assert t == s
     t = s.extract(None)
     assert t == ""
     t = s.extract("")
-    assert t == ""
-    t = s.extract(" ")
-    assert t == ""
+    assert t == "``:int"
     t = s.extract("b")
     assert t == "b:str"
     t = s.extract("b:str")
@@ -198,8 +204,8 @@ def test_schema_extract():
     assert t == "c:int,b:str"
     t = s.extract(pa.field("c", pa.int32()))
     assert t == "c:int"
-    t = s.extract(["c", "b"])
-    assert t == "c:int,b:str"
+    t = s.extract(["c", "b", ""])
+    assert t == "c:int,b:str,``:int"
     raises(SchemaError, lambda: s.extract({"c", "b"}))
     t = s.extract(["c", ("b", str)])
     assert t == "c:int,b:str"
@@ -277,8 +283,8 @@ def test_schema_assert_not_empty():
 
 
 def test_schema_rename():
-    s = Schema("a:int,b:str,c:bool").rename(columns=dict(a="c", c="a"))
-    assert s == "c:int,b:str,a:bool"
+    s = Schema("a:int,b:str,`c d`:bool").rename(columns={"a": "c d", "c d": "a"})
+    assert s == "`c d`:int,b:str,a:bool"
     s = Schema("a:int,b:str,c:bool").rename(
         columns=dict(a="c", c="a"), ignore_missing=True
     )
@@ -289,29 +295,31 @@ def test_schema_rename():
 
 
 def test_schema_transform():
-    s = Schema("a:int,b:str,c:bool")
+    s = Schema(" `*` :int,`+`:str,c:bool")
     assert s.transform() == Schema()
     assert s.transform(None) == Schema()
     assert s.transform("x:str") == "x:str"
     assert s.transform("*") == s
     assert s.transform("*~x,y") == s
-    assert s.transform("*,d:str") == "a:int,b:str,c:bool,d:str"
-    assert s.transform("*,d:str - a ") == "b:str,c:bool,d:str"
-    assert s.transform("*,d:str - c,,a ") == "b:str,d:str"
-    assert s.transform("*,d:str - c-a") == "b:str,d:str"
-    assert s.transform("*,d:str ~ c,,a,x ") == "b:str,d:str"
-    assert s.transform("*,d:str ~ c-a~x") == "b:str,d:str"
-    assert s.transform("* + e:int,b:int,d:str") == "a:int,b:int,c:bool,e:int,d:str"
+    assert s.transform("*,d:str") == "`*`:int,`+`:str,c:bool,d:str"
+    assert s.transform("*,d:str - `*` ") == "`+`:str,c:bool,d:str"
+    assert s.transform("*,d:str - c,,`*` ") == "`+`:str,d:str"
+    assert s.transform("*,d:str - c-`*`") == "`+`:str,d:str"
+    assert s.transform("*,d:str ~ c,,`*`,x ") == "`+`:str,d:str"
+    assert s.transform("*,d:str ~ c-`*`~x") == "`+`:str,d:str"
     assert (
-        s.transform("*,d:[int],e:{b:str},f:<str,int>")
-        == "a:int,b:str,c:bool,d:[int],e:{b:str},f:<str,int>"
+        s.transform("* + e:int,`+`:int,d:str") == "`*`:int,`+`:int,c:bool,e:int,d:str"
+    )
+    assert (
+        s.transform("*,d:[int],`-`:{b:str},``:<str,int>")
+        == "`*`:int,`+`:str,c:bool,d:[int],`-`:{b:str},``:<str,int>"
     )
     # multiple operations will be applied in order
-    assert s.transform("*+e:int,b:int-c~x,c") == "a:int,b:int,e:int"
+    assert s.transform("*+e:int,`+`:int-c~x,c") == "`*`:int,`+`:int,e:int"
     assert s.transform("* + - ~ ") == s  # no op
-    assert s.transform("*", {"d": str}, e=str) == "a:int,b:str,c:bool,d:str,e:str"
-    assert s.transform(lambda s: s.fields[0], lambda s: s.fields[2]) == "a:int,c:bool"
-    assert s.transform(lambda s: s - ["b"]) == "a:int,c:bool"
+    assert s.transform("*", {"-": str}, e=str) == "`*`:int,`+`:str,c:bool,`-`:str,e:str"
+    assert s.transform(lambda s: s.fields[0], lambda s: s.fields[2]) == "`*`:int,c:bool"
+    assert s.transform(lambda s: s - ["+"]) == "`*`:int,c:bool"
     raises(SchemaError, lambda: s.transform("**"))
     raises(SchemaError, lambda: s.transform("*", "*"))
     raises(SchemaError, lambda: s.transform("*-x"))

@@ -9,7 +9,7 @@ from pandas.core.dtypes.base import ExtensionDtype
 from triad.utils.convert import as_type
 from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
-from triad.utils.string import validate_triad_var_name
+from triad.utils.string import is_quoteless_column_name
 
 import pyarrow as pa
 
@@ -95,16 +95,6 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
 }
 
 _SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", "<", ">", ":"}
-
-
-def validate_column_name(expr: str) -> bool:
-    """Check if `expr` is a valid column name.
-    See :func:`~triad.utils.string.validate_triad_var_name`
-
-    :param expr: column name expression
-    :return: whether it is valid
-    """
-    return validate_triad_var_name(expr)
 
 
 def expression_to_schema(expr: str) -> pa.Schema:
@@ -382,7 +372,7 @@ class SchemaedDataPartitioner(object):
 
 def _field_to_expression(field: pa.Field) -> str:
     name = field.name
-    if not field.name.isidentifier():
+    if not is_quoteless_column_name(name):
         name = "`" + name.replace("`", "``") + "`"
     return f"{name}:{_type_to_expression(field.type)}"
 
@@ -430,8 +420,6 @@ def _parse_types(v: Any):
 
 def _construct_struct(obj: Dict[str, Any]) -> Iterable[pa.Field]:
     for k, v in obj.items():
-        if not validate_column_name(k):
-            raise SyntaxError(f"{k} is not a valid field name")
         yield pa.field(k, _parse_types(v))
 
 
@@ -453,7 +441,7 @@ def _parse_type(expr: str) -> pa.DataType:
 def _parse_type_function(expr: str) -> Tuple[str, List[str]]:
     p = expr.split("(", 1)
     name = p[0].strip()
-    assert validate_column_name(name), f"Invalid expression {expr}"
+    assert name.isidentifier(), f"Invalid expression {expr}"
     if len(p) == 1:
         return name, []
     arg_expr = p[1].strip().rstrip(")")
@@ -487,7 +475,7 @@ def _parse_tokens(expr: str) -> Iterable[str]:
     while i < len(expr):
         if expr[i] == "`":
             s, i = _parse_quoted_string(expr, i)
-            yield '"' + s.replace('"', '\\"') + '"'
+            yield '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
             last = i
             continue
         if expr[i] == "(":

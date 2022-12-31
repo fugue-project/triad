@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ from triad.utils.pyarrow import (
     schema_to_expression,
     to_pa_datatype,
     to_pandas_dtype,
-    validate_column_name,
+    _parse_quoted_string,
 )
 from triad.utils.pandas_like import PD_UTILS
 
@@ -45,9 +45,6 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
     * pyarrow.DataType
     * pyarrow.Field: will only use the type attribute of the field
     * type expression or other objects: for :func:`~triad.utils.pyarrow.to_pa_datatype`
-
-    The column name must follow the rules
-    by :func:`~triad.utils.pyarrow.validate_column_name`
 
     .. admonition:: Examples
 
@@ -180,8 +177,6 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         self, name: str, value: Any, *args: List[Any], **kwds: Dict[str, Any]
     ) -> None:
         assert_arg_not_none(value, "value")
-        if not validate_column_name(name):
-            raise SchemaError(f"Invalid column name {name}")
         if name in self:  # update existing value is not allowed
             raise SchemaError(f"{name} already exists in {self}")
         if isinstance(value, pa.Field):
@@ -368,9 +363,6 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             )
         fields = []
         for k, v in pairs:
-            k = k.strip()
-            if k == "":
-                continue
             if k not in self:
                 if ignore_key_mismatch:
                     continue
@@ -486,15 +478,13 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
                 if callable(a):
                     result += a(self)
                 elif isinstance(a, str):
-                    op_pos = [i for i, c in enumerate(a) if c in ["-", "~", "+"]]
+                    op_pos = list(_get_pos(a, "-~+"))
                     op_pos.append(len(a))
-                    s = Schema(a[: op_pos[0]].replace("*", str(self)))
+                    s = Schema(_replace_star(a[: op_pos[0]], str(self)))
                     for i in range(0, len(op_pos) - 1):
                         op, expr = a[op_pos[i]], a[(op_pos[i] + 1) : op_pos[i + 1]]
                         if op in ["-", "~"]:
-                            cols = [
-                                x.strip() for x in expr.split(",") if x.strip() != ""
-                            ]
+                            cols = list(_split(expr, ","))
                             s = s.exclude(cols) if op == "~" else s - cols
                         else:  # +
                             overwrite = Schema(expr)
@@ -523,9 +513,43 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
 
     def _validate_field(self, field: pa.Field) -> pa.Field:
         assert_or_throw(
-            validate_column_name(field.name), SchemaError(f"{field} name is invalid")
-        )
-        assert_or_throw(
             is_supported(field.type), SchemaError(f"{field} type is not supported")
         )
         return field
+
+
+def _get_pos(s: str, chars: str) -> Iterable[int]:
+    i = 0
+    while i < len(s):
+        if s[i] in chars:
+            yield i
+        elif s[i] == "`":
+            _, i = _parse_quoted_string(s, i)
+            continue
+        i += 1
+
+
+def _replace_star(s: str, r: str) -> str:
+    b = 0
+    res: List[str] = []
+    for p in _get_pos(s, "*"):
+        res.append(s[b:p])
+        res.append(r)
+        b = p + 1
+    if b < len(s):
+        res.append(s[b:])
+    return "".join(res)
+
+
+def _split(s: str, split: str) -> Iterable[str]:
+    def _unquote(s: str) -> str:
+        s = s.strip()
+        return s[1:-1] if s.startswith("`") else s
+
+    b = 0
+    for p in _get_pos(s, ","):
+        if p > b:
+            yield _unquote(s[b:p])
+        b = p + 1
+    if b < len(s):
+        yield _unquote(s[b:])
