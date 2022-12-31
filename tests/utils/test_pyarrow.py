@@ -51,6 +51,9 @@ def test_expression_conversion():
     _assert_from_expr("a:bytes,b:bytes")
     _assert_from_expr("a:bytes,b: binary", "a:bytes,b:bytes")
 
+    # special chars
+    _assert_from_expr("`a` :bytes,b:str", "a:bytes,b:str")
+
     raises(SyntaxError, lambda: expression_to_schema("123:int"))
     raises(SyntaxError, lambda: expression_to_schema("int"))
     raises(SyntaxError, lambda: expression_to_schema("a:dummytype"))

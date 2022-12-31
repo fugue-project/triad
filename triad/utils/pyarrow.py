@@ -381,7 +381,10 @@ class SchemaedDataPartitioner(object):
 
 
 def _field_to_expression(field: pa.Field) -> str:
-    return f"{field.name}:{_type_to_expression(field.type)}"
+    name = field.name
+    if not field.name.isidentifier():
+        name = "`" + name.replace("`", "``") + "`"
+    return f"{name}:{_type_to_expression(field.type)}"
 
 
 def _type_to_expression(dt: pa.DataType) -> str:
@@ -458,12 +461,35 @@ def _parse_type_function(expr: str) -> Tuple[str, List[str]]:
     return name, args
 
 
+def _parse_quoted_string(expr: str, p: int) -> Tuple[str, int]:
+    res = ""
+    b, e = p + 1, p + 1
+    le = len(expr)
+    while e < le:
+        if expr[e] == "`":
+            if e + 1 < le and expr[e + 1] == "`":  # escape (``)
+                res += expr[b : e + 1]
+                b = e = e + 2
+            else:
+                res += expr[b:e]
+                return res, e + 1
+        else:
+            e += 1
+    raise SyntaxError(f"{expr} contains open quote `")
+
+
 def _parse_tokens(expr: str) -> Iterable[str]:
     # parse to tokens that can construct a valid json string
     expr += ","
     last = 0
     skip = False
-    for i in range(len(expr)):
+    i = 0
+    while i < len(expr):
+        if expr[i] == "`":
+            s, i = _parse_quoted_string(expr, i)
+            yield '"' + s.replace('"', '\\"') + '"'
+            last = i
+            continue
         if expr[i] == "(":
             skip = True
         if expr[i] == ")":
@@ -479,6 +505,7 @@ def _parse_tokens(expr: str) -> Iterable[str]:
             else:
                 yield expr[i]
             last = i + 1
+        i += 1
 
 
 def _to_pynone(obj: Any) -> Any:
