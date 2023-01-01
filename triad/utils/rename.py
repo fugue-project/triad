@@ -58,7 +58,7 @@ def normalize_names(names: List[Any]) -> Dict[Any, str]:
 def _normalize_name(name: Optional[str]) -> str:
     if name is None:
         return ""
-    if validate_triad_var_name(name):
+    if validate_triad_var_name(name) and not all(x == "_" for x in name):
         return name
     name = name.strip()
     if name == "":
@@ -66,7 +66,7 @@ def _normalize_name(name: Optional[str]) -> str:
     name = "".join(_normalize_chars(name))
     if name[0].isdigit():
         name = "_" + name
-    if validate_triad_var_name(name):
+    if validate_triad_var_name(name) and not all(x == "_" for x in name):
         return name
     return ""
 

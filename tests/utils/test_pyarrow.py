@@ -17,20 +17,7 @@ from triad.utils.pyarrow import (
     to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
-    validate_column_name,
 )
-
-
-def test_validate_column_name():
-    assert validate_column_name("abc")
-    assert validate_column_name("__abc__")
-    assert validate_column_name("_1_")
-    assert not validate_column_name(None)
-    assert not validate_column_name("")
-    assert not validate_column_name("_")
-    assert not validate_column_name("__")
-    assert not validate_column_name("1")
-    assert not validate_column_name("a ")
 
 
 def test_expression_conversion():
@@ -51,18 +38,35 @@ def test_expression_conversion():
     _assert_from_expr("a:bytes,b:bytes")
     _assert_from_expr("a:bytes,b: binary", "a:bytes,b:bytes")
 
-    raises(SyntaxError, lambda: expression_to_schema("123:int"))
+    # special chars
+    _assert_from_expr("`` :bytes,b:str", "``:bytes,b:str")
+    _assert_from_expr("```` :bytes,b:str", "````:bytes,b:str")
+    _assert_from_expr("`\\` :bytes,b:str", "`\\`:bytes,b:str")
+    _assert_from_expr('`"` :bytes,b:str', '`"`:bytes,b:str')
+
+    _assert_from_expr("`中国` :bytes,b:str", "`中国`:bytes,b:str")
+    _assert_from_expr("`مثال` :bytes,b:str", "`مثال`:bytes,b:str")
+
+    _assert_from_expr("`a` :bytes,b:str", "a:bytes,b:str")
+    _assert_from_expr("`a b` :bytes,b:str", "`a b`:bytes,b:str")
+    _assert_from_expr("`a``b` :bytes,b:str", "`a``b`:bytes,b:str")
+    _assert_from_expr("123:bytes,b:str", "`123`:bytes,b:str")
+    _assert_from_expr("_:bytes,b:str", "`_`:bytes,b:str")
+    _assert_from_expr("`__`:bytes,b:str", "`__`:bytes,b:str")
+
     raises(SyntaxError, lambda: expression_to_schema("int"))
+    raises(SyntaxError, lambda: expression_to_schema(":int"))
+    raises(SyntaxError, lambda: expression_to_schema("a:int,:int"))
+    raises(SyntaxError, lambda: expression_to_schema(":int,a:int"))
     raises(SyntaxError, lambda: expression_to_schema("a:dummytype"))
     raises(SyntaxError, lambda: expression_to_schema("a:int,a:str"))
     raises(SyntaxError, lambda: expression_to_schema("a:int,b:{x:int,x:str}"))
-    raises(SyntaxError, lambda: expression_to_schema("_:int"))
-    raises(SyntaxError, lambda: expression_to_schema("__:int"))
     raises(SyntaxError, lambda: expression_to_schema("a:[int,str]"))
     raises(SyntaxError, lambda: expression_to_schema("a:[]"))
     raises(SyntaxError, lambda: expression_to_schema("a:<>"))
     raises(SyntaxError, lambda: expression_to_schema("a:<int>"))
     raises(SyntaxError, lambda: expression_to_schema("a:<int,str,str>"))
+    raises(SyntaxError, lambda: expression_to_schema("a:int,`b:str"))
 
 
 def test__parse_type():

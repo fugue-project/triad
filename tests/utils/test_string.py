@@ -1,5 +1,22 @@
-from triad.utils.string import assert_triad_var_name
 from pytest import raises
+
+from triad.utils.string import assert_triad_var_name, validate_triad_var_name
+
+
+def test_validate_triad_var_name():
+    assert not validate_triad_var_name("")
+    assert not validate_triad_var_name("`")
+    assert not validate_triad_var_name(" ")
+    assert not validate_triad_var_name("中国")
+    assert not validate_triad_var_name("_中国")
+    assert not validate_triad_var_name("مثال")
+    assert not validate_triad_var_name("_")
+    assert not validate_triad_var_name("__")
+
+    assert validate_triad_var_name("a")
+    assert validate_triad_var_name("abc")
+    assert validate_triad_var_name("__a")
+    assert validate_triad_var_name("_abc")
 
 
 def test_assert_triad_var_name():

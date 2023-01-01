@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.8.0
+
+* Support arbitrary column name
+
 ### 0.7.0
 
 * Fixed importlib `entry_points` compatibility issue

@@ -15,7 +15,7 @@ try:  # pragma: no cover
 except ImportError:  # pragma: no cover
     _HAS_CISO8601 = False
 from triad.utils.assertion import assert_or_throw
-from triad.utils.string import assert_triad_var_name
+
 
 EMPTY_ARGS: List[Any] = []
 EMPTY_KWARGS: Dict[str, Any] = {}
@@ -145,8 +145,8 @@ def str_to_object(
         should generate the same result.
     """
     try:
-        for p in expr.split("."):
-            assert_triad_var_name(p)
+        if any(not p.isidentifier() for p in expr.split(".")):
+            raise ValueError(f"{expr} is invalid")
         _globals, _locals = get_caller_global_local_vars(global_vars, local_vars)
         if "." not in expr:
             return eval(expr, _globals, _locals)
