@@ -43,9 +43,9 @@ def test_expression_conversion():
     _assert_from_expr("```` :bytes,b:str", "````:bytes,b:str")
     _assert_from_expr("`\\` :bytes,b:str", "`\\`:bytes,b:str")
     _assert_from_expr('`"` :bytes,b:str', '`"`:bytes,b:str')
-    
-    _assert_from_expr('`中国` :bytes,b:str', '`中国`:bytes,b:str')
-    _assert_from_expr('`مثال` :bytes,b:str', '`مثال`:bytes,b:str')
+
+    _assert_from_expr("`中国` :bytes,b:str", "`中国`:bytes,b:str")
+    _assert_from_expr("`مثال` :bytes,b:str", "`مثال`:bytes,b:str")
 
     _assert_from_expr("`a` :bytes,b:str", "a:bytes,b:str")
     _assert_from_expr("`a b` :bytes,b:str", "`a b`:bytes,b:str")

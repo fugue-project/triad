@@ -1,5 +1,6 @@
-from triad.utils.string import validate_triad_var_name, assert_triad_var_name
 from pytest import raises
+
+from triad.utils.string import assert_triad_var_name, validate_triad_var_name
 
 
 def test_validate_triad_var_name():
