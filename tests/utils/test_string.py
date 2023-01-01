@@ -1,15 +1,35 @@
-from triad.utils.string import is_quoteless_column_name
+from triad.utils.string import validate_triad_var_name, assert_triad_var_name
+from pytest import raises
 
 
-def test_is_quoteless_column_name():
-    assert not is_quoteless_column_name("")
-    assert not is_quoteless_column_name("`")
-    assert not is_quoteless_column_name(" ")
-    assert not is_quoteless_column_name("中国")
-    assert not is_quoteless_column_name("_中国")
-    assert not is_quoteless_column_name("مثال")
+def test_validate_triad_var_name():
+    assert not validate_triad_var_name("")
+    assert not validate_triad_var_name("`")
+    assert not validate_triad_var_name(" ")
+    assert not validate_triad_var_name("中国")
+    assert not validate_triad_var_name("_中国")
+    assert not validate_triad_var_name("مثال")
+    assert not validate_triad_var_name("_")
+    assert not validate_triad_var_name("__")
 
-    assert is_quoteless_column_name("a")
-    assert is_quoteless_column_name("abc")
-    assert is_quoteless_column_name("_")
-    assert is_quoteless_column_name("__")
+    assert validate_triad_var_name("a")
+    assert validate_triad_var_name("abc")
+    assert validate_triad_var_name("__a")
+    assert validate_triad_var_name("_abc")
+
+
+def test_assert_triad_var_name():
+    raises(AssertionError, lambda: assert_triad_var_name(None))
+    raises(AssertionError, lambda: assert_triad_var_name(""))
+    raises(AssertionError, lambda: assert_triad_var_name(" "))
+    raises(AssertionError, lambda: assert_triad_var_name("1"))
+    raises(AssertionError, lambda: assert_triad_var_name(123))
+    raises(AssertionError, lambda: assert_triad_var_name("_"))
+    raises(AssertionError, lambda: assert_triad_var_name("__"))
+    raises(AssertionError, lambda: assert_triad_var_name("a "))
+    raises(AssertionError, lambda: assert_triad_var_name("a a"))
+    raises(AssertionError, lambda: assert_triad_var_name("大大"))
+    raises(AssertionError, lambda: assert_triad_var_name("ŋ"))
+    assert "a" == assert_triad_var_name("a")
+    assert "_1" == assert_triad_var_name("_1")
+    assert "_a_1" == assert_triad_var_name("_a_1")

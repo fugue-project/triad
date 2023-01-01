@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional
 
 from .assertion import assert_or_throw
-from .string import is_quoteless_column_name
+from .string import validate_triad_var_name
 
 
 def normalize_names(names: List[Any]) -> Dict[Any, str]:
@@ -37,7 +37,7 @@ def normalize_names(names: List[Any]) -> Dict[Any, str]:
     result: Dict[Any, str] = {}
     _names: List[str] = []
     for _name in names:
-        if isinstance(_name, str) and is_quoteless_column_name(_name):
+        if isinstance(_name, str) and validate_triad_var_name(_name):
             dup_ct[_name] += 1
         else:
             _names.append(_name)
@@ -58,7 +58,7 @@ def normalize_names(names: List[Any]) -> Dict[Any, str]:
 def _normalize_name(name: Optional[str]) -> str:
     if name is None:
         return ""
-    if is_quoteless_column_name(name):
+    if validate_triad_var_name(name) and not all(x == "_" for x in name):
         return name
     name = name.strip()
     if name == "":
@@ -66,7 +66,7 @@ def _normalize_name(name: Optional[str]) -> str:
     name = "".join(_normalize_chars(name))
     if name[0].isdigit():
         name = "_" + name
-    if is_quoteless_column_name(name):
+    if validate_triad_var_name(name) and not all(x == "_" for x in name):
         return name
     return ""
 

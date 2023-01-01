@@ -51,8 +51,8 @@ def test_expression_conversion():
     _assert_from_expr("`a b` :bytes,b:str", "`a b`:bytes,b:str")
     _assert_from_expr("`a``b` :bytes,b:str", "`a``b`:bytes,b:str")
     _assert_from_expr("123:bytes,b:str", "`123`:bytes,b:str")
-    _assert_from_expr("_:bytes,b:str", "_:bytes,b:str")
-    _assert_from_expr("`__`:bytes,b:str", "__:bytes,b:str")
+    _assert_from_expr("_:bytes,b:str", "`_`:bytes,b:str")
+    _assert_from_expr("`__`:bytes,b:str", "`__`:bytes,b:str")
 
     raises(SyntaxError, lambda: expression_to_schema("int"))
     raises(SyntaxError, lambda: expression_to_schema(":int"))
@@ -66,6 +66,7 @@ def test_expression_conversion():
     raises(SyntaxError, lambda: expression_to_schema("a:<>"))
     raises(SyntaxError, lambda: expression_to_schema("a:<int>"))
     raises(SyntaxError, lambda: expression_to_schema("a:<int,str,str>"))
+    raises(SyntaxError, lambda: expression_to_schema("a:int,`b:str"))
 
 
 def test__parse_type():

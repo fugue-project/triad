@@ -9,7 +9,7 @@ from pandas.core.dtypes.base import ExtensionDtype
 from triad.utils.convert import as_type
 from triad.utils.iter import EmptyAwareIterable, Slicer
 from triad.utils.json import loads_no_dup
-from triad.utils.string import is_quoteless_column_name
+from triad.utils.string import validate_triad_var_name
 
 import pyarrow as pa
 
@@ -372,7 +372,7 @@ class SchemaedDataPartitioner(object):
 
 def _field_to_expression(field: pa.Field) -> str:
     name = field.name
-    if not is_quoteless_column_name(name):
+    if not validate_triad_var_name(name):
         name = "`" + name.replace("`", "``") + "`"
     return f"{name}:{_type_to_expression(field.type)}"
 
