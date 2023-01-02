@@ -30,6 +30,8 @@ def test_unquote_name():
     assert unquote_name("`大`") == "大"
     assert unquote_name("a b") == "a b"
 
+    assert unquote_name("ab") == "ab"
+
 
 def test_normalize_names():
     raises(ValueError, lambda: normalize_names([]))
