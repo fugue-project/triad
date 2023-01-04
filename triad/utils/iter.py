@@ -6,6 +6,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Set,
     Tuple,
     TypeVar,
     Union,
@@ -54,6 +55,7 @@ def to_kv_iterable(  # noqa: C901
     :param none_as_empty: if to treat None as empty iterable
 
     :raises ValueError: if input is None and `none_as_empty==False`
+    :raises ValueError: if input is a set
     :raises TypeError or ValueError: if input data type is not acceptable
 
     :yield: iterable of key value pair as tuples
@@ -63,6 +65,8 @@ def to_kv_iterable(  # noqa: C901
     elif isinstance(data, Dict):
         for k, v in data.items():
             yield k, v
+    elif isinstance(data, Set):
+        raise ValueError(f"{data} is a set, did you mistakenly use `,` instead of `:`?")
     elif isinstance(data, Iterable):
         ei = make_empty_aware(data)
         if not ei.empty:

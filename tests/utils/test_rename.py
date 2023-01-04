@@ -1,37 +1,6 @@
 from pytest import raises
 
-from triad.utils.rename import (
-    _normalize_name,
-    normalize_names,
-    quote_name,
-    unquote_name,
-)
-
-
-def test_quote_name():
-    assert quote_name("") == "``"
-    assert quote_name(" ") == "` `"
-    assert quote_name("_") == "`_`"
-    assert quote_name("`") == "````"
-    assert quote_name("`a`") == "```a```"
-    assert quote_name("`a`", quote="'") == "'`a`'"
-    assert quote_name("大") == "`大`"
-    assert quote_name("`a") == "```a`"
-
-    assert quote_name("a") == "a"
-    assert quote_name("Abc") == "Abc"
-
-
-def test_unquote_name():
-    raises(ValueError, lambda: unquote_name(""))
-    assert unquote_name("``") == ""
-    assert unquote_name("` `") == " "
-    assert unquote_name("````") == "`"
-    assert unquote_name("`ab") == "`ab"
-    assert unquote_name("'大'", quote="'") == "大"
-    assert unquote_name("a b") == "a b"
-
-    assert unquote_name("ab") == "ab"
+from triad.utils.rename import _normalize_name, normalize_names
 
 
 def test_normalize_names():

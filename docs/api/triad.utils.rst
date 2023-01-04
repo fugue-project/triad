@@ -34,6 +34,14 @@ triad.utils.dispatcher
    :undoc-members:
    :show-inheritance:
 
+triad.utils.entry\_points
+-------------------------
+
+.. automodule:: triad.utils.entry_points
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 triad.utils.hash
 ----------------
 
@@ -78,6 +86,14 @@ triad.utils.rename
 ------------------
 
 .. automodule:: triad.utils.rename
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+triad.utils.schema
+------------------
+
+.. automodule:: triad.utils.schema
    :members:
    :undoc-members:
    :show-inheritance:

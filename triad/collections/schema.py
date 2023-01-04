@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,11 @@ from triad.utils.pyarrow import (
     schema_to_expression,
     to_pa_datatype,
     to_pandas_dtype,
-    _parse_quoted_string,
+)
+from triad.utils.schema import (
+    safe_replace_out_of_quote,
+    safe_search_out_of_quote,
+    safe_split_and_unquote,
 )
 from triad.utils.pandas_like import PD_UTILS
 
@@ -478,13 +482,17 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
                 if callable(a):
                     result += a(self)
                 elif isinstance(a, str):
-                    op_pos = list(_get_pos(a, "-~+"))
+                    op_pos = [x[0] for x in safe_search_out_of_quote(a, "-~+")]
                     op_pos.append(len(a))
-                    s = Schema(_replace_star(a[: op_pos[0]], str(self)))
+                    s = Schema(
+                        safe_replace_out_of_quote(a[: op_pos[0]], "*", str(self))
+                    )
                     for i in range(0, len(op_pos) - 1):
                         op, expr = a[op_pos[i]], a[(op_pos[i] + 1) : op_pos[i + 1]]
                         if op in ["-", "~"]:
-                            cols = list(_split(expr, ","))
+                            cols = safe_split_and_unquote(
+                                expr, ",", on_unquoted_empty="ignore"
+                            )
                             s = s.exclude(cols) if op == "~" else s - cols
                         else:  # +
                             overwrite = Schema(expr)
@@ -516,40 +524,3 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             is_supported(field.type), SchemaError(f"{field} type is not supported")
         )
         return field
-
-
-def _get_pos(s: str, chars: str) -> Iterable[int]:
-    i = 0
-    while i < len(s):
-        if s[i] in chars:
-            yield i
-        elif s[i] == "`":
-            _, i = _parse_quoted_string(s, i)
-            continue
-        i += 1
-
-
-def _replace_star(s: str, r: str) -> str:
-    b = 0
-    res: List[str] = []
-    for p in _get_pos(s, "*"):
-        res.append(s[b:p])
-        res.append(r)
-        b = p + 1
-    if b < len(s):
-        res.append(s[b:])
-    return "".join(res)
-
-
-def _split(s: str, split: str) -> Iterable[str]:
-    def _unquote(s: str) -> str:
-        s = s.strip()
-        return s[1:-1] if s.startswith("`") else s
-
-    b = 0
-    for p in _get_pos(s, ","):
-        if p > b:
-            yield _unquote(s[b:p])
-        b = p + 1
-    if b < len(s):
-        yield _unquote(s[b:])
