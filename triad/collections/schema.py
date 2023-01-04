@@ -4,8 +4,10 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+
 from triad.collections.dict import IndexedOrderedDict
 from triad.utils.assertion import assert_arg_not_none, assert_or_throw
+from triad.utils.pandas_like import PD_UTILS
 from triad.utils.pyarrow import (
     expression_to_schema,
     is_supported,
@@ -14,11 +16,11 @@ from triad.utils.pyarrow import (
     to_pandas_dtype,
 )
 from triad.utils.schema import (
+    quote_name,
     safe_replace_out_of_quote,
     safe_search_out_of_quote,
     safe_split_and_unquote,
 )
-from triad.utils.pandas_like import PD_UTILS
 
 
 class SchemaError(Exception):
@@ -305,13 +307,13 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             )
         od = OrderedDict(target)
         for k, v in pairs:
-            k = k.strip()
-            if k == "":
-                continue
+            # k = k.strip()
+            # if k == "":
+            #    continue
             if k not in od:
                 if ignore_key_mismatch:
                     continue
-                raise SchemaError(f"Can't remove {k} from {target}")
+                raise SchemaError(f"Can't remove {quote_name(k)} from {target}")
             if v is None:
                 del od[k]
             else:
