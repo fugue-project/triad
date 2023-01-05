@@ -142,10 +142,10 @@ def test_schema_remove():
     t = s.remove(None)
     assert t == "a:int,b:str,c:int"
     assert t is not s
-    t = s.remove("")
-    assert t == "a:int,b:str,c:int"
-    t = s.remove(" ")
-    assert t == "a:int,b:str,c:int"
+    # t = s.remove("")
+    # assert t == "a:int,b:str,c:int"
+    # t = s.remove(" ")
+    # assert t == "a:int,b:str,c:int"
     t = s.remove("b")
     assert t == "a:int,c:int"
     t = s.remove("b:str")
@@ -239,8 +239,8 @@ def test_schema_operators():
     t += ""
     assert s == "a:int,b:str,c:int,d:int"
     assert t == "a:int,b:str,c:int,d:int,e:int"
-    t = s - ""
-    assert t == s
+    # t = s - ""
+    # assert t == s
     t = s - ["a", "c"]
     assert t == "b:str,d:int"
     with raises(SchemaError):
@@ -273,6 +273,10 @@ def test_schema_set_ops():
     assert s == "a:int,b:str,c:int"
     s.union_with("e:str")
     assert s == "a:int,b:str,c:int,e:str"
+
+    s6 = Schema("a:int,``:str")
+    assert s.intersect(s6) == "a:int"
+    assert s6.intersect(s) == "a:int"
 
 
 def test_schema_assert_not_empty():

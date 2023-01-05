@@ -72,6 +72,7 @@ def test_to_kv_iterable():
     assert [] == list(to_kv_iterable(None, none_as_empty=True))
     assert [] == list(to_kv_iterable(None))
     assert [] == list(to_kv_iterable([]))
+    assert [] == list(to_kv_iterable({}))
     raises(ValueError, lambda: list(to_kv_iterable(None, none_as_empty=False)))
     assert data1 == list(to_kv_iterable(data1))
     assert data1 == list(to_kv_iterable(data2))
@@ -80,6 +81,7 @@ def test_to_kv_iterable():
     raises(TypeError, lambda: list(to_kv_iterable(data5)))
     raises(TypeError, lambda: list(to_kv_iterable(123)))
     raises(ValueError, lambda: list(to_kv_iterable(data6)))
+    raises(ValueError, lambda: list(to_kv_iterable({1, 2})))
 
 
 def test_slice_iterable():

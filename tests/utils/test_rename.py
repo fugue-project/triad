@@ -1,5 +1,6 @@
-from triad.utils.rename import normalize_names, _normalize_name
 from pytest import raises
+
+from triad.utils.rename import _normalize_name, normalize_names
 
 
 def test_normalize_names():

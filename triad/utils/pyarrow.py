@@ -5,13 +5,15 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
-from pandas.core.dtypes.base import ExtensionDtype
-from triad.utils.convert import as_type
-from triad.utils.iter import EmptyAwareIterable, Slicer
-from triad.utils.json import loads_no_dup
-from triad.utils.string import validate_triad_var_name
-
 import pyarrow as pa
+from pandas.core.dtypes.base import ExtensionDtype
+
+from triad.constants import TRIAD_VAR_QUOTE
+
+from .convert import as_type
+from .iter import EmptyAwareIterable, Slicer
+from .json import loads_no_dup
+from .schema import move_to_unquoted, quote_name, unquote_name
 
 TRIAD_DEFAULT_TIMESTAMP = pa.timestamp("us")
 
@@ -371,9 +373,7 @@ class SchemaedDataPartitioner(object):
 
 
 def _field_to_expression(field: pa.Field) -> str:
-    name = field.name
-    if not validate_triad_var_name(name):
-        name = "`" + name.replace("`", "``") + "`"
+    name = quote_name(field.name)
     return f"{name}:{_type_to_expression(field.type)}"
 
 
@@ -449,23 +449,6 @@ def _parse_type_function(expr: str) -> Tuple[str, List[str]]:
     return name, args
 
 
-def _parse_quoted_string(expr: str, p: int) -> Tuple[str, int]:
-    res = ""
-    b, e = p + 1, p + 1
-    le = len(expr)
-    while e < le:
-        if expr[e] == "`":
-            if e + 1 < le and expr[e + 1] == "`":  # escape (``)
-                res += expr[b : e + 1]
-                b = e = e + 2
-            else:
-                res += expr[b:e]
-                return res, e + 1
-        else:
-            e += 1
-    raise SyntaxError(f"{expr} contains open quote `")
-
-
 def _parse_tokens(expr: str) -> Iterable[str]:
     # parse to tokens that can construct a valid json string
     expr += ","
@@ -473,10 +456,11 @@ def _parse_tokens(expr: str) -> Iterable[str]:
     skip = False
     i = 0
     while i < len(expr):
-        if expr[i] == "`":
-            s, i = _parse_quoted_string(expr, i)
+        if expr[i] == TRIAD_VAR_QUOTE:
+            e = move_to_unquoted(expr, i)
+            s = unquote_name(expr[i:e])
             yield '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
-            last = i
+            last = i = e
             continue
         if expr[i] == "(":
             skip = True
