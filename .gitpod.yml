@@ -1,9 +1,10 @@
-
-image: fugueproject/gitpod:0.7.1
+image: fugueproject/gitpod:0.7.2
 
 tasks:
   - init: |
+      sudo chmod -R 777 /usr/local/
       make devenv
+
 github:
   prebuilds:
     # enable for the master/default branch (defaults to true)
@@ -28,3 +29,5 @@ vscode:
     - ms-toolsai.jupyter
     - ms-toolsai.jupyter-keymap
     - ms-toolsai.jupyter-renderers
+    - ms-python.isort
+    - virgilsisoe.python-auto-import
