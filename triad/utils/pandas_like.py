@@ -112,7 +112,7 @@ class PandasLikeUtils(Generic[T]):
             else:
                 for i in range(df.shape[1]):
                     tp = df.dtypes[i]
-                    if tp == np.dtype("object") or tp == np.dtype(str):
+                    if tp == np.dtype("object") or pd.api.types.is_string_dtype(tp):
                         t = pa.string()
                     else:
                         t = pa.from_numpy_dtype(tp)

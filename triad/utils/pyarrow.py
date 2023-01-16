@@ -134,7 +134,7 @@ def expression_to_schema(expr: str) -> pa.Schema:
     except SyntaxError:
         raise
     except Exception as e:
-        raise SyntaxError(f"Invalid syntax: '{expr}' {str(e)}")
+        raise SyntaxError(f"Invalid syntax: '{expr}' {str(e)}")  # noqa
 
 
 def schema_to_expression(schema: pa.Schema) -> pa.Schema:
