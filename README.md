@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.8.1
+
+* Fixed the [string column issue](https://github.com/fugue-project/fugue/issues/415)
+
 ### 0.8.0
 
 * Support arbitrary column name

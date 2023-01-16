@@ -33,6 +33,9 @@ def test_to_schema():
     df = df.astype(dtype={"x": np.int32, "y": np.dtype("str")})
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
 
+    df = pd.Series([], name="col", dtype="string").to_frame()
+    assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
+
     # timestamp test
     df = pd.DataFrame(
         [[datetime(2020, 1, 1, 2, 3, 4, 5), date(2020, 2, 2)]], columns=["a", "b"]
