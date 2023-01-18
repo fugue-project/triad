@@ -15,7 +15,8 @@ from .iter import EmptyAwareIterable, Slicer
 from .json import loads_no_dup
 from .schema import move_to_unquoted, quote_name, unquote_name
 
-TRIAD_DEFAULT_TIMESTAMP = pa.timestamp("us")
+TRIAD_DEFAULT_TIMESTAMP_UNIT = "us"
+TRIAD_DEFAULT_TIMESTAMP = pa.timestamp(TRIAD_DEFAULT_TIMESTAMP_UNIT)
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "null": pa.null(),

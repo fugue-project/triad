@@ -34,7 +34,13 @@ def test_to_schema():
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
 
     df = pd.Series([], name="col", dtype="string").to_frame()
-    assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
+    assert expression_to_schema("col:str") == PD_UTILS.to_schema(df)
+
+    df = pd.Series([], name="col", dtype="datetime64[ns]").to_frame()
+    assert expression_to_schema("col:datetime") == PD_UTILS.to_schema(df)
+
+    df = pd.Series([], name="col", dtype="datetime64[ns, UTC]").to_frame()
+    assert expression_to_schema("col:timestamp(us, UTC)") == PD_UTILS.to_schema(df)
 
     # timestamp test
     df = pd.DataFrame(
@@ -182,7 +188,7 @@ def test_boolean_enforce():
 def test_fillna_default():
     df = pd.DataFrame([["a"], [None]], columns=["x"])
     s = PD_UTILS.fillna_default(df["x"])
-    assert ["a", 0] == s.tolist()
+    assert ["a", ""] == s.tolist()
 
     df = pd.DataFrame([["a"], ["b"]], columns=["x"])
     s = PD_UTILS.fillna_default(df["x"].astype(np.str_))
@@ -195,7 +201,7 @@ def test_fillna_default():
 
     df = pd.DataFrame([[True], [None]], columns=["x"])
     s = PD_UTILS.fillna_default(df["x"])
-    assert [True, 0] == s.tolist()
+    assert [True, ""] == s.tolist()
 
     df = pd.DataFrame([[True], [False]], columns=["x"])
     s = PD_UTILS.fillna_default(df["x"].astype(bool))

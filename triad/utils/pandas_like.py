@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from triad.utils.assertion import assert_or_throw
 from triad.utils.pyarrow import (
-    TRIAD_DEFAULT_TIMESTAMP,
+    TRIAD_DEFAULT_TIMESTAMP_UNIT,
     apply_schema,
     to_pandas_dtype,
     to_single_pandas_dtype,
@@ -114,6 +114,8 @@ class PandasLikeUtils(Generic[T]):
                     tp = df.dtypes[i]
                     if tp == np.dtype("object") or pd.api.types.is_string_dtype(tp):
                         t = pa.string()
+                    elif isinstance(tp, pd.DatetimeTZDtype):
+                        t = pa.timestamp(tp.unit, str(tp.tz))
                     else:
                         t = pa.from_numpy_dtype(tp)
                     yield pa.field(df.columns[i], t)
@@ -121,7 +123,12 @@ class PandasLikeUtils(Generic[T]):
         fields: List[pa.Field] = []
         for field in get_fields():
             if pa.types.is_timestamp(field.type):
-                fields.append(pa.field(field.name, TRIAD_DEFAULT_TIMESTAMP))
+                fields.append(
+                    pa.field(
+                        field.name,
+                        pa.timestamp(TRIAD_DEFAULT_TIMESTAMP_UNIT, field.type.tz),
+                    )
+                )
             else:
                 fields.append(field)
         return pa.schema(fields)
@@ -229,11 +236,9 @@ class PandasLikeUtils(Generic[T]):
         dtype = col.dtype
         if np.issubdtype(dtype, np.datetime64):
             return col.fillna(_DEFAULT_DATETIME)
-        if np.issubdtype(dtype, np.str_) or np.issubdtype(
-            dtype, np.string_
-        ):  # pragma: no cover
+        if pd.api.types.is_string_dtype(dtype):
             return col.fillna("")
-        if np.issubdtype(dtype, np.bool_):
+        if pd.api.types.is_bool_dtype(dtype):
             return col.fillna(False)
         return col.fillna(0)
 
