@@ -18,6 +18,7 @@ setup(
     keywords="fugue util utils utility utilities",
     url="http://github.com/fugue-project/triad",
     install_requires=[
+        "numpy",
         "pandas",
         "six",
         "pyarrow",
