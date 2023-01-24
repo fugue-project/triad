@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.8.2
+
+* Handle time zone in pandas_utils
+
 ### 0.8.1
 
 * Fixed the [string column issue](https://github.com/fugue-project/fugue/issues/415)
