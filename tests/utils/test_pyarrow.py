@@ -17,6 +17,7 @@ from triad.utils.pyarrow import (
     to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
+    get_alter_func,
 )
 
 
@@ -293,6 +294,59 @@ def test_schemas_equal():
     c = c.with_metadata({"a": "1"})
     assert not schemas_equal(a, c)
     assert schemas_equal(a, c, check_order=False)
+
+
+def test_get_later_func():
+    adf = pa.Table.from_pylist(
+        [dict(a=0, b=2), dict(a=1, b=3)], schema=expression_to_schema("a:int32,b:int32")
+    )
+    to_schema1 = expression_to_schema("a:int32,b:int32")
+    to_schema2 = expression_to_schema("b:int32,a:long")
+    to_schema3 = expression_to_schema("b:str,a:int32")
+    to_schema4 = expression_to_schema("b:str")
+    to_schema5 = expression_to_schema("b:str,d:str")
+
+    f = get_alter_func(adf.schema, to_schema1, safe=True)
+    tdf = f(adf)
+    assert tdf.schema == to_schema1
+    assert tdf.to_pylist() == [dict(a=0, b=2), dict(a=1, b=3)]
+
+    f = get_alter_func(adf.schema, to_schema2, safe=True)
+    tdf = f(adf)
+    assert tdf.schema == to_schema2
+    assert tdf.to_pylist() == [dict(b=2, a=0), dict(b=3, a=1)]
+
+    f = get_alter_func(adf.schema, to_schema3, safe=True)
+    tdf = f(adf)
+    assert tdf.schema == to_schema3
+    assert tdf.to_pylist() == [dict(b="2", a=0), dict(b="3", a=1)]
+
+    f = get_alter_func(adf.schema, to_schema4, safe=True)
+    tdf = f(adf)
+    assert tdf.schema == to_schema4
+    assert tdf.to_pylist() == [dict(b="2"), dict(b="3")]
+
+    with raises(KeyError):
+        get_alter_func(adf.schema, to_schema5, safe=True)
+
+    adf = pa.Table.from_pylist(
+        [dict(a=datetime(2022, 1, 1), b="a"), dict(a=datetime(2022, 1, 2), b="b")],
+        schema=pa.schema(
+            [
+                pa.field("a", pa.timestamp(unit="ns", tz="UTC")),
+                pa.field("b", pa.large_string()),
+            ]
+        ),
+    )
+    to_schema10 = expression_to_schema("a:datetime,b:str")
+
+    f = get_alter_func(adf.schema, to_schema10, safe=True)
+    tdf = f(adf)
+    assert tdf.schema == to_schema10
+    assert tdf.to_pylist() == [
+        dict(a=datetime(2022, 1, 1), b="a"),
+        dict(a=datetime(2022, 1, 2), b="b"),
+    ]
 
 
 def _test_partition(partitioner, data, expression):
