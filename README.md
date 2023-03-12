@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.8.3
+
+* Add `get_alter_func` to pyarrow utils
+
 ### 0.8.2
 
 * Handle time zone in pandas_utils
