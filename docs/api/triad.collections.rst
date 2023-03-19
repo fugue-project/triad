@@ -18,6 +18,14 @@ triad.collections.fs
    :undoc-members:
    :show-inheritance:
 
+triad.collections.function\_wrapper
+-----------------------------------
+
+.. automodule:: triad.collections.function_wrapper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 triad.collections.schema
 ------------------------
 
