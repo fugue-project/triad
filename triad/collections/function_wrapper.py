@@ -22,6 +22,51 @@ from .dict import IndexedOrderedDict
 
 
 class FunctionWrapper(object):
+    """Create a function wrapper that can recognize and validate all
+    input types.
+
+    :param func: the function to be wrapped
+    :param params_re: paramter types regex expression
+    :param return_re: return types regex expression
+
+    .. admonition:: Examples
+
+        Here is a simple example to show how to use FunctionWrapper. Assuming
+        we want to validate the functions with 2 pandas dataframes as the first
+        two input and then arbitray other input, and with 1 pandas dataframe
+        as the return
+
+        .. code-block:: python
+
+            import pandas as pd
+
+            @function_wrapper(None)  # all param defintions are here, no entrypoint
+            class MyFuncWrapper(FunctionWrapper):
+                def __init__(self, func):
+                    super().__init__(
+                        func,
+                        params_re="^dd.*",  # starts with two dataframe parameters
+                        return_re="^d$",  # returns a dataframe
+                    )
+
+            @MyFuncWrapper.annotated_param(pd.DataFrame, code="d")
+            class MyDataFrameParam(AnnotatedParam):
+                pass
+
+            def f1(a:pd.DataFrame, b:pd.DataFrame, c) -> pd.DataFrame:
+                return a
+
+            def f2(a, b:pd.DataFrame, c):
+                return a
+
+            # f1 is valid
+            MyFuncWrapper(f1)
+
+            # f2 is invalid because of the first parameter
+            # TypeError will be thrown
+            MyFuncWrapper(f2)
+    """
+
     _REGISTERED: List[
         Tuple[Type["AnnotatedParam"], Any, str, Callable[[Any], bool]]
     ] = []
@@ -50,10 +95,12 @@ class FunctionWrapper(object):
 
     @property
     def input_code(self) -> str:
+        """The input parameters code expression"""
         return "".join(x.code for x in self._params.values())
 
     @property
     def output_code(self) -> str:
+        """The output code expression"""
         return self._rt.code
 
     def _parse_function(
@@ -92,6 +139,22 @@ class FunctionWrapper(object):
         matcher: Optional[Callable[[Any], bool]] = None,
         child_can_reuse_code: bool = False,
     ):
+        """The decorator to register a type annotation for this function
+        wrapper
+
+        :param annotation: the type annotation
+        :param code: the single char code to represent this type annotation
+            , defaults to None, meaning it will try to use its parent class'
+            code, this is allowed only if ``child_can_reuse_code`` is set to
+            True on the parent class.
+        :param matcher: a function taking in a type annotation and decide
+            whether it is acceptable by the :class:`~.AnnotatedParam`
+            , defaults to None, meaning it will just do a simple ``==`` check.
+        :param child_can_reuse_code: whether the derived types of the current
+            AnnotatedParam can reuse the code (if not specifying a new code)
+            , defaults to False
+        """
+
         def _func(tp: Type["AnnotatedParam"]) -> Type["AnnotatedParam"]:
             if not issubclass(tp, AnnotatedParam):
                 raise InvalidOperationError(f"{tp} is not a subclass of AnnotatedParam")
@@ -180,6 +243,8 @@ class FunctionWrapper(object):
 
 
 class AnnotatedParam:
+    """An abstraction of annotated parameter"""
+
     def __init__(self, param: Optional[inspect.Parameter]):
         if param is not None:
             self.required = param.default == inspect.Parameter.empty
@@ -194,6 +259,13 @@ class AnnotatedParam:
 
 
 def function_wrapper(entrypoint: Optional[str]):
+    """The decorator to register a new :class:`~.FunctionWrapper` type.
+
+    :param entrypoint: the entrypoint to load in setup.py in order to
+        find the registered :class:`~.AnnotatedParam` under this
+        :class:`~.FunctionWrapper`
+    """
+
     def _func(tp: Type[FunctionWrapper]) -> Type[FunctionWrapper]:
         if not issubclass(tp, FunctionWrapper):
             raise InvalidOperationError(f"{tp} is not a subclass of FunctionWrapper")
@@ -211,24 +283,34 @@ def function_wrapper(entrypoint: Optional[str]):
 
 @FunctionWrapper.annotated_param("NoneType", "n", lambda a: False)
 class NoneParam(AnnotatedParam):
+    """The case where there is no annotation for a parameter"""
+
     pass
 
 
 @FunctionWrapper.annotated_param("[Self]", "0", lambda a: False)
 class SelfParam(AnnotatedParam):
+    """For the self parameters in member functions"""
+
     pass
 
 
 @FunctionWrapper.annotated_param("[Other]", "x", lambda a: False)
 class OtherParam(AnnotatedParam):
+    """Any annotation that is not recognized"""
+
     pass
 
 
 @FunctionWrapper.annotated_param("[Positional]", "y", lambda a: False)
 class PositionalParam(AnnotatedParam):
+    """For positional parameters"""
+
     pass
 
 
 @FunctionWrapper.annotated_param("[Keyword]", "z", lambda a: False)
 class KeywordParam(AnnotatedParam):
+    """For keyword parameters"""
+
     pass

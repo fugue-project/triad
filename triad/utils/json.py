@@ -19,6 +19,7 @@ def check_for_duplicate_keys(
     otherwise return a dict.
 
     Example:
+
     >>> json.loads('{"x": 1, "x": 2}', object_pairs_hook=check_for_duplicate_keys)
 
     :raises KeyError: if there is duplicated key
