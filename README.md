@@ -20,6 +20,11 @@ pip install triad
 
 ## Release History
 
+### 0.8.4
+
+* Moved `FunctionWrapper` from Fugue into Triad
+* Improved groupby apply efficiency for pandas utils
+
 ### 0.8.3
 
 * Add `get_alter_func` to pyarrow utils
