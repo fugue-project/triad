@@ -19,7 +19,7 @@ setup(
     url="http://github.com/fugue-project/triad",
     install_requires=[
         "numpy",
-        "pandas",
+        "pandas>=1.2.0",
         "six",
         "pyarrow",
         "fs",

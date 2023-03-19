@@ -209,21 +209,15 @@ class PandasLikeUtils(Generic[T]):
         or pd.UInt64Index and without a name, otherwise, `ValueError` will raise.
         """
 
-        def _wrapper(keys: List[str], df: T) -> T:
-            return func(df.drop(keys, axis=1).reset_index(drop=True))
+        def _wrapper(df: T) -> T:
+            return func(df.reset_index(drop=True))
 
         self.ensure_compatible(df)
         if len(cols) == 0:
             return func(df)
-        params: Dict[str, Any] = {}
-        for c in cols:
-            params[key_col_name + "null_" + c] = df[c].isnull()
-            params[key_col_name + "fill_" + c] = self.fillna_default(df[c])
-        keys = list(params.keys())
-        gdf = df.assign(**params)
         return (
-            gdf.groupby(keys)
-            .apply(lambda df: _wrapper(keys, df), **kwargs)
+            df.groupby(cols, dropna=False)
+            .apply(lambda df: _wrapper(df), **kwargs)
             .reset_index(drop=True)
         )
 
@@ -234,7 +228,7 @@ class PandasLikeUtils(Generic[T]):
         :return: filled series
         """
         dtype = col.dtype
-        if np.issubdtype(dtype, np.datetime64):
+        if pd.api.types.is_datetime64_dtype(dtype):
             return col.fillna(_DEFAULT_DATETIME)
         if pd.api.types.is_string_dtype(dtype):
             return col.fillna("")

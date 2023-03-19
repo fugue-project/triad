@@ -186,6 +186,10 @@ def test_boolean_enforce():
 
 
 def test_fillna_default():
+    df = pd.DataFrame([[1.0], [None]], columns=["x"])
+    s = PD_UTILS.fillna_default(df["x"])
+    assert [1.0, 0.0] == s.tolist()
+
     df = pd.DataFrame([["a"], [None]], columns=["x"])
     s = PD_UTILS.fillna_default(df["x"])
     assert ["a", ""] == s.tolist()
