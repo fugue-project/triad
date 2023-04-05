@@ -259,8 +259,8 @@ class PandasLikeUtils(Generic[T]):
             raise ValueError("pandas like datafame index can't have name")
         if self.is_compatile_index(df):
             return
-        if self.empty(df):
-            return
+        if self.empty(df):  # for pandas < 2
+            return  # pragma: no cover
         raise ValueError(
             f"pandas like datafame must have default index, but got {type(df.index)}"
         )
