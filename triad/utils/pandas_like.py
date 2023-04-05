@@ -3,15 +3,16 @@ from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeV
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+
 from triad.utils.assertion import assert_or_throw
 from triad.utils.pyarrow import (
     TRIAD_DEFAULT_TIMESTAMP_UNIT,
     apply_schema,
+    to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
 )
-
-import pyarrow as pa
 
 T = TypeVar("T", bound=Any)
 _DEFAULT_JOIN_KEYS: List[str] = []
@@ -117,7 +118,7 @@ class PandasLikeUtils(Generic[T]):
                     elif isinstance(tp, pd.DatetimeTZDtype):
                         t = pa.timestamp(tp.unit, str(tp.tz))
                     else:
-                        t = pa.from_numpy_dtype(tp)
+                        t = to_pa_datatype(tp)
                     yield pa.field(df.columns[i], t)
 
         fields: List[pa.Field] = []
