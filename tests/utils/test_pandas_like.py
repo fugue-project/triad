@@ -298,7 +298,7 @@ def test_safe_group_by_apply_special_types():
     ).assert_eq(res)
 
 
-def test_is_compatile_index():
+def test_is_compatible_index():
     df = DF([["a", 1], [None, 2]], "a:str,b:int", True)
     assert PD_UTILS.is_compatile_index(df.native)
     tdf = df.native.sort_values("a")

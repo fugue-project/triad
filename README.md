@@ -20,6 +20,11 @@ pip install triad
 
 ## Release History
 
+### 0.8.5
+
+* Ensure pandas 2.0 compatibility
+* Improve `to_schema` in `PandasUtils`
+
 ### 0.8.4
 
 * Moved `FunctionWrapper` from Fugue into Triad

@@ -17,7 +17,12 @@
 		"python.linting.pylintPath": "/usr/local/py-utils/bin/pylint"
 	},
 	"extensions": [
-		"ms-python.python"
+		"ms-python.python",
+		"GitHub.copilot",
+		"ms-python.isort",
+		"ms-python.pylint",
+		"ms-python.flake8",
+		"njpwerner.autodocstring"
 	],
 	"forwardPorts": [
 		8888
