@@ -185,6 +185,50 @@ def test_boolean_enforce():
     assert [[1, True], [2, False], [3, None]] == arr
 
 
+def test_timestamp_enforce():
+    df = DF(
+        [
+            [1, pd.Timestamp("2020-01-02 00:00:00", tz="UTC")],
+            [2, pd.Timestamp("2020-01-03 00:00:00", tz="UTC")],
+        ],
+        "b:int,c:datetime",
+        True,
+    )
+    arr = df.as_array(type_safe=True)
+    assert [
+        [1, pd.Timestamp("2020-01-02 00:00:00")],
+        [2, pd.Timestamp("2020-01-03 00:00:00")],
+    ] == arr
+
+    df = DF(
+        [
+            [1, pd.Timestamp("2020-01-02 00:00:00")],
+            [2, pd.Timestamp("2020-01-03 00:00:00")],
+        ],
+        "b:int,c:timestamp(ns, UTC)",
+        True,
+    )
+    arr = df.as_array(type_safe=True)
+    assert [
+        [1, pd.Timestamp("2020-01-02 00:00:00", tz="UTC")],
+        [2, pd.Timestamp("2020-01-03 00:00:00", tz="UTC")],
+    ] == arr
+
+    df = DF(
+        [
+            [1, pd.Timestamp("2020-01-02 00:00:00", tz="US/Pacific")],
+            [2, pd.Timestamp("2020-01-03 00:00:00", tz="US/Pacific")],
+        ],
+        "b:int,c:timestamp(ns, UTC)",
+        True,
+    )
+    arr = df.as_array(type_safe=True)
+    assert [
+        [1, pd.Timestamp("2020-01-02 08:00:00", tz="UTC")],
+        [2, pd.Timestamp("2020-01-03 08:00:00", tz="UTC")],
+    ] == arr
+
+
 def test_fillna_default():
     df = pd.DataFrame([[1.0], [None]], columns=["x"])
     s = PD_UTILS.fillna_default(df["x"])

@@ -182,7 +182,20 @@ class PandasLikeUtils(Generic[T]):
                     .mask(ns, None)
                 )
             elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
-                s = s.astype(to_single_pandas_dtype(v.type))
+                from_t = s.dtype
+                to_t = to_single_pandas_dtype(v.type)
+                if from_t != to_t:
+                    if pd.api.types.is_datetime64_any_dtype(
+                        from_t
+                    ) and pd.api.types.is_datetime64_any_dtype(to_t):
+                        from_tz = _get_tz(from_t)
+                        to_tz = _get_tz(to_t)
+                        if from_tz is None or to_tz is None:
+                            s = s.dt.tz_localize(to_tz)
+                        else:
+                            s = s.dt.tz_convert(to_tz)
+                    else:
+                        s = s.astype(to_single_pandas_dtype(v.type))
             data[v.name] = s
         return pd.DataFrame(data)
 
@@ -273,3 +286,9 @@ class PandasUtils(PandasLikeUtils[pd.DataFrame]):
 
 
 PD_UTILS = PandasUtils()
+
+
+def _get_tz(ts: Any) -> Any:
+    if hasattr(ts, "tz"):
+        return ts.tz
+    return None
