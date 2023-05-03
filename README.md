@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.8.7
+
+* Fix pandas 2.0 warnings
+
 ### 0.8.6
 
 * Fixed timestamp conversion for pandas 2.0

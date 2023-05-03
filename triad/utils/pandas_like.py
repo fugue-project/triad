@@ -230,7 +230,7 @@ class PandasLikeUtils(Generic[T]):
         if len(cols) == 0:
             return func(df)
         return (
-            df.groupby(cols, dropna=False)
+            df.groupby(cols, dropna=False, as_index=False)
             .apply(lambda df: _wrapper(df), **kwargs)
             .reset_index(drop=True)
         )
