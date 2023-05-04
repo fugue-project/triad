@@ -229,8 +229,12 @@ class PandasLikeUtils(Generic[T]):
         self.ensure_compatible(df)
         if len(cols) == 0:
             return func(df)
+        if len(cols) == 1:  # avoid pandas warnings
+            keys: Any = cols[0]
+        else:
+            keys = cols
         return (
-            df.groupby(cols, dropna=False, group_keys=False)
+            df.groupby(keys, dropna=False, group_keys=False)
             .apply(lambda df: _wrapper(df), **kwargs)
             .reset_index(drop=True)
         )
