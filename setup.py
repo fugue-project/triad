@@ -13,8 +13,8 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     license="Apache-2.0",
-    author="Han Wang",
-    author_email="goodwanghan@gmail.com",
+    author="The Fugue Development Team",
+    author_email="hello@fugue.ai",
     keywords="fugue util utils utility utilities",
     url="http://github.com/fugue-project/triad",
     install_requires=[
@@ -28,7 +28,7 @@ setup(
     extras_require={"ciso8601": ["ciso8601"]},
     classifiers=[
         # "3 - Alpha", "4 - Beta" or "5 - Production/Stable"
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "License :: OSI Approved :: Apache Software License",
