@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.8.8
+
+* Add type replacement utils for pyarrow
+
 ### 0.8.7
 
 * Fix pandas 2.0 warnings
