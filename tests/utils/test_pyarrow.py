@@ -367,11 +367,11 @@ def test_replace_type():
     assert ct is replace_type(ct, t, t)  # no op
     assert ct is replace_type(ct, f, f)  # no op
 
-    ct = expression_to_schema("a:[int32]")[0].type
+    ct = pa.list_(pa.field("l", pa.int32()))
     f = to_pa_datatype("int64")
     t = to_pa_datatype("int32")
     assert ct == replace_type(ct, f, t)  # no op
-    assert expression_to_schema("a:[int64]")[0].type == replace_type(ct, t, f)
+    assert pa.list_(pa.field("l", pa.int64())) == replace_type(ct, t, f)
     assert ct == replace_type(ct, t, f, recursive=False)
     assert ct is replace_type(ct, t, t)  # no op
     assert ct is replace_type(ct, f, f)  # no op
@@ -385,11 +385,15 @@ def test_replace_type():
     assert ct is replace_type(ct, t, t)  # no op
     assert ct is replace_type(ct, f, f)  # no op
 
-    ct = expression_to_schema("a:<int32,[int32]>")[0].type
+    ct = pa.map_(
+        pa.field("l", pa.int32(), nullable=False), pa.field("m", pa.list_(pa.int32()))
+    )
     f = to_pa_datatype("int64")
     t = to_pa_datatype("int32")
     assert ct == replace_type(ct, f, t)  # no op
-    assert expression_to_schema("a:<int64,[int64]>")[0].type == replace_type(ct, t, f)
+    assert pa.map_(
+        pa.field("l", pa.int64(), nullable=False), pa.field("m", pa.list_(pa.int64()))
+    ) == replace_type(ct, t, f)
     assert ct == replace_type(ct, t, f, recursive=False)
     assert ct is replace_type(ct, t, t)  # no op
     assert ct is replace_type(ct, f, f)  # no op
@@ -431,7 +435,7 @@ def test_replace_type_in_table():
             [
                 ("a", pa.int32()),
                 ("b", pa.large_string()),
-                ("c", pa.list_(pa.large_string())),
+                ("c", pa.list_(pa.field("l",pa.large_string()))),
             ]
         ),
     )
@@ -442,7 +446,7 @@ def test_replace_type_in_table():
         [
             ("a", pa.int64()),
             ("b", pa.large_string()),
-            ("c", pa.list_(pa.large_string())),
+            ("c", pa.list_(pa.field("x",pa.large_string()))),
         ]
     )
     assert replace_type_in_table(
@@ -451,7 +455,7 @@ def test_replace_type_in_table():
         [
             ("a", pa.int32()),
             ("b", pa.string()),
-            ("c", pa.list_(pa.string())),
+            ("c", pa.list_(pa.field("x",pa.string()))),
         ]
     )
     assert replace_type_in_table(
@@ -460,7 +464,7 @@ def test_replace_type_in_table():
         [
             ("a", pa.int32()),
             ("b", pa.string()),
-            ("c", pa.list_(pa.large_string())),
+            ("c", pa.list_(pa.field("x",pa.large_string()))),
         ]
     )
 

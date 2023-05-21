@@ -361,17 +361,37 @@ def replace_type(
     if recursive:
         if pa.types.is_struct(current_type):
             return pa.struct(
-                pa.field(f.name, replace_type(f.type, from_type, to_type))
+                _replace_field(f, from_type, to_type, recursive=recursive)
                 for f in current_type
             )
         if pa.types.is_list(current_type):
-            return pa.list_(replace_type(current_type.value_type, from_type, to_type))
+            return pa.list_(
+                _replace_field(
+                    current_type.value_field, from_type, to_type, recursive=recursive
+                )
+            )
         if pa.types.is_map(current_type):
             return pa.map_(
-                replace_type(current_type.key_type, from_type, to_type),
-                replace_type(current_type.item_type, from_type, to_type),
+                _replace_field(
+                    current_type.key_field, from_type, to_type, recursive=recursive
+                ),
+                _replace_field(
+                    current_type.item_field, from_type, to_type, recursive=recursive
+                ),
             )
     return current_type
+
+
+def _replace_field(
+    field: pa.Field, from_type: pa.DataType, to_type: pa.DataType, recursive: bool
+):
+    old_type = field.type
+    new_type = replace_type(old_type, from_type, to_type, recursive=recursive)
+    if old_type is new_type or old_type == new_type:
+        return field
+    return pa.field(
+        field.name, new_type, nullable=field.nullable, metadata=field.metadata
+    )
 
 
 def schemas_equal(
