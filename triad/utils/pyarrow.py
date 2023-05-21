@@ -286,6 +286,31 @@ def get_alter_func(
     return partial(_alter, params=params)
 
 
+def replace_type_in_table(
+    df: pa.Table,
+    from_type: pa.DataType,
+    to_type: pa.DataType,
+    recursive: bool = True,
+    safe: bool = True,
+) -> pa.Table:
+    """Replace(cast) a type in a table
+
+    :param df: the table
+    :param from_type: the type to replace
+    :param to_type: the type to replace to
+    :param recursive: whether to do recursive replacement in nested types
+    :param safe: whether to check for conversion errors such as overflow
+
+    :return: the new table
+    """
+    old_schema = df.schema
+    new_schema = replace_type_in_schema(old_schema, from_type, to_type, recursive)
+    if old_schema is new_schema:
+        return df
+    func = get_alter_func(old_schema, new_schema, safe=safe)
+    return func(df)
+
+
 def replace_type_in_schema(
     schema: pa.Schema,
     from_type: pa.DataType,

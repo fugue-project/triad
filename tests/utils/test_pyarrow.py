@@ -20,6 +20,7 @@ from triad.utils.pyarrow import (
     get_alter_func,
     replace_type,
     replace_type_in_schema,
+    replace_type_in_table,
 )
 
 
@@ -421,6 +422,47 @@ def test_replace_type_in_schema():
         "a:int,b:int,c:[int]", "int", "long", "a:long,b:long,c:[int]", recursive=False
     )
     _test("a:{a:[int],b:<int,long>}", "int", "long", "a:{a:[long],b:<long,long>}")
+
+
+def test_replace_type_in_table():
+    df = pa.Table.from_arrays(
+        [[1], ["sadf"], [["a", "b"]]],
+        schema=pa.schema(
+            [
+                ("a", pa.int32()),
+                ("b", pa.large_string()),
+                ("c", pa.list_(pa.large_string())),
+            ]
+        ),
+    )
+    assert df is replace_type_in_table(df, pa.int32(), pa.int32())
+    assert df is replace_type_in_table(df, pa.int64(), pa.int32())
+    assert df is replace_type_in_table(df, pa.string(), pa.large_string())
+    assert replace_type_in_table(df, pa.int32(), pa.int64()).schema == pa.schema(
+        [
+            ("a", pa.int64()),
+            ("b", pa.large_string()),
+            ("c", pa.list_(pa.large_string())),
+        ]
+    )
+    assert replace_type_in_table(
+        df, pa.large_string(), pa.string()
+    ).schema == pa.schema(
+        [
+            ("a", pa.int32()),
+            ("b", pa.string()),
+            ("c", pa.list_(pa.string())),
+        ]
+    )
+    assert replace_type_in_table(
+        df, pa.large_string(), pa.string(), recursive=False
+    ).schema == pa.schema(
+        [
+            ("a", pa.int32()),
+            ("b", pa.string()),
+            ("c", pa.list_(pa.large_string())),
+        ]
+    )
 
 
 def _test_partition(partitioner, data, expression):
