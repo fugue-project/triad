@@ -117,6 +117,13 @@ def test_schema_contains():
     assert ["a", ("b", int)] not in s
 
 
+def test_schema_replace_type():
+    s = Schema("a:int,b:[str]")
+    assert s is s.replace_type(pa.int64(), pa.int32())
+    assert s.replace_type(pa.int32(), pa.int64()) == "a:long,b:[str]"
+    assert s.replace_type(pa.string(), pa.bool_()) == "a:int,b:[bool]"
+
+
 def test_schema_append():
     s = Schema()
     s.append(pa.field("a", pa.int32()))

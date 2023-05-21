@@ -286,8 +286,75 @@ def get_alter_func(
     return partial(_alter, params=params)
 
 
+def replace_type_in_schema(
+    schema: pa.Schema,
+    from_type: pa.DataType,
+    to_type: pa.DataType,
+    recursive: bool = True,
+) -> pa.Schema:
+    """Replace a type in a schema
+
+    :param schema: the schema
+    :param from_type: the type to replace
+    :param to_type: the type to replace to
+    :param recursive: whether to do recursive replacement in nested types
+    :return: the new schema
+    """
+    fields = []
+    changed = False
+    for f in schema:
+        new_type = replace_type(f.type, from_type, to_type, recursive=recursive)
+        if f.type is new_type or f.type == new_type:
+            fields.append(f)
+        else:
+            changed = True
+            fields.append(pa.field(f.name, new_type))
+    if not changed:
+        return schema
+    return pa.schema(fields)
+
+
+def replace_type(
+    current_type: pa.DataType,
+    from_type: pa.DataType,
+    to_type: pa.DataType,
+    recursive: bool = True,
+) -> pa.DataType:
+    """Replace a type in current_type if it is nested, otherwise return ``to_type``
+    if ``current_type`` is ``from_type``, otherwise return ``current_type``
+
+    :param current_type: the current type
+    :param from_type: the type to replace
+    :param to_type: the type to replace to
+    :param recursive: whether to do recursive replacement in nested types
+    :return: the new type
+    """
+    if from_type == to_type:
+        return current_type
+    if current_type == from_type:
+        return to_type
+    if recursive:
+        if pa.types.is_struct(current_type):
+            return pa.struct(
+                pa.field(f.name, replace_type(f.type, from_type, to_type))
+                for f in current_type
+            )
+        if pa.types.is_list(current_type):
+            return pa.list_(replace_type(current_type.value_type, from_type, to_type))
+        if pa.types.is_map(current_type):
+            return pa.map_(
+                replace_type(current_type.key_type, from_type, to_type),
+                replace_type(current_type.item_type, from_type, to_type),
+            )
+    return current_type
+
+
 def schemas_equal(
-    a: pa.Schema, b: pa.Schema, check_order: bool = True, check_metadata: bool = True
+    a: pa.Schema,
+    b: pa.Schema,
+    check_order: bool = True,
+    check_metadata: bool = True,
+    ignore: Optional[List[Tuple[pa.DataType, pa.DataType]]] = None,
 ) -> bool:
     """check if two schemas are equal
 
@@ -295,8 +362,15 @@ def schemas_equal(
     :param b: second pyarrow schema
     :param compare_order: whether to compare order
     :param compare_order: whether to compare metadata
+    :param ignore: a list of (type_a, type_b) to ignore difference on, defaults to None
     :return: if the two schema equal
     """
+    if a is b:
+        return True
+    if ignore is not None:
+        for t1, t2 in ignore:
+            a = replace_type_in_schema(a, t1, t2)
+            b = replace_type_in_schema(b, t1, t2)
     if check_order:
         return a.equals(b, check_metadata=check_metadata)
     if check_metadata and a.metadata != b.metadata:

@@ -18,6 +18,8 @@ from triad.utils.pyarrow import (
     to_pandas_dtype,
     to_single_pandas_dtype,
     get_alter_func,
+    replace_type,
+    replace_type_in_schema,
 )
 
 
@@ -279,6 +281,7 @@ def test_schemas_equal():
     a = expression_to_schema("a:int,b:int,c:int")
     b = expression_to_schema("a:int,b:int,c:int")
     c = expression_to_schema("a:int,c:int,b:int")
+    d = expression_to_schema("a:int,b:int,c:long")
     assert schemas_equal(a, a)
     assert schemas_equal(a, b)
     assert not schemas_equal(a, c)
@@ -294,6 +297,11 @@ def test_schemas_equal():
     c = c.with_metadata({"a": "1"})
     assert not schemas_equal(a, c)
     assert schemas_equal(a, c, check_order=False)
+
+    assert schemas_equal(a, d, ignore=[(pa.int32(), pa.int64())])
+    assert schemas_equal(
+        a, d, ignore=[(pa.int32(), pa.int16()), (pa.int64(), pa.int16())]
+    )
 
 
 def test_get_later_func():
@@ -347,6 +355,72 @@ def test_get_later_func():
         dict(a=datetime(2022, 1, 1), b="a"),
         dict(a=datetime(2022, 1, 2), b="b"),
     ]
+
+
+def test_replace_type():
+    ct = pa.string()
+    f = pa.large_string()
+    t = pa.string()
+    assert ct is replace_type(ct, f, t)  # no op
+    assert f is replace_type(ct, t, f)  # replace
+    assert ct is replace_type(ct, t, t)  # no op
+    assert ct is replace_type(ct, f, f)  # no op
+
+    ct = expression_to_schema("a:[int32]")[0].type
+    f = to_pa_datatype("int64")
+    t = to_pa_datatype("int32")
+    assert ct == replace_type(ct, f, t)  # no op
+    assert expression_to_schema("a:[int64]")[0].type == replace_type(ct, t, f)
+    assert ct == replace_type(ct, t, f, recursive=False)
+    assert ct is replace_type(ct, t, t)  # no op
+    assert ct is replace_type(ct, f, f)  # no op
+
+    ct = expression_to_schema("a:{b:[int32]}")[0].type
+    f = to_pa_datatype("int64")
+    t = to_pa_datatype("int32")
+    assert ct == replace_type(ct, f, t)  # no op
+    assert expression_to_schema("a:{b:[int64]}")[0].type == replace_type(ct, t, f)
+    assert ct == replace_type(ct, t, f, recursive=False)
+    assert ct is replace_type(ct, t, t)  # no op
+    assert ct is replace_type(ct, f, f)  # no op
+
+    ct = expression_to_schema("a:<int32,[int32]>")[0].type
+    f = to_pa_datatype("int64")
+    t = to_pa_datatype("int32")
+    assert ct == replace_type(ct, f, t)  # no op
+    assert expression_to_schema("a:<int64,[int64]>")[0].type == replace_type(ct, t, f)
+    assert ct == replace_type(ct, t, f, recursive=False)
+    assert ct is replace_type(ct, t, t)  # no op
+    assert ct is replace_type(ct, f, f)  # no op
+
+
+def test_replace_type_in_schema():
+    def _test(schema, from_type, to_type, expected, recursive=True):
+        assert expression_to_schema(expected) == replace_type_in_schema(
+            expression_to_schema(schema),
+            to_pa_datatype(from_type),
+            to_pa_datatype(to_type),
+            recursive=recursive,
+        )
+
+    def _same(schema, from_type, to_type):
+        orig = expression_to_schema(schema)
+        assert orig is replace_type_in_schema(
+            orig, to_pa_datatype(from_type), to_pa_datatype(to_type)
+        )
+
+    _same("a:int,b:int,c:[int]", "int", "int")
+    _same("a:int,b:int,c:[int]", "int", "int")
+    _same("a:int,b:int,c:[int]", "long", "int")
+    _same("a:int,b:int,c:[int]", "long", "long")
+    _same("a:int,b:int,c:[int]", "str", "str")
+
+    _test("a:int,b:str,c:int", "int", "long", "a:long,b:str,c:long")
+    _test("a:int,b:int,c:[int]", "int", "long", "a:long,b:long,c:[long]")
+    _test(
+        "a:int,b:int,c:[int]", "int", "long", "a:long,b:long,c:[int]", recursive=False
+    )
+    _test("a:{a:[int],b:<int,long>}", "int", "long", "a:{a:[long],b:<long,long>}")
 
 
 def _test_partition(partitioner, data, expression):
