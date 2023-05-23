@@ -14,7 +14,6 @@ from triad.utils.pyarrow import (
     schema_to_expression,
     to_pa_datatype,
     to_pandas_dtype,
-    replace_type_in_schema,
 )
 from triad.utils.schema import (
     quote_name,
@@ -232,25 +231,6 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
                     return False
             return True
         return Schema(key) in self
-
-    def replace_type(
-        self, from_type: pa.DataType, to_type: pa.DataType, recursive: bool = True
-    ) -> "Schema":
-        """Replace a type with another type in the schema
-
-        :param from_type: type to be replaced
-        :param to_type: type to replace
-        :param recursive: if True, replace type in nested types, defaults to True
-
-        :return: the new schema with replaced types
-        """
-        old_schema = self.pa_schema
-        new_schema = replace_type_in_schema(
-            old_schema, from_type, to_type, recursive=recursive
-        )
-        if new_schema is old_schema:
-            return self
-        return Schema(new_schema)
 
     def append(self, obj: Any) -> "Schema":  # noqa: C901
         """Append schema like object to the current schema. Only new columns

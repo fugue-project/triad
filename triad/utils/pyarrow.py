@@ -2,7 +2,7 @@ import json
 import pickle
 from datetime import date, datetime
 from functools import partial
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -18,6 +18,13 @@ from .schema import move_to_unquoted, quote_name, unquote_name
 
 TRIAD_DEFAULT_TIMESTAMP_UNIT = "us"
 TRIAD_DEFAULT_TIMESTAMP = pa.timestamp(TRIAD_DEFAULT_TIMESTAMP_UNIT)
+
+LARGE_TYPES_REPLACEMENT: List[Tuple[Any, Any]] = [
+    (pa.large_string(), pa.string()),
+    (pa.large_binary(), pa.binary()),
+    (pa.large_utf8(), pa.utf8()),
+    (pa.types.is_large_list, lambda t: pa.list_(t.value_field)),
+]
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "null": pa.null(),
@@ -288,23 +295,26 @@ def get_alter_func(
 
 def replace_type_in_table(
     df: pa.Table,
-    from_type: pa.DataType,
-    to_type: pa.DataType,
+    pairs: List[
+        Tuple[
+            Union[Callable[[pa.DataType], bool], pa.DataType],
+            Union[Callable[[pa.DataType], pa.DataType], pa.DataType],
+        ]
+    ],
     recursive: bool = True,
     safe: bool = True,
 ) -> pa.Table:
     """Replace(cast) a type in a table
 
     :param df: the table
-    :param from_type: the type to replace
-    :param to_type: the type to replace to
+    :param pairs: a list of (is_type, convert_type) pairs
     :param recursive: whether to do recursive replacement in nested types
     :param safe: whether to check for conversion errors such as overflow
 
     :return: the new table
     """
     old_schema = df.schema
-    new_schema = replace_type_in_schema(old_schema, from_type, to_type, recursive)
+    new_schema = replace_type_in_schema(old_schema, pairs, recursive)
     if old_schema is new_schema:
         return df
     func = get_alter_func(old_schema, new_schema, safe=safe)
@@ -313,22 +323,35 @@ def replace_type_in_table(
 
 def replace_type_in_schema(
     schema: pa.Schema,
-    from_type: pa.DataType,
-    to_type: pa.DataType,
+    pairs: List[
+        Tuple[
+            Union[Callable[[pa.DataType], bool], pa.DataType],
+            Union[Callable[[pa.DataType], pa.DataType], pa.DataType],
+        ]
+    ],
     recursive: bool = True,
 ) -> pa.Schema:
     """Replace a type in a schema
 
     :param schema: the schema
-    :param from_type: the type to replace
-    :param to_type: the type to replace to
+    :param pairs: a list of (is_type, convert_type) pairs
     :param recursive: whether to do recursive replacement in nested types
     :return: the new schema
     """
     fields = []
     changed = False
     for f in schema:
-        new_type = replace_type(f.type, from_type, to_type, recursive=recursive)
+        new_type = f.type
+        for is_type, convert_type in pairs:
+            _is_type = is_type if callable(is_type) else lambda t: t == is_type  # noqa
+            _convert_type = (
+                convert_type
+                if callable(convert_type)
+                else lambda t: convert_type  # noqa
+            )
+            new_type = replace_type(
+                new_type, _is_type, _convert_type, recursive=recursive
+            )
         if f.type is new_type or f.type == new_type:
             fields.append(f)
         else:
@@ -339,54 +362,64 @@ def replace_type_in_schema(
     return pa.schema(fields)
 
 
-def replace_type(
+def replace_type(  # noqa: C901
     current_type: pa.DataType,
-    from_type: pa.DataType,
-    to_type: pa.DataType,
+    is_type: Callable[[pa.DataType], bool],
+    convert_type: Callable[[pa.DataType], pa.DataType],
     recursive: bool = True,
 ) -> pa.DataType:
-    """Replace a type in current_type if it is nested, otherwise return ``to_type``
-    if ``current_type`` is ``from_type``, otherwise return ``current_type``
+    """Replace ``current_type`` or if it is nested, replace in the nested
+    types
 
     :param current_type: the current type
-    :param from_type: the type to replace
-    :param to_type: the type to replace to
+    :param is_type: the function to check if the type is the type to replace
+    :param convert_type: the function to convert the type
     :param recursive: whether to do recursive replacement in nested types
     :return: the new type
     """
-    if from_type == to_type:
-        return current_type
-    if current_type == from_type:
-        return to_type
+    if not pa.types.is_nested(current_type) and is_type(current_type):
+        return convert_type(current_type)
     if recursive:
         if pa.types.is_struct(current_type):
-            return pa.struct(
-                _replace_field(f, from_type, to_type, recursive=recursive)
-                for f in current_type
-            )
-        if pa.types.is_list(current_type):
-            return pa.list_(
-                _replace_field(
-                    current_type.value_field, from_type, to_type, recursive=recursive
-                )
-            )
+            old_fields = list(current_type)
+            fields = [
+                _replace_field(f, is_type, convert_type, recursive=recursive)
+                for f in old_fields
+            ]
+            if all(a is b for a, b in zip(fields, old_fields)):
+                return current_type
+            return pa.struct(fields)
+        if pa.types.is_list(current_type) or pa.types.is_large_list(current_type):
+            old_f = current_type.value_field
+            f = _replace_field(old_f, is_type, convert_type, recursive=recursive)
+            if f is old_f:
+                res = current_type
+            elif pa.types.is_large_list(current_type):
+                res = pa.large_list(f)
+            else:
+                res = pa.list_(f)
+            if is_type(res):
+                return convert_type(res)
+            return res
         if pa.types.is_map(current_type):
-            return pa.map_(
-                _replace_field(
-                    current_type.key_field, from_type, to_type, recursive=recursive
-                ),
-                _replace_field(
-                    current_type.item_field, from_type, to_type, recursive=recursive
-                ),
-            )
+            old_k, old_v = current_type.key_field, current_type.item_field
+            k, v = _replace_field(
+                old_k, is_type, convert_type, recursive=recursive
+            ), _replace_field(old_v, is_type, convert_type, recursive=recursive)
+            if k is old_k and v is old_v:
+                return current_type
+            return pa.map_(k, v)
     return current_type
 
 
 def _replace_field(
-    field: pa.Field, from_type: pa.DataType, to_type: pa.DataType, recursive: bool
+    field: pa.Field,
+    is_type: Callable[[pa.DataType], bool],
+    convert_type: Callable[[pa.DataType], pa.DataType],
+    recursive: bool,
 ):
     old_type = field.type
-    new_type = replace_type(old_type, from_type, to_type, recursive=recursive)
+    new_type = replace_type(old_type, is_type, convert_type, recursive=recursive)
     if old_type is new_type or old_type == new_type:
         return field
     return pa.field(
@@ -399,7 +432,14 @@ def schemas_equal(
     b: pa.Schema,
     check_order: bool = True,
     check_metadata: bool = True,
-    ignore: Optional[List[Tuple[pa.DataType, pa.DataType]]] = None,
+    ignore: Optional[
+        List[
+            Tuple[
+                Union[Callable[[pa.DataType], bool], pa.DataType],
+                Union[Callable[[pa.DataType], pa.DataType], pa.DataType],
+            ]
+        ]
+    ] = None,
 ) -> bool:
     """check if two schemas are equal
 
@@ -407,15 +447,15 @@ def schemas_equal(
     :param b: second pyarrow schema
     :param compare_order: whether to compare order
     :param compare_order: whether to compare metadata
-    :param ignore: a list of (type_a, type_b) to ignore difference on, defaults to None
+    :param ignore: a list of (is_type, convert_type) pairs to
+        ignore differences on, defaults to None
     :return: if the two schema equal
     """
     if a is b:
         return True
     if ignore is not None:
-        for t1, t2 in ignore:
-            a = replace_type_in_schema(a, t1, t2)
-            b = replace_type_in_schema(b, t1, t2)
+        a = replace_type_in_schema(a, ignore, recursive=True)
+        b = replace_type_in_schema(b, ignore, recursive=True)
     if check_order:
         return a.equals(b, check_metadata=check_metadata)
     if check_metadata and a.metadata != b.metadata:
