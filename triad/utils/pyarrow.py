@@ -293,7 +293,7 @@ def get_alter_func(
     return partial(_alter, params=params)
 
 
-def replace_type_in_table(
+def replace_types_in_table(
     df: pa.Table,
     pairs: List[
         Tuple[
@@ -304,7 +304,7 @@ def replace_type_in_table(
     recursive: bool = True,
     safe: bool = True,
 ) -> pa.Table:
-    """Replace(cast) a type in a table
+    """Replace(cast) types in a table
 
     :param df: the table
     :param pairs: a list of (is_type, convert_type) pairs
@@ -314,14 +314,14 @@ def replace_type_in_table(
     :return: the new table
     """
     old_schema = df.schema
-    new_schema = replace_type_in_schema(old_schema, pairs, recursive)
+    new_schema = replace_types_in_schema(old_schema, pairs, recursive)
     if old_schema is new_schema:
         return df
     func = get_alter_func(old_schema, new_schema, safe=safe)
     return func(df)
 
 
-def replace_type_in_schema(
+def replace_types_in_schema(
     schema: pa.Schema,
     pairs: List[
         Tuple[
@@ -331,7 +331,7 @@ def replace_type_in_schema(
     ],
     recursive: bool = True,
 ) -> pa.Schema:
-    """Replace a type in a schema
+    """Replace types in a schema
 
     :param schema: the schema
     :param pairs: a list of (is_type, convert_type) pairs
@@ -454,8 +454,8 @@ def schemas_equal(
     if a is b:
         return True
     if ignore is not None:
-        a = replace_type_in_schema(a, ignore, recursive=True)
-        b = replace_type_in_schema(b, ignore, recursive=True)
+        a = replace_types_in_schema(a, ignore, recursive=True)
+        b = replace_types_in_schema(b, ignore, recursive=True)
     if check_order:
         return a.equals(b, check_metadata=check_metadata)
     if check_metadata and a.metadata != b.metadata:

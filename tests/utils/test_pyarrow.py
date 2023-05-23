@@ -17,8 +17,8 @@ from triad.utils.pyarrow import (
     get_eq_func,
     is_supported,
     replace_type,
-    replace_type_in_schema,
-    replace_type_in_table,
+    replace_types_in_schema,
+    replace_types_in_table,
     schema_to_expression,
     schemas_equal,
     to_pa_datatype,
@@ -416,9 +416,9 @@ def test_replace_type():
     ) == replace_type(ct, pa.types.is_large_list, lambda t: pa.list_(t.value_field))
 
 
-def test_replace_type_in_schema():
+def test_replace_types_in_schema():
     def _test(schema, from_type, to_type, expected, recursive=True):
-        assert expression_to_schema(expected) == replace_type_in_schema(
+        assert expression_to_schema(expected) == replace_types_in_schema(
             expression_to_schema(schema),
             [(to_pa_datatype(from_type), to_pa_datatype(to_type))],
             recursive=recursive,
@@ -426,7 +426,7 @@ def test_replace_type_in_schema():
 
     def _same(schema, from_type, to_type):
         orig = expression_to_schema(schema)
-        assert orig is replace_type_in_schema(
+        assert orig is replace_types_in_schema(
             orig, [(to_pa_datatype(from_type), to_pa_datatype(to_type))]
         )
 
@@ -444,7 +444,7 @@ def test_replace_type_in_schema():
     _test("a:{a:[int],b:<int,long>}", "int", "long", "a:{a:[long],b:<long,long>}")
 
 
-def test_replace_type_in_table():
+def test_replace_types_in_table():
     df = pa.Table.from_arrays(
         [[1], ["sadf"], [["a", "b"]]],
         schema=pa.schema(
@@ -455,20 +455,20 @@ def test_replace_type_in_table():
             ]
         ),
     )
-    assert df is replace_type_in_table(df, [(pa.int32(), pa.int32())])
-    assert df is replace_type_in_table(df, [(pa.int64(), pa.int32())])
-    assert df is replace_type_in_table(df, [(pa.string(), pa.large_string())])
-    assert df is replace_type_in_table(
+    assert df is replace_types_in_table(df, [(pa.int32(), pa.int32())])
+    assert df is replace_types_in_table(df, [(pa.int64(), pa.int32())])
+    assert df is replace_types_in_table(df, [(pa.string(), pa.large_string())])
+    assert df is replace_types_in_table(
         df, [(pa.types.is_large_list, lambda t: pa.list_(t.value_field))]
     )
-    assert replace_type_in_table(df, [(pa.int32(), pa.int64())]).schema == pa.schema(
+    assert replace_types_in_table(df, [(pa.int32(), pa.int64())]).schema == pa.schema(
         [
             ("a", pa.int64()),
             ("b", pa.large_string()),
             ("c", pa.list_(pa.field("x", pa.large_string()))),
         ]
     )
-    assert replace_type_in_table(
+    assert replace_types_in_table(
         df, [(pa.large_string(), pa.string())]
     ).schema == pa.schema(
         [
@@ -477,7 +477,7 @@ def test_replace_type_in_table():
             ("c", pa.list_(pa.field("x", pa.string()))),
         ]
     )
-    assert replace_type_in_table(
+    assert replace_types_in_table(
         df, [(pa.large_string(), pa.string())], recursive=False
     ).schema == pa.schema(
         [
@@ -486,7 +486,7 @@ def test_replace_type_in_table():
             ("c", pa.list_(pa.field("x", pa.large_string()))),
         ]
     )
-    assert replace_type_in_table(
+    assert replace_types_in_table(
         df,
         [
             (pa.large_string(), pa.string()),
@@ -518,7 +518,7 @@ def test_replace_large_types():
             ]
         ),
     )
-    assert replace_type_in_table(df, LARGE_TYPES_REPLACEMENT).schema == pa.schema(
+    assert replace_types_in_table(df, LARGE_TYPES_REPLACEMENT).schema == pa.schema(
         [
             ("a", pa.binary()),
             ("b", pa.string()),
