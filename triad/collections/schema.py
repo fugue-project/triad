@@ -201,6 +201,8 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
     def __eq__(self, other: Any) -> bool:
         if other is None:
             return False
+        if other is self:
+            return True
         if isinstance(other, Schema):
             return super().__eq__(other)
         if isinstance(other, str):
