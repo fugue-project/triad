@@ -136,7 +136,7 @@ def test_slicer():
     assert_slicer(".0.1.2", [1, 1, 1], 1, "2k", lambda x: 1)
     assert_slicer(".00.1", [1, 1, 1], None, "2k", lambda x: 1024)
 
-    class C(object):
+    class C:
         def __init__(self):
             self.arr = []
 

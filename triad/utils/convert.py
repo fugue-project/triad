@@ -128,7 +128,7 @@ def str_to_object(
 
         .. code-block:: python
 
-            class _Mock(object):
+            class _Mock:
                 def __init__(self, x=1):
                     self.x = x
 

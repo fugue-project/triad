@@ -122,7 +122,7 @@ class _BoundGlobber(BoundGlobber):
         )
 
 
-class _FSPath(object):
+class _FSPath:
     def __init__(self, path: str):
         if path is None:
             raise ValueError("path can't be None")

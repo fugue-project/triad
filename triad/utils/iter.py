@@ -141,7 +141,7 @@ class EmptyAwareIterable(Iterable[T]):
         return self._state
 
 
-class Slicer(object):
+class Slicer:
     """A better version of :func:`~triad.iter.slice_iterable`
 
     :param sizer: the function to get size of an item
