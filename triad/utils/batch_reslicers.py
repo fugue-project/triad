@@ -10,14 +10,11 @@ from triad.utils.convert import to_size
 T = TypeVar("T")
 
 
-class BatchSlicer(Generic[T]):
-    """A better version of :func:`~triad.iter.slice_iterable`
+class BatchReslicer(Generic[T]):
+    """Reslice batch streams with row or/and size limit
 
-    :param sizer: the function to get size of an item
     :param row_limit: max row for each slice, defaults to None
     :param size_limit: max byte size for each slice, defaults to None
-    :param slicer: taking in current number, current value, last value,
-        it decides if it's a new slice
 
     :raises AssertionError: if `size_limit` is not None but `sizer` is None
     """
@@ -37,16 +34,34 @@ class BatchSlicer(Generic[T]):
             self._size_limit = to_size(str(size_limit))
 
     def get_rows_and_size(self, batch: T) -> Tuple[int, int]:
+        """Get the number of rows and byte size of a batch
+
+        :param batch: the batch object
+        :return: the number of rows and byte size of the batch
+        """
         raise NotImplementedError  # pragma: no cover
 
     def take(self, batch: T, start: int, length: int) -> T:
+        """Take a slice of the batch
+
+        :param batch: the batch object
+        :param start: the start row index
+        :param length: the number of rows to take
+
+        :return: a slice of the batch
+        """
         raise NotImplementedError  # pragma: no cover
 
     def concat(self, batches: List[T]) -> T:
+        """Concatenate a list of batches into one batch
+
+        :param batches: the list of batches
+        :return: the concatenated batch
+        """
         raise NotImplementedError  # pragma: no cover
 
-    def slice(self, batches: Iterable[T]) -> Iterable[T]:  # noqa: C901, A003
-        """Slice the batch stream into new batches constrained by the row or size limit
+    def reslice(self, batches: Iterable[T]) -> Iterable[T]:  # noqa: C901, A003
+        """Reslice the batch stream into new batches constrained by the row or size limit
 
         :param batches: the batch stream
 
@@ -114,7 +129,7 @@ class BatchSlicer(Generic[T]):
             start += slice_rows
 
 
-class PandasBatchSlicer(BatchSlicer[pd.DataFrame]):
+class PandasBatchReslicer(BatchReslicer[pd.DataFrame]):
     def get_rows_and_size(self, batch: pd.DataFrame) -> Tuple[int, int]:
         return batch.shape[0], batch.memory_usage(deep=True).sum()
 
@@ -129,7 +144,7 @@ class PandasBatchSlicer(BatchSlicer[pd.DataFrame]):
         return pd.concat(batches)
 
 
-class ArrowTableBatchSlicer(BatchSlicer[pa.Table]):
+class ArrowTableBatchReslicer(BatchReslicer[pa.Table]):
     def get_rows_and_size(self, batch: pa.Table) -> Tuple[int, int]:
         return batch.num_rows, batch.nbytes
 
@@ -144,7 +159,7 @@ class ArrowTableBatchSlicer(BatchSlicer[pa.Table]):
         return pa.concat_tables(batches)
 
 
-class NumpyArrayBatchSlicer(BatchSlicer[np.ndarray]):
+class NumpyArrayBatchReslicer(BatchReslicer[np.ndarray]):
     def get_rows_and_size(self, batch: np.ndarray) -> Tuple[int, int]:
         return batch.shape[0], batch.nbytes
 

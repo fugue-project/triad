@@ -8,7 +8,7 @@ with open("README.md") as f:
 setup(
     name="triad",
     version=__version__,
-    packages=find_packages(),
+    packages=find_packages(include=["triad*"]),
     description="A collection of python utils for Fugue projects",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
