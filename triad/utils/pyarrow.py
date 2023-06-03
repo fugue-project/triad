@@ -518,7 +518,7 @@ def get_eq_func(data_type: pa.DataType) -> Callable[[Any, Any], bool]:
     return _general_eq
 
 
-class SchemaedDataPartitioner(object):
+class SchemaedDataPartitioner:
     """Partitioner for stream of array like data with given schema.
     It uses :func"`~triad.utils.iter.Slicer` to partition the stream
 
@@ -811,7 +811,7 @@ def _no_op_convert(obj: Any) -> Any:  # pragma: no cover
     return obj
 
 
-class _TypeConverter(object):
+class _TypeConverter:
     _CONVERTERS: Dict[pa.DataType, Any] = {
         pa.null(): _to_pynone,
         pa.string(): _to_pystr,

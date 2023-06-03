@@ -34,7 +34,7 @@ def test_to_uuid():
     assert to_uuid([Mock2(2), Mock2(3)]) != to_uuid([Mock(3), Mock(3)])
 
 
-class Mock(object):
+class Mock:
     def __init__(self, n=1):
         self.n = n
 
@@ -42,7 +42,7 @@ class Mock(object):
         return str(self.n)
 
 
-class Mock2(object):
+class Mock2:
     def __init__(self, n=1):
         self.n = n
 

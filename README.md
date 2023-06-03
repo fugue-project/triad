@@ -20,6 +20,11 @@ pip install triad
 
 ## Release History
 
+### 0.8.9
+
+* Add batch reslicers
+* Fix package issue (exclude tests folder)
+
 ### 0.8.8
 
 * Add type replacement utils for pyarrow

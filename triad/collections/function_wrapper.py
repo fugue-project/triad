@@ -21,7 +21,7 @@ from ..utils.hash import to_uuid
 from .dict import IndexedOrderedDict
 
 
-class FunctionWrapper(object):
+class FunctionWrapper:
     """Create a function wrapper that can recognize and validate all
     input types.
 

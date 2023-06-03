@@ -62,7 +62,7 @@ def test_parse_value_and_unit():
 
 
 def test_str_to_object():
-    class _Mock(object):
+    class _Mock:
         def __init__(self, x=1):
             self.x = x
 
@@ -108,11 +108,11 @@ def test_str_to_type():
     str_to_type("http.HTTPStatus")
 
     # class and subclass
-    class T(object):
+    class T:
         def __init__(self):
             self.x = 10
 
-        class _TS(object):
+        class _TS:
             pass
 
     assert T == str_to_type("T")
@@ -194,7 +194,7 @@ def test_obj_to_function():
 
     assert to_function("min") == builtins.min
 
-    class _Mock(object):
+    class _Mock:
         def x(self, p=10):
             return p * 10
 
@@ -354,6 +354,6 @@ def dummy_for_test():
 
 
 # This is to test *_to_type with first=False
-class __Dummy__(object):
+class __Dummy__:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

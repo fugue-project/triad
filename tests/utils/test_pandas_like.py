@@ -351,7 +351,7 @@ def test_is_compatible_index():
     assert not PD_UTILS.is_compatile_index(tdf)
 
 
-class DF(object):  # This is a mock
+class DF:  # This is a mock
     def __init__(self, data, schema, enforce=False):
         s = expression_to_schema(schema)
         df = pd.DataFrame(data, columns=s.names)
