@@ -77,6 +77,15 @@ def test_pandas_reslicer():
     assert s.concat([df]) is df
     assert s.concat([df, df]).values.tolist() == pd.concat([df, df]).values.tolist()
 
+    # edge case: the adjusted row limit is smaller or equal to cache rows
+    dfs1 = [pd.DataFrame({"a": ["abc"] * 100})] * 1
+    dfs2 = [pd.DataFrame({"a": ["abc" * 100] * 10})] * 10
+    dfs = dfs1 + dfs2 + dfs1
+    s = PandasBatchReslicer(size_limit=dfs1[0].memory_usage(deep=True).sum() + 200)
+    chunks = list(s.reslice(dfs))
+    assert all(len(x) > 0 for x in chunks)
+    assert pd.concat(chunks).values.tolist() == pd.concat(dfs).values.tolist()
+
 
 def test_arrow_reslicer():
     s = ArrowTableBatchReslicer()

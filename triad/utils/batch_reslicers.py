@@ -93,10 +93,16 @@ class BatchReslicer(Generic[T]):
                     self._row_limit, max(math.floor(self._size_limit / row_size), 1)
                 )
 
+            if cache_rows >= row_limit:  # clean up edge cases
+                yield self.concat(cache)
+                cache = []
+                cache_rows = 0
+
             if cache_rows + batch_rows < row_limit:
                 cache.append(batch)
                 cache_rows += batch_rows
             else:
+                # here we guarantee initial_rows > 0
                 slices, remain = self._slice_rows(
                     batch_rows, row_limit - cache_rows, slice_rows=row_limit
                 )
