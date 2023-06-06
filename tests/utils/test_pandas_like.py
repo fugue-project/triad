@@ -1,14 +1,16 @@
 import json
-import math
-from datetime import datetime, date
+import pickle
+from datetime import date, datetime
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pytest import raises
-from triad.utils.pandas_like import PD_UTILS, _DEFAULT_DATETIME
+
+from triad.utils.pandas_like import _DEFAULT_DATETIME, PD_UTILS
 from triad.utils.pyarrow import expression_to_schema
-import pickle
+
+from .._utils import assert_df_eq
 
 
 def test_to_schema():
@@ -349,6 +351,179 @@ def test_is_compatible_index():
     assert PD_UTILS.is_compatile_index(tdf)
     tdf = tdf.set_index("a")
     assert not PD_UTILS.is_compatile_index(tdf)
+
+
+def test_parse_join_types():
+    assert "cross" == PD_UTILS.parse_join_type("CROss")
+    assert "inner" == PD_UTILS.parse_join_type("join")
+    assert "inner" == PD_UTILS.parse_join_type("Inner")
+    assert "left_outer" == PD_UTILS.parse_join_type("left")
+    assert "left_outer" == PD_UTILS.parse_join_type("left  outer")
+    assert "right_outer" == PD_UTILS.parse_join_type("right")
+    assert "right_outer" == PD_UTILS.parse_join_type("right_ outer")
+    assert "full_outer" == PD_UTILS.parse_join_type("full")
+    assert "full_outer" == PD_UTILS.parse_join_type(" outer ")
+    assert "full_outer" == PD_UTILS.parse_join_type("full_outer")
+    assert "left_anti" == PD_UTILS.parse_join_type("anti")
+    assert "left_anti" == PD_UTILS.parse_join_type("left anti")
+    assert "left_semi" == PD_UTILS.parse_join_type("semi")
+    assert "left_semi" == PD_UTILS.parse_join_type("left semi")
+    raises(
+        NotImplementedError,
+        lambda: PD_UTILS.parse_join_type("right semi"),
+    )
+
+
+def test_drop_duplicates():
+    def assert_eq(df, expected, expected_cols):
+        res = PD_UTILS.drop_duplicates(df)
+        assert_df_eq(res, expected, expected_cols)
+
+    a = _to_df([["x", "a"], ["x", "a"], [None, None]], ["a", "b"])
+    assert_eq(a, [["x", "a"], [None, None]], ["a", "b"])
+
+
+def test_union():
+    def assert_eq(df1, df2, unique, expected, expected_cols):
+        res = PD_UTILS.union(df1, df2, unique=unique)
+        assert_df_eq(res, expected, expected_cols)
+
+    a = _to_df([["x", "a"], ["x", "a"], [None, None]], ["a", "b"])
+    b = _to_df([["xx", "aa"], [None, None], ["a", "x"]], ["b", "a"])
+    assert_eq(
+        a,
+        b,
+        False,
+        [
+            ["x", "a"],
+            ["x", "a"],
+            [None, None],
+            ["xx", "aa"],
+            [None, None],
+            ["a", "x"],
+        ],
+        ["a", "b"],
+    )
+    assert_eq(
+        a,
+        b,
+        True,
+        [["x", "a"], ["xx", "aa"], [None, None], ["a", "x"]],
+        ["a", "b"],
+    )
+
+
+def test_intersect():
+    def assert_eq(df1, df2, unique, expected, expected_cols):
+        res = PD_UTILS.intersect(df1, df2, unique=unique)
+        assert_df_eq(res, expected, expected_cols)
+
+    a = _to_df([["x", "a"], ["x", "a"], [None, None]], ["a", "b"])
+    b = _to_df([["xx", "aa"], [None, None], [None, None], ["a", "x"]], ["b", "a"])
+    assert_eq(a, b, False, [[None, None]], ["a", "b"])
+    assert_eq(a, b, True, [[None, None]], ["a", "b"])
+    b = _to_df([["xx", "aa"], [None, None], ["x", "a"]], ["b", "a"])
+    assert_eq(a, b, False, [["x", "a"], ["x", "a"], [None, None]], ["a", "b"])
+    assert_eq(a, b, True, [["x", "a"], [None, None]], ["a", "b"])
+
+
+def test_except():
+    def assert_eq(df1, df2, unique, expected, expected_cols):
+        res = PD_UTILS.except_df(df1, df2, unique=unique)
+        assert_df_eq(res, expected, expected_cols)
+
+    a = _to_df([["x", "a"], ["x", "a"], [None, None]], ["a", "b"])
+    b = _to_df([["xx", "aa"], [None, None], ["a", "x"]], ["b", "a"])
+    assert_eq(a, b, False, [["x", "a"], ["x", "a"]], ["a", "b"])
+    assert_eq(a, b, True, [["x", "a"]], ["a", "b"])
+    b = _to_df([["xx", "aa"], [None, None], ["x", "a"]], ["b", "a"])
+    assert_eq(a, b, False, [], ["a", "b"])
+    assert_eq(a, b, True, [], ["a", "b"])
+
+
+def test_joins():
+    def assert_eq(df1, df2, join_type, on, expected, expected_cols):
+        res = PD_UTILS.join(df1, df2, join_type=join_type, on=on)
+        assert_df_eq(res, expected, expected_cols)
+
+    df1 = _to_df([[0, 1], [2, 3]], ["a", "b"])
+    df2 = _to_df([[0, 10], [20, 30]], ["a", "c"])
+    df3 = _to_df([[0, 1], [None, 3]], ["a", "b"])
+    df4 = _to_df([[0, 10], [None, 30]], ["a", "c"])
+    assert_eq(df1, df2, "inner", ["a"], [[0, 1, 10]], ["a", "b", "c"])
+    assert_eq(df3, df4, "inner", ["a"], [[0, 1, 10]], ["a", "b", "c"])
+    assert_eq(df1, df2, "left_semi", ["a"], [[0, 1]], ["a", "b"])
+    assert_eq(df3, df4, "left_semi", ["a"], [[0, 1]], ["a", "b"])
+    assert_eq(df1, df2, "left_anti", ["a"], [[2, 3]], ["a", "b"])
+    assert_eq(df3, df4, "left_anti", ["a"], [[None, 3]], ["a", "b"])
+    assert_eq(
+        df1,
+        df2,
+        "left_outer",
+        ["a"],
+        [[0, 1, 10], [2, 3, None]],
+        ["a", "b", "c"],
+    )
+    assert_eq(
+        df3,
+        df4,
+        "left_outer",
+        ["a"],
+        [[0, 1, 10], [None, 3, None]],
+        ["a", "b", "c"],
+    )
+    assert_eq(
+        df1,
+        df2,
+        "right_outer",
+        ["a"],
+        [[0, 1, 10], [20, None, 30]],
+        ["a", "b", "c"],
+    )
+    assert_eq(
+        df3,
+        df4,
+        "right_outer",
+        ["a"],
+        [[0, 1, 10], [None, None, 30]],
+        ["a", "b", "c"],
+    )
+    assert_eq(
+        df1,
+        df2,
+        "full_outer",
+        ["a"],
+        [[0, 1, 10], [2, 3, None], [20, None, 30]],
+        ["a", "b", "c"],
+    )
+    assert_eq(
+        df3,
+        df4,
+        "full_outer",
+        ["a"],
+        [[0, 1, 10], [None, 3, None], [None, None, 30]],
+        ["a", "b", "c"],
+    )
+
+    df1 = _to_df([[0, 1], [None, 3]], ["a", "b"])
+    df2 = _to_df([[0, 10], [None, 30]], ["c", "d"])
+    assert_eq(
+        df1,
+        df2,
+        "cross",
+        [],
+        [
+            [0, 1, 0, 10],
+            [None, 3, 0, 10],
+            [0, 1, None, 30],
+            [None, 3, None, 30],
+        ],
+        ["a", "b", "c", "d"],
+    )
+
+
+def _to_df(data, cols):
+    return pd.DataFrame(data, columns=cols)
 
 
 class DF:  # This is a mock
