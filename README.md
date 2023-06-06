@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.9.0
+
+* Merge QPD pandas utils functions back to Triad
+
 ### 0.8.9
 
 * Add batch reslicers
