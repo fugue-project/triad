@@ -14,32 +14,64 @@ _SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
 def open_file(
     path: str, mode: str, create_dir: bool = False, **kwargs: Any
 ) -> Iterator[IO]:
-    dirname, basename = _split_dir_file(path)
+    """Open a file with a given mode. This has to be used in a
+    with statement.
+
+    :param path: file path
+    :param mode: file open mode
+    :param create_dir: if True, create the directory if not exists,
+        defaults to False
+    :param kwargs: additional arguments to :meth:`fs.FS.open`
+
+    .. admonition:: Examples
+
+        .. code-block:: python
+
+            import fugue.utils.io as uio
+
+            with uio.open_file("a.txt", "w") as f:
+                f.write("hello")
+
+            with uio.open_file("/tmp/b/a.txt", "w", create_dir=True) as f:
+                f.write("hello")
+    """
+    dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname, create=create_dir)
     with tfs.open(basename, mode, **kwargs) as f:
         yield f
 
 
+def exists(path: str) -> bool:
+    """Check if a file or a directory exists
+
+    :param path: the path to check
+    :return: whether the path (resource) exists
+    """
+    dirname, basename = _split_path(path)
+    tfs = fs.open_fs(dirname)
+    return tfs.exists(basename)
+
+
 def write_text(path: str, contents: str, create_dir: bool = True):
-    dirname, basename = _split_dir_file(path)
+    dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname, writeable=True, create=create_dir)
     tfs.writetext(basename, contents)
 
 
 def read_text(path: str) -> str:
-    dirname, basename = _split_dir_file(path)
+    dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname)
     return tfs.readtext(basename)
 
 
 def write_bytes(path: str, contents: bytes, create_dir: bool = True):
-    dirname, basename = _split_dir_file(path)
+    dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname, writeable=True, create=create_dir)
     tfs.writebytes(basename, contents)
 
 
 def read_bytes(path: str) -> bytes:
-    dirname, basename = _split_dir_file(path)
+    dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname)
     return tfs.readbytes(basename)
 
@@ -112,7 +144,13 @@ def unzip_to_temp(fobj: Any) -> Iterator[str]:
             yield tmpdirname
 
 
-def _split_dir_file(path: str) -> Tuple[str, str]:
+def _split_path(path: str) -> Tuple[str, str]:
+    """Split a path into directory and basename.
+    TODO: this currently does not support relative path
+
+    :param path: the path to split
+    :return: dirname, basename
+    """
     path = _modify_path(path)
     dirname = fs.path.dirname(path)
     basename = fs.path.basename(path)
@@ -120,7 +158,10 @@ def _split_dir_file(path: str) -> Tuple[str, str]:
 
 
 def _modify_path(path: str) -> str:  # noqa: C901
-    """to fix things like /s3:/a/b.txt -> s3://a/b.txt"""
+    """to fix paths like
+    /s3:/a/b.txt -> s3://a/b.txt
+    C:\\a\\b.txt -> C:/a/b.txt
+    """
     if path.startswith("/"):
         s = _SCHEME_PREFIX.search(path[1:])
         if s is not None:
