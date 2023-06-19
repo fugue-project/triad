@@ -52,25 +52,49 @@ def exists(path: str) -> bool:
     return tfs.exists(basename)
 
 
-def write_text(path: str, contents: str, create_dir: bool = True):
+def write_text(path: str, contents: str, create_dir: bool = True) -> None:
+    """Write text to a file
+
+    :param path: the file path
+    :param contents: the text to write
+    :param create_dir: if True, create the directory if not exists,
+        defaults to True
+    """
     dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname, writeable=True, create=create_dir)
     tfs.writetext(basename, contents)
 
 
 def read_text(path: str) -> str:
+    """Read text from a file
+
+    :param path: the file path
+    :return: the text
+    """
     dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname)
     return tfs.readtext(basename)
 
 
-def write_bytes(path: str, contents: bytes, create_dir: bool = True):
+def write_bytes(path: str, contents: bytes, create_dir: bool = True) -> None:
+    """Write bytes to a file
+
+    :param path: the file path
+    :param contents: the bytes to write
+    :param create_dir: if True, create the directory if not exists,
+        defaults to True
+    """
     dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname, writeable=True, create=create_dir)
     tfs.writebytes(basename, contents)
 
 
 def read_bytes(path: str) -> bytes:
+    """Read bytes from a file
+
+    :param path: the file path
+    :return: the bytes
+    """
     dirname, basename = _split_path(path)
     tfs = fs.open_fs(dirname)
     return tfs.readbytes(basename)
