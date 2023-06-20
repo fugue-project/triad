@@ -31,3 +31,8 @@ package:
 
 test:
 	python3 -bb -m pytest tests/
+
+lab:
+	mkdir -p tmp
+	pip install .
+	jupyter lab --port=8888 --ip=0.0.0.0 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.allow_origin='*'

@@ -3,42 +3,11 @@ import re
 import tempfile
 import zipfile
 from contextlib import contextmanager
-from typing import IO, Any, Iterator, Tuple
+from typing import Any, Iterator
 
-import fs
+import fsspec
 
 _SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
-
-
-@contextmanager
-def open_file(
-    path: str, mode: str, create_dir: bool = False, **kwargs: Any
-) -> Iterator[IO]:
-    """Open a file with a given mode. This has to be used in a
-    with statement.
-
-    :param path: file path
-    :param mode: file open mode
-    :param create_dir: if True, create the directory if not exists,
-        defaults to False
-    :param kwargs: additional arguments to :meth:`fs.FS.open`
-
-    .. admonition:: Examples
-
-        .. code-block:: python
-
-            import fugue.utils.io as uio
-
-            with uio.open_file("a.txt", "w") as f:
-                f.write("hello")
-
-            with uio.open_file("/tmp/b/a.txt", "w", create_dir=True) as f:
-                f.write("hello")
-    """
-    dirname, basename = _split_path(path)
-    tfs = fs.open_fs(dirname, create=create_dir)
-    with tfs.open(basename, mode, **kwargs) as f:
-        yield f
 
 
 def exists(path: str) -> bool:
@@ -47,22 +16,19 @@ def exists(path: str) -> bool:
     :param path: the path to check
     :return: whether the path (resource) exists
     """
-    dirname, basename = _split_path(path)
-    tfs = fs.open_fs(dirname)
-    return tfs.exists(basename)
+    fs, path = fsspec.core.url_to_fs(path)
+    return fs.exists(path)
 
 
-def write_text(path: str, contents: str, create_dir: bool = True) -> None:
-    """Write text to a file
+def write_text(path: str, contents: str) -> None:
+    """Write text to a file. If the directory of the file does not exist, it
+    will create the directory first
 
     :param path: the file path
     :param contents: the text to write
-    :param create_dir: if True, create the directory if not exists,
-        defaults to True
     """
-    dirname, basename = _split_path(path)
-    tfs = fs.open_fs(dirname, writeable=True, create=create_dir)
-    tfs.writetext(basename, contents)
+    with fsspec.open(path, "w") as f:
+        f.write(contents)
 
 
 def read_text(path: str) -> str:
@@ -71,22 +37,22 @@ def read_text(path: str) -> str:
     :param path: the file path
     :return: the text
     """
-    dirname, basename = _split_path(path)
-    tfs = fs.open_fs(dirname)
-    return tfs.readtext(basename)
+    with fsspec.open(path, "r") as f:
+        return f.read()
 
 
 def write_bytes(path: str, contents: bytes, create_dir: bool = True) -> None:
-    """Write bytes to a file
+    """Write bytes to a file. If the directory of the file does not exist, it
+    will create the directory first
 
     :param path: the file path
     :param contents: the bytes to write
     :param create_dir: if True, create the directory if not exists,
         defaults to True
     """
-    dirname, basename = _split_path(path)
-    tfs = fs.open_fs(dirname, writeable=True, create=create_dir)
-    tfs.writebytes(basename, contents)
+    fs, path = fsspec.core.url_to_fs(path)
+    with fs.open(path, "wb") as f:
+        f.write(contents)
 
 
 def read_bytes(path: str) -> bytes:
@@ -95,9 +61,9 @@ def read_bytes(path: str) -> bytes:
     :param path: the file path
     :return: the bytes
     """
-    dirname, basename = _split_path(path)
-    tfs = fs.open_fs(dirname)
-    return tfs.readbytes(basename)
+    fs, path = fsspec.core.url_to_fs(path)
+    with fs.open(path, "rb") as f:
+        return f.read()
 
 
 @contextmanager
@@ -118,7 +84,7 @@ def zip_temp(fobj: Any) -> Iterator[str]:
                 # do something with tmpdir (string)
     """
     if isinstance(fobj, str):
-        with open_file(fobj, "wb", create_dir=True) as f:
+        with fsspec.open(fobj, "wb", create_dir=True) as f:
             with zip_temp(f) as tmpdir:
                 yield tmpdir
     else:
@@ -157,7 +123,7 @@ def unzip_to_temp(fobj: Any) -> Iterator[str]:
                 # read files from the tmpdir (string)
     """
     if isinstance(fobj, str):
-        with open_file(fobj, "rb") as f:
+        with fsspec.open(fobj, "rb") as f:
             with unzip_to_temp(f) as tmpdir:
                 yield tmpdir
     else:
@@ -166,19 +132,6 @@ def unzip_to_temp(fobj: Any) -> Iterator[str]:
                 zip_ref.extractall(tmpdirname)
 
             yield tmpdirname
-
-
-def _split_path(path: str) -> Tuple[str, str]:
-    """Split a path into directory and basename.
-    TODO: this currently does not support relative path
-
-    :param path: the path to split
-    :return: dirname, basename
-    """
-    path = _modify_path(path)
-    dirname = fs.path.dirname(path)
-    basename = fs.path.basename(path)
-    return dirname, basename
 
 
 def _modify_path(path: str) -> str:  # noqa: C901

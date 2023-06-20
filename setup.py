@@ -23,7 +23,8 @@ setup(
         "pandas>=1.2.0",
         "six",
         "pyarrow",
-        "fs",
+        "fsspec",
+        "fs",  # TODO: remove this hard dependency
         "importlib-metadata; python_version < '3.8'",
     ],
     extras_require={"ciso8601": ["ciso8601"]},
