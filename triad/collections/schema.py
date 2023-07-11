@@ -161,18 +161,57 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         return other
 
     def __repr__(self) -> str:
+        """Convert to the string representation of the schema"""
         return schema_to_expression(self.pyarrow_schema)
 
     def __iadd__(self, obj: Any) -> "Schema":
+        """Append a schema like object to the current schema
+
+        :param obj: a schema like object
+
+        .. admonition:: Examples
+
+            .. code-block:: python
+
+                s = Schema("a:int,b:str")
+                s += "c:long"
+                s += ("d",int)
+        """
         return self.append(obj)
 
     def __isub__(self, obj: Any) -> "Schema":
+        """Remove columns from a schema is not allowed"""
         raise SchemaError("'-=' is not allowed for Schema")
 
     def __add__(self, obj: Any) -> "Schema":
+        """Add a schema like object to the current schema
+
+        :param obj: a schema like object
+
+        .. admonition:: Examples
+
+            .. code-block:: python
+
+                s = Schema("a:int,b:str")
+                s = s + "c:long" +  ("d",int)
+        """
         return self.copy().append(obj)
 
     def __sub__(self, obj: Any) -> "Schema":
+        """Remove columns or schema from the schema.
+
+        :param obj: one column name, a list/set of column names or
+            a schema like object
+        :return: a schema excluding the columns in ``obj``
+
+        .. note::
+
+            If ``obj`` violates any of the following conditions, ``SchemaError``
+            will be raised:
+
+            * all columns in ``obj`` must be found in the schema
+            * If ``obj`` is a schema like object, the types must also match
+        """
         return self.remove(
             obj,
             ignore_key_mismatch=False,
@@ -200,6 +239,11 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         super().__setitem__(name, value, *args, **kwds)  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
+        """Check if the two schemas are equal
+
+        :param other: a schema like object
+        :return: True if the two schemas are equal
+        """
         if other is None:
             return False
         if other is self:
@@ -211,6 +255,12 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         return self == Schema(other)
 
     def __contains__(self, key: Any) -> bool:  # noqa: C901
+        """Check if the schema contains the key.
+
+        :param key: a column name, a list of column names, a data
+            type like object or a schema like object
+        :return: True if the schema contains the object
+        """
         if key is None:
             return False
         if isinstance(key, str):
@@ -274,6 +324,20 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         require_type_match: bool = True,
         ignore_type_mismatch: bool = False,
     ) -> "Schema":
+        """Remove columns or schema from the schema
+
+        :param obj: one column name, a list/set of column names or
+            a schema like object
+        :param ignore_key_mismatch: if True, ignore the non-existing keys,
+            default False
+        :param require_type_match: if True, a match requires the same key
+            and same type (if ``obj`` contains type), otherwise, only the
+            key needs to match, default True
+        :param ignore_type_mismatch: if False, when keys match but types don't
+            (if ``obj`` contains type), raise an exception ``SchemaError``,
+            default False
+        :return: a schema excluding the columns in ``obj``
+        """
         if obj is None:
             return self.copy()
         target = self
@@ -316,7 +380,9 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             if k not in od:
                 if ignore_key_mismatch:
                     continue
-                raise SchemaError(f"Can't remove {quote_name(k)} from {target}")
+                raise SchemaError(
+                    f"Can't remove {quote_name(k)} from {target} (not found)"
+                )
             if v is None:
                 del od[k]
             else:
@@ -336,6 +402,20 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         require_type_match: bool = True,
         ignore_type_mismatch: bool = False,
     ) -> "Schema":
+        """Extract a sub schema from the schema based on the columns in ``obj``
+
+        :param obj: one column name, a list/set of column names or
+            a schema like object
+        :param ignore_key_mismatch: if True, ignore the non-existing keys,
+            default False
+        :param require_type_match: if True, a match requires the same key
+            and same type (if ``obj`` contains type), otherwise, only the
+            key needs to match, default True
+        :param ignore_type_mismatch: if False, when keys match but types don't
+            (if ``obj`` contains type), raise an exception ``SchemaError``,
+            default False
+        :return: a sub-schema containing the columns in ``obj``
+        """
         if obj is None:
             return Schema()
         if isinstance(obj, str):
@@ -394,6 +474,20 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         require_type_match: bool = True,
         ignore_type_mismatch: bool = False,
     ) -> "Schema":
+        """Exclude columns from the current schema which are also in ``other``.
+        ``other`` can contain columns that are not in the current schema, they
+        will be ignored.
+
+        :param other: one column name, a list/set of column names or
+            a schema like object
+        :param require_type_match: if True, a match requires the same key
+            and same type (if ``obj`` contains type), otherwise, only the
+            key needs to match, default True
+        :param ignore_type_mismatch: if False, when keys match but types don't
+            (if ``obj`` contains type), raise an exception ``SchemaError``,
+            default False
+        :return: a schema excluding the columns in ``other``
+        """
         return self.remove(
             other,
             ignore_key_mismatch=True,
@@ -408,6 +502,22 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         ignore_type_mismatch: bool = True,
         use_other_order: bool = False,
     ) -> "Schema":
+        """Extract the sub-schema from the current schema which are also in
+        ``other``. ``other`` can contain columns that are not in the current schema,
+        they will be ignored.
+
+        :param other: one column name, a list/set of column names or
+            a schema like object
+        :param require_type_match: if True, a match requires the same key
+            and same type (if ``obj`` contains type), otherwise, only the
+            key needs to match, default True
+        :param ignore_type_mismatch: if False, when keys match but types don't
+            (if ``obj`` contains type), raise an exception ``SchemaError``,
+            default False
+        :param use_other_order: if True, the output schema will use the column order
+            of ``other``, default False
+        :return: the intersected schema
+        """
         if not use_other_order:
             diff = self.exclude(
                 other,
@@ -423,9 +533,25 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             )
 
     def union(self, other: Any, require_type_match: bool = False) -> "Schema":
+        """Union the ``other`` schema
+
+        :param other: a schema like object
+        :param require_type_match: if True, a match requires the same key
+            and same type (if ``obj`` contains type), otherwise, only the
+            key needs to match, default True
+        :return: the new unioned schema
+        """
         return self.copy().union_with(other, require_type_match=require_type_match)
 
     def union_with(self, other: Any, require_type_match: bool = False) -> "Schema":
+        """Union the ``other`` schema into the current schema
+
+        :param other: a schema like object
+        :param require_type_match: if True, a match requires the same key
+            and same type (if ``obj`` contains type), otherwise, only the
+            key needs to match, default True
+        :return: the current schema
+        """
         if not isinstance(other, Schema):
             other = Schema(other)
         try:
@@ -529,78 +655,3 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             is_supported(field.type), SchemaError(f"{field} type is not supported")
         )
         return field
-
-
-_LLM_QA = [
-    {
-        "question": "What is Fugue Schema?",
-        "answer": """Fugue Schema is a collection of pyarrow fields. It is a class
-inside the `triad` package. It is used to describe the schema of any type of dataframe
-that can be recognized by Fugue.""",
-    },
-    {
-        "question": "How to create a Fugue Schema?",
-        "answer": """There are many ways to construct a Fugue Schema. The most common
-ways are:
-
-```python
-from triad import Schema
-
-Schema("a:int,b:str") # from string
-Schema([("a",int),("b",str)]) # from list of tuples of name and a primitive python type
-Schema({"a":int,"b":str}) # from dict of names and primitive python types
-Schema({"a":"int","b":"str"}) # from dict of names and Fugue DataType strings
-```""",
-    },
-    {
-        "question": "What is a Fugue Schema string?",
-        "requires": ["fugue-data-type-string"],
-        "answer": """A Fugue Schema string is a string expression in the format:
-`<name>:<fugue data type string>[,<name>:<fugue data type string>]*`. For example:
-
-```python
-"a:int,b:str"
-"col1:[int],col2:str"
-```
-""",
-    },
-    {
-        "question": "What is a Schema-like object?",
-        "answer": """Any object that can be accepted by the Schema constructor is called
-Schema-like object. Fugue API has a convention to take schema-like objects (usually
-as a `schema` parameter), and convert automatically inside the functions.""",
-    },
-    {
-        "question": "What is the difference between Fugue Schema and pyarrow Schema?",
-        "answer": """They can be easily converted to each other. Fugue Schema supports
-a subset of pyarrow data types.
-
-```python
-from triad import Schema
-
-pyarrow_schema = Schema("a:int,b:str").pa_schema # Fugue-> pyarrow schema
-fugue_schema = Schema(pyarrow_schema) # pyarrow -> Fugue schema
-```
-""",
-    },
-    {
-        "question": "What is a partial or wildcard schema?",
-        "answer": """A partial or wildcard schema is a schema with a wildcard `*` in
-the string expression. It is used to describe a schema based on the input dataframe
-schema, plus some columns generated by a transformation. It is very commonly used in
-Fugue transform. For example:
-
-```python
-import fugue.api as fa
-import pandas as pd
-
-def my_func(df:pd.DataFrame) -> pd.DataFrame:
-    return df.assign(b="x", c=2)
-
-df = pd.DataFrame(dict(a=[0,1]))
-
-fa.transform(df, my_funct, schema="*,b:str,c:long")
-```
-""",
-    },
-]
