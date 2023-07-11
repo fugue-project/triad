@@ -10,6 +10,14 @@ triad.utils.assertion
    :undoc-members:
    :show-inheritance:
 
+triad.utils.batch\_reslicers
+----------------------------
+
+.. automodule:: triad.utils.batch_reslicers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 triad.utils.class\_extension
 ----------------------------
 
@@ -46,6 +54,14 @@ triad.utils.hash
 ----------------
 
 .. automodule:: triad.utils.hash
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+triad.utils.io
+--------------
+
+.. automodule:: triad.utils.io
    :members:
    :undoc-members:
    :show-inheritance:
