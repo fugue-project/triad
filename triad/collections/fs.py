@@ -21,6 +21,9 @@ class FileSystem(MountFS):
     To customize different file systems, you should override `create_fs`
     to provide your own configured file systems.
 
+    :param auto_close: If `True` (the default), the child filesystems
+        will be closed when `MountFS` is closed.
+
     .. admonition:: Examples
 
         .. code-block:: python
@@ -33,8 +36,6 @@ class FileSystem(MountFS):
 
         If a path is not a local path, it must include the scheme and `netloc`
         (the first element after `://`)
-        :param auto_close: If `True` (the default), the child filesystems
-        will be closed when `MountFS` is closed.
     """
 
     def __init__(self, auto_close: bool = True):

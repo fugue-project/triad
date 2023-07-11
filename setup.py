@@ -9,6 +9,7 @@ setup(
     name="triad",
     version=__version__,
     packages=find_packages(include=["triad*"]),
+    package_data={"triad": ["py.typed"]},
     description="A collection of python utils for Fugue projects",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
@@ -22,7 +23,8 @@ setup(
         "pandas>=1.2.0",
         "six",
         "pyarrow",
-        "fs",
+        "fsspec",
+        "fs",  # TODO: remove this hard dependency
         "importlib-metadata; python_version < '3.8'",
     ],
     extras_require={"ciso8601": ["ciso8601"]},

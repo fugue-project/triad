@@ -20,6 +20,12 @@ pip install triad
 
 ## Release History
 
+### 0.9.1
+
+* Add `fsspec` as a core dependency, add io utils
+* Add `py.typed`
+* Improve `Schema` class comments
+
 ### 0.9.0
 
 * Merge QPD pandas utils functions back to Triad
