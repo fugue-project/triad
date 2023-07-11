@@ -132,39 +132,3 @@ def unzip_to_temp(fobj: Any) -> Iterator[str]:
                 zip_ref.extractall(tmpdirname)
 
             yield tmpdirname
-
-
-def _modify_path(path: str) -> str:  # noqa: C901
-    """to fix paths like
-    /s3:/a/b.txt -> s3://a/b.txt
-    C:\\a\\b.txt -> C:/a/b.txt
-    """
-    if path.startswith("/"):
-        s = _SCHEME_PREFIX.search(path[1:])
-        if s is not None:
-            colon = s.end()
-            scheme = path[1:colon]
-            if colon + 1 == len(path):  # /C: or /s3:
-                path = scheme + "://"
-            elif path[colon + 1] == "/":  # /s3:/a/b.txt
-                path = scheme + "://" + path[colon + 1 :].lstrip("/")
-            elif path[colon + 1] == "\\":  # /c:\a\b.txt
-                path = scheme + ":\\" + path[colon + 1 :].lstrip("\\")
-    if path.startswith("file:///"):
-        path = path[8:]
-    elif path.startswith("file://"):
-        path = path[6:]
-    if path.startswith("\\\\"):
-        # windows \\10.100.168.1\...
-        raise NotImplementedError(f"path {path} is not supported")
-    if path != "" and path[0].isalpha():
-        if len(path) == 2 and path[1] == ":":
-            # C: => C:/
-            return path[0] + ":/"
-        if path[1:].startswith(":\\"):
-            # C:\a\b\c => C:/a/b/c
-            return path[0] + ":/" + path[3:].replace("\\", "/").lstrip("/")
-        if path[1:].startswith(":/"):
-            # C:/a/b/c => C:/a/b/c
-            return path[0] + ":/" + path[3:].lstrip("/")
-    return path

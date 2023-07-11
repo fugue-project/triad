@@ -921,3 +921,61 @@ _COMPARATORS: Dict[pa.DataType, Callable[[Any, Any], bool]] = {
     pa.float32(): _float_eq,
     pa.float64(): _float_eq,
 }
+
+
+_LLM_QA = [
+    {
+        "question": "What are Fugue data types",
+        "answer": """Fugue data types are a subset of arrow data types,
+the exceptions are: dictionary, duration, time32, time64.""",
+    },
+    {
+        "id": "fugue-data-type-string",
+        "question": "What is Fugue data type string",
+        "answer": """It is the string representation of the Fugue data types.
+It is widely used in Fugue Schema expressions. Here is the python dictionary
+in the format of name and pyarrow data type:
+
+```
+{
+    "null": pa.null(),
+    "str": pa.string(),
+    "string": pa.string(),
+    "bool": pa.bool_(),
+    "boolean": pa.bool_(),
+    "int8": pa.int8(),
+    "byte": pa.int8(),
+    "int16": pa.int16(),
+    "short": pa.int16(),
+    "int32": pa.int32(),
+    "int": pa.int32(),
+    "long": pa.int64(),
+    "int64": pa.int64(),
+    "uint8": pa.uint8(),
+    "ubyte": pa.uint8(),
+    "uint16": pa.uint16(),
+    "ushort": pa.uint16(),
+    "uint32": pa.uint32(),
+    "uint": pa.uint32(),
+    "ulong": pa.uint64(),
+    "uint64": pa.uint64(),
+    "float16": pa.float16(),
+    "float": pa.float32(),
+    "float32": pa.float32(),
+    "double": pa.float64(),
+    "float64": pa.float64(),
+    "date": pa.date32(),
+    "datetime": pa.timestamp("us"),
+    "binary": pa.binary(),
+    "bytes": pa.binary(),
+}
+```
+
+Here are nested types:
+
+    For list type, you should use `[data_type]`. E.g. `[int]` is a list of int32.
+    For struct type, you should use `{key:data_type}`. E.g. `{a:int,b:str}`.
+    You can combine nested types. E.g. `[{a:int,b:str}]` is a list of struct.
+""",
+    },
+]

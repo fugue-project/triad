@@ -4,7 +4,6 @@ from io import BytesIO
 from pytest import raises
 
 import triad.utils.io as iou
-from triad.utils.io import _modify_path
 
 
 def test_exists(tmpdir):
@@ -42,28 +41,3 @@ def test_zip_unzip(tmpdir):
     with iou.unzip_to_temp(tf) as tmpdir:
         assert iou.read_text(os.path.join(tmpdir, "a.txt")) == "a"
         assert iou.read_text(os.path.join(tmpdir, "b.txt")) == "b"
-
-
-def test_modify_path():
-    assert "c:/" == _modify_path("/c:")
-    assert "s3://" == _modify_path("/s3:")
-    assert "C:/" == _modify_path("/C:\\")
-    assert "C:/a" == _modify_path("/C:\\a")
-    assert "C:/" == _modify_path("/C:\\\\")
-    assert "C:/a/b" == _modify_path("/C:\\\\a\\b")
-    assert "C:/" == _modify_path("/C:/")
-    assert "C:/a" == _modify_path("/C:/a")
-    assert "C:/" == _modify_path("/C://")
-    assert "C:/a/b" == _modify_path("/C://a/b")
-
-    assert "/" == _modify_path("file://")
-    assert "/a/b" == _modify_path("file://a/b")
-    assert "c:/a/b" == _modify_path("file:///c:/a/b")
-    assert "C:/" == _modify_path("C://")
-    assert "c:/x" == _modify_path("c://x")
-    assert "c:/" == _modify_path("c:/")
-    assert "c:/x" == _modify_path("c:/x")
-    assert "c:/" == _modify_path("c:")
-    assert "c:/" == _modify_path("c:\\")
-    assert "c:/x/" == _modify_path("c:\\x\\")
-    raises(NotImplementedError, lambda: _modify_path("\\\\10.0.0.1\1"))
