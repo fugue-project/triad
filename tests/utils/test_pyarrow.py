@@ -136,6 +136,13 @@ def test_to_pa_datatype():
 
     assert pa.bool_() == to_pa_datatype(pd.Series([True]).astype("boolean").dtype)
 
+    if pd.__version__ >= "2":
+        assert pa.string() == to_pa_datatype(
+            pd.Series(["x"]).astype("string[pyarrow]").dtype
+        )
+        assert pa.int64() == to_pa_datatype(pd.ArrowDtype(pa.int64()))
+        assert pa.string() == to_pa_datatype(pd.ArrowDtype(pa.string()))
+
     raises(TypeError, lambda: to_pa_datatype(123))
     raises(TypeError, lambda: to_pa_datatype(None))
 

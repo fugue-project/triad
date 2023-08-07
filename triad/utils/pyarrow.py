@@ -181,6 +181,11 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     if isinstance(obj, ExtensionDtype):
         if obj in _PANDAS_EXTENSION_TYPE_TO_PA_MAP:
             return _PANDAS_EXTENSION_TYPE_TO_PA_MAP[obj]
+        if pd.__version__ >= "2":
+            if isinstance(obj, pd.ArrowDtype):
+                return obj.pyarrow_dtype
+            if obj == pd.StringDtype("pyarrow"):
+                return pa.string()
     if type(obj) == type and issubclass(obj, datetime):
         return TRIAD_DEFAULT_TIMESTAMP
     if type(obj) == type and issubclass(obj, date):
