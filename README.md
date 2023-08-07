@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.9.2
+
+* Add sorted batch reslicers
+
 ### 0.9.1
 
 * Add `fsspec` as a core dependency, add io utils

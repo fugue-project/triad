@@ -8,6 +8,8 @@ from triad.utils.batch_reslicers import (
     ArrowTableBatchReslicer,
     NumpyArrayBatchReslicer,
     PandasBatchReslicer,
+    PandasSortedBatchReslicer,
+    ArrowTableSortedBatchReslicer,
 )
 
 
@@ -110,3 +112,96 @@ def test_numpy_reslicer():
     assert (s.take(df, 1, 5) == np.arange(1, 6)[:, None]).all()
     assert s.concat([df]) is df
     assert (s.concat([df, df]) == pd.concat([pdf, pdf]).to_numpy()).all()
+
+
+def test_sorted_pandas_reslicer():
+    def _make_df(data):
+        for x in data:
+            yield pd.DataFrame(
+                {
+                    "a": x,
+                    "b": pd.Series([None] * len(x), dtype="object"),
+                    "c": range(len(x)),
+                }
+            )
+
+    def _test(data, expected, mode="first"):
+        s = PandasSortedBatchReslicer(keys=["a", "b"])
+        actual = []
+        for dfs in s.reslice(_make_df(data)):
+            if mode == "first":
+                df = next(dfs)
+                actual.append(str(df.iloc[0]["a"]) + "-" + str(df.iloc[0]["c"]))
+            elif mode == "all":
+                dfs = list(dfs)
+                actual.append(str(dfs[0].iloc[0]["a"]) + "-" + str(len(pd.concat(dfs))))
+        assert actual == expected
+        s = PandasSortedBatchReslicer(keys=["a", "b"])
+        actual = []
+        for df in s.reslice_and_merge(_make_df(data)):
+            if mode == "first":
+                actual.append(str(df.iloc[0]["a"]) + "-" + str(df.iloc[0]["c"]))
+            elif mode == "all":
+                actual.append(str(df.iloc[0]["a"]) + "-" + str(len(df)))
+        assert actual == expected
+
+    _test([], [])
+    _test([[]], [])
+    _test([[1, 1]], ["1-0"])
+    _test([[1, 1, 2]], ["1-0", "2-2"])
+
+    _test([[1, 1], [], [1, 1], []], ["1-0"])
+    _test([[1, 1], [], [1, 2], []], ["1-0", "2-1"])
+    _test([[1, 1], [], [2, 2], []], ["1-0", "2-0"])
+    _test([[], [1, 2], [], [2, 2], []], ["1-0", "2-1"])
+    _test([[], [1], [1], [2], [2]], ["1-0", "2-0"])
+
+    _test([[], [1], [1, 1, 2], [], [2], [], [2]], ["1-3", "2-3"], mode="all")
+
+
+def test_sorted_arrow_reslicer():
+    def _make_df(data):
+        for x in data:
+            yield pa.Table.from_pandas(
+                pd.DataFrame(
+                    {
+                        "a": x,
+                        "b": pd.Series([None] * len(x), dtype="object"),
+                        "c": range(len(x)),
+                    }
+                )
+            )
+
+    def _test(data, expected, mode="first"):
+        s = ArrowTableSortedBatchReslicer(keys=["a", "b"])
+        actual = []
+        for dfs in s.reslice(_make_df(data)):
+            if mode == "first":
+                df = next(dfs).to_pandas()
+                actual.append(str(df.iloc[0]["a"]) + "-" + str(df.iloc[0]["c"]))
+            elif mode == "all":
+                dfs = [x.to_pandas() for x in dfs]
+                actual.append(str(dfs[0].iloc[0]["a"]) + "-" + str(len(pd.concat(dfs))))
+        assert actual == expected
+        s = ArrowTableSortedBatchReslicer(keys=["a", "b"])
+        actual = []
+        for df in s.reslice_and_merge(_make_df(data)):
+            df = df.to_pandas()
+            if mode == "first":
+                actual.append(str(df.iloc[0]["a"]) + "-" + str(df.iloc[0]["c"]))
+            elif mode == "all":
+                actual.append(str(df.iloc[0]["a"]) + "-" + str(len(df)))
+        assert actual == expected
+
+    _test([], [])
+    _test([[]], [])
+    _test([[1, 1]], ["1-0"])
+    _test([[1, 1, 2]], ["1-0", "2-2"])
+
+    _test([[1, 1], [], [1, 1], []], ["1-0"])
+    _test([[1, 1], [], [1, 2], []], ["1-0", "2-1"])
+    _test([[1, 1], [], [2, 2], []], ["1-0", "2-0"])
+    _test([[], [1, 2], [], [2, 2], []], ["1-0", "2-1"])
+    _test([[], [1], [1], [2], [2]], ["1-0", "2-0"])
+
+    _test([[], [1], [1, 1, 2], [], [2], [], [2]], ["1-3", "2-3"], mode="all")
