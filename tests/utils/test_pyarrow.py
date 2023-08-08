@@ -158,7 +158,7 @@ def test_to_single_pandas_dtype():
     assert pd.BooleanDtype() == to_single_pandas_dtype(pa.bool_(), True)
     assert pd.Int16Dtype() == to_single_pandas_dtype(pa.int16(), True)
     assert pd.UInt32Dtype() == to_single_pandas_dtype(pa.uint32(), True)
-    assert np.float32 == to_single_pandas_dtype(pa.float32(), True)
+    assert pd.Float32Dtype() == to_single_pandas_dtype(pa.float32(), True)
     assert pd.StringDtype() == to_single_pandas_dtype(pa.string(), True)
     assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), True)
 
@@ -174,7 +174,7 @@ def test_to_pandas_dtype():
     res = to_pandas_dtype(schema, True)
     assert pd.BooleanDtype() == res["a"]
     assert pd.Int32Dtype() == res["b"]
-    assert np.float64 == res["c"]
+    assert pd.Float64Dtype() == res["c"]
     assert pd.StringDtype() == res["d"]
     assert np.dtype("<M8[ns]") == res["e"]
 

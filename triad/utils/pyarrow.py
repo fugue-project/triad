@@ -88,6 +88,8 @@ _PANDAS_EXTENSION_TYPE_TO_PA_MAP: Dict[ExtensionDtype, pa.DataType] = {
     pd.UInt32Dtype(): pa.uint32(),
     pd.Int64Dtype(): pa.int64(),
     pd.UInt64Dtype(): pa.uint64(),
+    pd.Float32Dtype(): pa.float32(),
+    pd.Float64Dtype(): pa.float64(),
     pd.StringDtype(): pa.string(),
     pd.BooleanDtype(): pa.bool_(),
 }
@@ -101,6 +103,8 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
     pa.uint32(): pd.UInt32Dtype(),
     pa.int64(): pd.Int64Dtype(),
     pa.uint64(): pd.UInt64Dtype(),
+    pa.float32(): pd.Float32Dtype(),
+    pa.float64(): pd.Float64Dtype(),
     pa.string(): pd.StringDtype(),
     pa.bool_(): pd.BooleanDtype(),
 }
