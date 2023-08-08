@@ -185,7 +185,7 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     if isinstance(obj, ExtensionDtype):
         if obj in _PANDAS_EXTENSION_TYPE_TO_PA_MAP:
             return _PANDAS_EXTENSION_TYPE_TO_PA_MAP[obj]
-        if pd.__version__ >= "2":
+        if hasattr(pd, "ArrowDtype"):
             if isinstance(obj, pd.ArrowDtype):
                 return obj.pyarrow_dtype
             if obj == pd.StringDtype("pyarrow"):
@@ -198,43 +198,79 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
 
 
 def to_single_pandas_dtype(
-    pa_type: pa.DataType, use_extension_types: bool = False
-) -> Dict[str, np.dtype]:
+    pa_type: pa.DataType,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
+) -> np.dtype:
     """convert a pyarrow data type to a pandas datatype.
     Currently, struct type is not supported
 
     :param schema: the pyarrow schema
     :param use_extension_types: whether to use pandas extension
-        data types, defaults to False
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
     :return: the pandas data type
+
+    .. note::
+
+        * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+            it converts the type to ``ArrowDType``
+        * If both are true, it converts the type to the numpy backend nullable
+            dtypes if possible, otherwise, it converts to ``ArrowDType``
     """
+    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
     if use_extension_types:
         return (
             _PA_TO_PANDAS_EXTENSION_TYPE_MAP[pa_type]
             if pa_type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
-            else pa_type.to_pandas_dtype()
+            else (
+                pa_type.to_pandas_dtype()
+                if not use_arrow_dtype
+                else pd.ArrowDtype(pa_type)
+            )
         )
+    if use_arrow_dtype:
+        return pd.ArrowDtype(pa_type)
     return np.dtype(str) if pa.types.is_string(pa_type) else pa_type.to_pandas_dtype()
 
 
 def to_pandas_dtype(
-    schema: pa.Schema, use_extension_types: bool = False
+    schema: pa.Schema,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
 ) -> Dict[str, np.dtype]:
     """convert as `dtype` dict for pandas dataframes.
     Currently, struct type is not supported
 
     :param schema: the pyarrow schema
     :param use_extension_types: whether to use pandas extension
-        data types, defaults to False
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
     :return: the pandas data type dictionary
+
+    .. note::
+
+        * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+            it converts all types to ``ArrowDType``
+        * If both are true, it converts types to the numpy backend nullable
+            dtypes if possible, otherwise, it converts to ``ArrowDType``
     """
+    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
     if use_extension_types:
         return {
             f.name: _PA_TO_PANDAS_EXTENSION_TYPE_MAP[f.type]
             if f.type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
-            else f.type.to_pandas_dtype()
+            else (
+                f.type.to_pandas_dtype()
+                if not use_arrow_dtype
+                else pd.ArrowDtype(f.type)
+            )
             for f in schema
         }
+    if use_arrow_dtype:
+        return {f.name: pd.ArrowDtype(f.type) for f in schema}
     return {
         f.name: np.dtype(str)
         if pa.types.is_string(f.type)

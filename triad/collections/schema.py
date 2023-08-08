@@ -133,10 +133,33 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
 
     @property
     def pandas_dtype(self) -> Dict[str, np.dtype]:
-        """convert as `dtype` dict for pandas dataframes.
+        """Convert as `dtype` dict for pandas dataframes.
         Currently, struct type is not supported
         """
-        return to_pandas_dtype(self.pa_schema)
+        return self.to_pandas_dtype(self.pa_schema)
+
+    def to_pandas_dtype(
+        self, use_extension_types: bool = False, use_arrow_dtype: bool = False
+    ) -> Dict[str, np.dtype]:
+        """Convert as `dtype` dict for pandas dataframes.
+
+        :param use_extension_types: if True, use pandas extension types,
+            default False
+        :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+            use pyarrow types, default False
+
+        .. note::
+
+            * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+                it converts all types to ``ArrowDType``
+            * If both are true, it converts types to the numpy backend nullable
+                dtypes if possible, otherwise, it converts to ``ArrowDType``
+        """
+        return to_pandas_dtype(
+            self.pa_schema,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
 
     @property
     def pd_dtype(self) -> Dict[str, np.dtype]:

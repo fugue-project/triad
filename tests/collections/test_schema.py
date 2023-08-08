@@ -63,6 +63,22 @@ def test_schema_properties():
     assert pd.api.types.is_string_dtype(s.pd_dtype["b"])
     assert s.pandas_dtype == s.pd_dtype
 
+    s = Schema("a:str,b:[bool]")
+    assert s.to_pandas_dtype() == {"a": np.dtype(str), "b": np.dtype(object)}
+    assert s.to_pandas_dtype(use_extension_types=True) == {
+        "a": pd.StringDtype(),
+        "b": np.dtype(object),
+    }
+    if hasattr(pd, "ArrowDtype"):
+        assert s.to_pandas_dtype(use_extension_types=True, use_arrow_dtype=True) == {
+            "a": pd.StringDtype(),
+            "b": pd.ArrowDtype(pa.list_(pa.bool_())),
+        }
+        assert s.to_pandas_dtype(use_extension_types=False, use_arrow_dtype=True) == {
+            "a": pd.ArrowDtype(pa.string()),
+            "b": pd.ArrowDtype(pa.list_(pa.bool_())),
+        }
+
 
 def test_schema_copy():
     a = Schema("a:int,b:str").copy()

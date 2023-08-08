@@ -157,10 +157,21 @@ def test_to_single_pandas_dtype():
 
     assert pd.BooleanDtype() == to_single_pandas_dtype(pa.bool_(), True)
     assert pd.Int16Dtype() == to_single_pandas_dtype(pa.int16(), True)
+    assert pd.Int16Dtype() == to_single_pandas_dtype(
+        pa.int16(), True, use_arrow_dtype=True
+    )
     assert pd.UInt32Dtype() == to_single_pandas_dtype(pa.uint32(), True)
     assert pd.Float32Dtype() == to_single_pandas_dtype(pa.float32(), True)
     assert pd.StringDtype() == to_single_pandas_dtype(pa.string(), True)
     assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), True)
+
+    if hasattr(pd, "ArrowDtype"):
+        assert pd.ArrowDtype(pa.int16()) == to_single_pandas_dtype(
+            pa.int16(), False, use_arrow_dtype=True
+        )
+        assert pd.ArrowDtype(pa.timestamp("ns")) == to_single_pandas_dtype(
+            pa.timestamp("ns"), True, use_arrow_dtype=True
+        )
 
 
 def test_to_pandas_dtype():
@@ -177,6 +188,21 @@ def test_to_pandas_dtype():
     assert pd.Float64Dtype() == res["c"]
     assert pd.StringDtype() == res["d"]
     assert np.dtype("<M8[ns]") == res["e"]
+
+    if hasattr(pd, "ArrowDtype"):
+        res = to_pandas_dtype(schema, True, use_arrow_dtype=True)
+        assert pd.BooleanDtype() == res["a"]
+        assert pd.Int32Dtype() == res["b"]
+        assert pd.Float64Dtype() == res["c"]
+        assert pd.StringDtype() == res["d"]
+        assert pd.ArrowDtype(schema[4].type) == res["e"]
+
+        res = to_pandas_dtype(schema, False, use_arrow_dtype=True)
+        assert pd.ArrowDtype(schema[0].type) == res["a"]
+        assert pd.ArrowDtype(schema[1].type) == res["b"]
+        assert pd.ArrowDtype(schema[2].type) == res["c"]
+        assert pd.ArrowDtype(schema[3].type) == res["d"]
+        assert pd.ArrowDtype(schema[4].type) == res["e"]
 
 
 def test_is_supported():

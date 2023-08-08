@@ -23,6 +23,7 @@ pip install triad
 ### 0.9.2
 
 * Add sorted batch reslicers
+* Add `ArrowDtype` support
 
 ### 0.9.1
 
