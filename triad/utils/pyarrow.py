@@ -197,6 +197,64 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     return pa.from_numpy_dtype(np.dtype(obj))
 
 
+def to_pandas_types_mapper(
+    pa_type: pa.DataType,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
+) -> Optional[pd.api.extensions.ExtensionDtype]:
+    """The types_mapper for ``pa.Table.to_pandas``
+
+    :param pa_type: the pyarrow data type
+    :param use_extension_types: whether to use pandas extension
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
+    :return: the pandas ExtensionDtype if available, otherwise None
+
+    .. note::
+
+        * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+            it converts the type to ``ArrowDType``
+        * If both are true, it converts the type to the numpy backend nullable
+            dtypes if possible, otherwise, it converts to ``ArrowDType``
+    """
+    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
+    if use_extension_types:
+        return (
+            _PA_TO_PANDAS_EXTENSION_TYPE_MAP[pa_type]
+            if pa_type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
+            else (None if not use_arrow_dtype else pd.ArrowDtype(pa_type))
+        )
+    if use_arrow_dtype:
+        return pd.ArrowDtype(pa_type)
+    return None
+
+
+def pa_table_to_pandas(
+    df: pa.Table,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
+    **kwargs: Any,
+) -> pd.DataFrame:
+    """Convert a pyarrow table to pandas dataframe
+
+    :param df: the pyarrow table
+    :param use_extension_types: whether to use pandas extension
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
+    :param kwargs: other arguments for ``pa.Table.to_pandas``
+    :return: the pandas dataframe
+    """
+    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
+    mapper = partial(
+        to_pandas_types_mapper,
+        use_extension_types=use_extension_types,
+        use_arrow_dtype=use_arrow_dtype,
+    )
+    return df.to_pandas(types_mapper=mapper, **kwargs)
+
+
 def to_single_pandas_dtype(
     pa_type: pa.DataType,
     use_extension_types: bool = False,
@@ -205,7 +263,7 @@ def to_single_pandas_dtype(
     """convert a pyarrow data type to a pandas datatype.
     Currently, struct type is not supported
 
-    :param schema: the pyarrow schema
+    :param pa_type: the pyarrow data type
     :param use_extension_types: whether to use pandas extension
         data types, default to False
     :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
@@ -220,19 +278,16 @@ def to_single_pandas_dtype(
             dtypes if possible, otherwise, it converts to ``ArrowDType``
     """
     use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
-    if use_extension_types:
-        return (
-            _PA_TO_PANDAS_EXTENSION_TYPE_MAP[pa_type]
-            if pa_type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
-            else (
-                pa_type.to_pandas_dtype()
-                if not use_arrow_dtype
-                else pd.ArrowDtype(pa_type)
-            )
-        )
-    if use_arrow_dtype:
-        return pd.ArrowDtype(pa_type)
-    return np.dtype(str) if pa.types.is_string(pa_type) else pa_type.to_pandas_dtype()
+    tp = to_pandas_types_mapper(
+        pa_type,
+        use_extension_types=use_extension_types,
+        use_arrow_dtype=use_arrow_dtype,
+    )
+    if tp is not None:
+        return tp
+    if pa.types.is_string(pa_type) and not use_extension_types and not use_arrow_dtype:
+        return np.dtype(str)
+    return pa_type.to_pandas_dtype()
 
 
 def to_pandas_dtype(

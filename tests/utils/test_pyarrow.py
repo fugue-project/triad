@@ -24,6 +24,7 @@ from triad.utils.pyarrow import (
     to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
+    pa_table_to_pandas,
 )
 
 
@@ -203,6 +204,30 @@ def test_to_pandas_dtype():
         assert pd.ArrowDtype(schema[2].type) == res["c"]
         assert pd.ArrowDtype(schema[3].type) == res["d"]
         assert pd.ArrowDtype(schema[4].type) == res["e"]
+
+
+def test_pa_table_to_pandas():
+    adf = pa.Table.from_pylist(
+        [dict(a=0, b=[1, 2], c="a"), dict(a=1, b=[3, 4], c="b")],
+        schema=expression_to_schema("a:int32,b:[int32],c:str"),
+    )
+    pdf = pa_table_to_pandas(adf)
+    assert pdf["a"].dtype == np.int32
+    assert pdf["b"].dtype == np.dtype("O")
+    pdf = pa_table_to_pandas(adf, use_extension_types=True)
+    assert pdf["a"].dtype == pd.Int32Dtype()
+    assert pdf["b"].dtype == np.dtype("O")
+    assert pdf["c"].dtype == pd.StringDtype()
+
+    if hasattr(pd, "ArrowDtype"):
+        pdf = pa_table_to_pandas(adf, use_extension_types=False, use_arrow_dtype=True)
+        assert pdf["a"].dtype == pd.ArrowDtype(pa.int32())
+        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
+        assert pdf["c"].dtype == pd.ArrowDtype(pa.string())
+        pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
+        assert pdf["a"].dtype == pd.Int32Dtype()
+        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
+        assert pdf["c"].dtype == pd.StringDtype()
 
 
 def test_is_supported():
