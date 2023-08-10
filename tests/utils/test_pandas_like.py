@@ -159,7 +159,7 @@ def test_binary():
 
 def test_nan_none():
     df = DF([[None, None]], "b:str,c:double", True)
-    assert df.native.iloc[0, 0] is None
+    assert pd.isna(df.native.iloc[0, 0])
     arr = df.as_array(type_safe=True)[0]
     assert arr[0] is None
     assert arr[1] is None
@@ -270,21 +270,25 @@ def test_safe_group_by_apply():
     PD_UTILS.ensure_compatible(res)
     assert 3 == res.shape[0]
     assert 3 == res.shape[1]
-    assert [["a", 1, 2], ["a", 2, 2], [None, 3, 1]] == res.values.tolist()
+    assert [["a", 1, 2], ["a", 2, 2], [None, 3, 1]] == res.astype(object).where(
+        ~pd.isna(res), None
+    ).values.tolist()
 
     res = PD_UTILS.safe_groupby_apply(df.native, [], _m1)
     PD_UTILS.ensure_compatible(res)
     assert 3 == res.shape[0]
     assert 3 == res.shape[1]
-    assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.values.tolist()
+    assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.astype(object).where(
+        ~pd.isna(res), None
+    ).values.tolist()
 
     df = DF([[1.0, "a"], [1.0, "b"], [None, "c"], [None, "d"]], "b:double,c:str", True)
     res = PD_UTILS.safe_groupby_apply(df.native, ["b"], _m1)
     assert [
         [1.0, "a", 2],
         [1.0, "b", 2],
-        [float("nan"), "c", 2],
-        [float("nan"), "d", 2],
+        [pd.NA, "c", 2],
+        [pd.NA, "d", 2],
     ].__repr__() == res.values.tolist().__repr__()
 
 

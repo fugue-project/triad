@@ -22,7 +22,6 @@ from triad.utils.pyarrow import (
     apply_schema,
     to_pa_datatype,
     to_pandas_dtype,
-    to_single_pandas_dtype,
 )
 
 T = TypeVar("T", bound=Any)
@@ -172,45 +171,42 @@ class PandasLikeUtils(Generic[T, ColT]):
             return df
         if not null_safe:
             return df.astype(dtype=to_pandas_dtype(schema, use_extension_types=False))
+        df = df.convert_dtypes(dtype_backend="numpy_nullable")
+        to_types = to_pandas_dtype(
+            schema, use_extension_types=True, use_arrow_dtype=False
+        )
         data: Dict[str, Any] = {}
         for v in schema:
             s = df[v.name]
-            if pa.types.is_string(v.type):
-                ns = s.isnull()
-                s = s.astype(str).mask(ns, None)
-            elif pa.types.is_boolean(v.type):
-                ns = s.isnull()
-                if pd.api.types.is_string_dtype(s.dtype):
-                    try:
+            to_t = to_types[v.name]
+            if s.dtype != to_t:
+                if pa.types.is_string(v.type):
+                    ns = s.isnull()
+                    s = s.astype(to_t).mask(ns, None)
+                elif pa.types.is_boolean(v.type):
+                    ns = s.isnull()
+                    if pd.api.types.is_string_dtype(s.dtype):
                         s = s.str.lower() == "true"
-                    except AttributeError:
-                        s = s.fillna(0).astype(bool)
-                else:
-                    s = s.fillna(0).astype(bool)
-                s = s.mask(ns, None)
-            elif pa.types.is_integer(v.type):
-                ns = s.isnull()
-                s = (
-                    s.fillna(0)
-                    .astype(int)
-                    .astype(to_single_pandas_dtype(v.type))
-                    .mask(ns, None)
-                )
-            elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
-                from_t = s.dtype
-                to_t = to_single_pandas_dtype(v.type)
-                if from_t != to_t:
-                    if pd.api.types.is_datetime64_any_dtype(
-                        from_t
-                    ) and pd.api.types.is_datetime64_any_dtype(to_t):
-                        from_tz = _get_tz(from_t)
-                        to_tz = _get_tz(to_t)
-                        if from_tz is None or to_tz is None:
-                            s = s.dt.tz_localize(to_tz)
-                        else:
-                            s = s.dt.tz_convert(to_tz)
                     else:
-                        s = s.astype(to_single_pandas_dtype(v.type))
+                        s = s.fillna(0).astype(to_t)
+                    s = s.mask(ns, None)
+                elif pa.types.is_integer(v.type):
+                    ns = s.isnull()
+                    s = s.fillna(0).astype(to_t).mask(ns, None)
+                elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
+                    from_t = s.dtype
+                    if from_t != to_t:
+                        if pd.api.types.is_datetime64_any_dtype(
+                            from_t
+                        ) and pd.api.types.is_datetime64_any_dtype(to_t):
+                            from_tz = _get_tz(from_t)
+                            to_tz = _get_tz(to_t)
+                            if from_tz is None or to_tz is None:
+                                s = s.dt.tz_localize(to_tz)
+                            else:
+                                s = s.dt.tz_convert(to_tz)
+                        else:
+                            s = s.astype(to_t)
             data[v.name] = s
         return pd.DataFrame(data)
 
