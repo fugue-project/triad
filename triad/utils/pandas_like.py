@@ -171,7 +171,7 @@ class PandasLikeUtils(Generic[T, ColT]):
             return df
         if not null_safe:
             return df.astype(dtype=to_pandas_dtype(schema, use_extension_types=False))
-        df = df.convert_dtypes(dtype_backend="numpy_nullable")
+        df = df.convert_dtypes()  # assuming the default backend is numpy
         to_types = to_pandas_dtype(
             schema, use_extension_types=True, use_arrow_dtype=False
         )
