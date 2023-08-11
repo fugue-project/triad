@@ -8,7 +8,7 @@ import pyarrow as pa
 from pytest import raises
 
 from triad.utils.pandas_like import _DEFAULT_DATETIME, PD_UTILS
-from triad.utils.pyarrow import expression_to_schema
+from triad.utils.pyarrow import expression_to_schema, pa_table_to_pandas
 
 from .._utils import assert_df_eq
 
@@ -290,6 +290,24 @@ def test_safe_group_by_apply():
         [pd.NA, "c", 2],
         [pd.NA, "d", 2],
     ].__repr__() == res.values.tolist().__repr__()
+
+
+def test_to_parquet_friendly():
+    if hasattr(pd, "ArrowDtype"):
+        adf = pa.Table.from_pandas(pd.DataFrame(dict(a=["a", "b"], c=[1, 2])))
+        pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
+        res = PD_UTILS.to_parquet_friendly(pdf)
+        assert res is pdf
+
+        adf = pa.Table.from_pandas(pd.DataFrame(dict(a=[["a", "b"], ["c"]], c=[1, 2])))
+        pdf = pa_table_to_pandas(adf, use_extension_types=False, use_arrow_dtype=True)
+        res = PD_UTILS.to_parquet_friendly(pdf)
+        assert res.dtypes["a"] == np.dtype(object)
+        assert res.dtypes["c"] == pd.ArrowDtype(pa.int64())
+        pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
+        res = PD_UTILS.to_parquet_friendly(pdf)
+        assert res.dtypes["a"] == np.dtype(object)
+        assert res.dtypes["c"] == pd.Int64Dtype()
 
 
 def test_safe_group_by_apply_special_types():

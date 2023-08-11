@@ -210,6 +210,26 @@ class PandasLikeUtils(Generic[T, ColT]):
             data[v.name] = s
         return pd.DataFrame(data)
 
+    def to_parquet_friendly(self, df: T) -> T:
+        """Parquet doesn't like pd.ArrowDtype(<nested types>), this function
+        converts all nested types to object types
+
+        :param df: the input dataframe
+        :return: the converted dataframe
+        """
+        if hasattr(pd, "ArrowDtype"):
+            new_types: Dict[str, Any] = {}
+            changed = False
+            for k, v in df.dtypes.items():
+                if isinstance(v, pd.ArrowDtype) and pa.types.is_nested(v.pyarrow_dtype):
+                    new_types[k] = np.dtype(object)
+                    changed = True
+                else:
+                    new_types[k] = v
+            if changed:
+                df = df.astype(new_types)
+        return df
+
     def safe_groupby_apply(
         self,
         df: T,
