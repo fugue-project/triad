@@ -188,11 +188,11 @@ class PandasLikeUtils(Generic[T, ColT]):
                     if pd.api.types.is_string_dtype(s.dtype):
                         s = s.str.lower() == "true"
                     else:
-                        s = s.fillna(0).astype(to_t)
+                        s = s.astype(to_t)
                     s = s.mask(ns, None)
                 elif pa.types.is_integer(v.type):
                     ns = s.isnull()
-                    s = s.fillna(0).astype(to_t).mask(ns, None)
+                    s = s.astype(to_t).mask(ns, None)
                 elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
                     from_t = s.dtype
                     if from_t != to_t:
