@@ -278,6 +278,8 @@ def to_single_pandas_dtype(
             dtypes if possible, otherwise, it converts to ``ArrowDType``
     """
     use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
+    if pa.types.is_nested(pa_type) and not use_arrow_dtype:
+        return np.dtype(object)
     tp = to_pandas_types_mapper(
         pa_type,
         use_extension_types=use_extension_types,
@@ -312,24 +314,12 @@ def to_pandas_dtype(
         * If both are true, it converts types to the numpy backend nullable
             dtypes if possible, otherwise, it converts to ``ArrowDType``
     """
-    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
-    if use_extension_types:
-        return {
-            f.name: _PA_TO_PANDAS_EXTENSION_TYPE_MAP[f.type]
-            if f.type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
-            else (
-                f.type.to_pandas_dtype()
-                if not use_arrow_dtype
-                else pd.ArrowDtype(f.type)
-            )
-            for f in schema
-        }
-    if use_arrow_dtype:
-        return {f.name: pd.ArrowDtype(f.type) for f in schema}
     return {
-        f.name: np.dtype(str)
-        if pa.types.is_string(f.type)
-        else f.type.to_pandas_dtype()
+        f.name: to_single_pandas_dtype(
+            f.type,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
         for f in schema
     }
 

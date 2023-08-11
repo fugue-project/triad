@@ -166,12 +166,29 @@ def test_to_single_pandas_dtype():
     assert pd.StringDtype() == to_single_pandas_dtype(pa.string(), True)
     assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), True)
 
+    assert np.dtype("O") == to_single_pandas_dtype(pa.list_(pa.string()), False)
+    assert np.dtype("O") == to_single_pandas_dtype(pa.list_(pa.string()), True)
+    assert np.dtype("O") == to_single_pandas_dtype(
+        pa.struct([pa.field("a", pa.int32())]), True
+    )
+    assert np.dtype("O") == to_single_pandas_dtype(
+        pa.struct([pa.field("a", pa.int32())]), False
+    )
+
     if hasattr(pd, "ArrowDtype"):
         assert pd.ArrowDtype(pa.int16()) == to_single_pandas_dtype(
             pa.int16(), False, use_arrow_dtype=True
         )
         assert pd.ArrowDtype(pa.timestamp("ns")) == to_single_pandas_dtype(
             pa.timestamp("ns"), True, use_arrow_dtype=True
+        )
+        assert pd.ArrowDtype(pa.list_(pa.string())) == to_single_pandas_dtype(
+            pa.list_(pa.string()), False, use_arrow_dtype=True
+        )
+        assert pd.ArrowDtype(
+            pa.struct([pa.field("a", pa.int32())])
+        ) == to_single_pandas_dtype(
+            pa.struct([pa.field("a", pa.int32())]), False, use_arrow_dtype=True
         )
 
 
@@ -189,6 +206,11 @@ def test_to_pandas_dtype():
     assert pd.Float64Dtype() == res["c"]
     assert pd.StringDtype() == res["d"]
     assert np.dtype("<M8[ns]") == res["e"]
+
+    schema2 = expression_to_schema("a:[bool],b:{c:long}")
+    res = to_pandas_dtype(schema2, False)
+    assert np.dtype("O") == res["a"]
+    assert np.dtype("O") == res["b"]
 
     if hasattr(pd, "ArrowDtype"):
         res = to_pandas_dtype(schema, True, use_arrow_dtype=True)
