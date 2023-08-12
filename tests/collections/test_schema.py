@@ -352,7 +352,7 @@ def test_create_empty_tables():
     assert tb.num_rows == 0
     df = schema.create_empty_pandas_df(use_extension_types=False, use_arrow_dtype=False)
     assert df.shape == (0, 2)
-    assert df.dtypes["a"] == np.dtype(int)
+    assert df.dtypes["a"] == np.dtype("int64")
     assert df.dtypes["b"] == np.dtype(object)
     df = schema.create_empty_pandas_df(use_extension_types=True, use_arrow_dtype=False)
     assert df.shape == (0, 2)
