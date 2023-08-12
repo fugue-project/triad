@@ -173,6 +173,40 @@ def test_nan_none():
     assert len(df.as_array()) == 0
 
 
+def test_cast_df():
+    df = pd.DataFrame(
+        dict(
+            a=pd.Series([1, 2], dtype="int32"), b=pd.Series([True, False], dtype="bool")
+        )
+    )
+    assert df is PD_UTILS.cast_df(
+        df,
+        expression_to_schema("a:int32,b:bool"),
+        use_extension_types=False,
+        use_arrow_dtype=False,
+    )
+    res = PD_UTILS.cast_df(
+        df,
+        expression_to_schema("a:long,b:str"),
+        use_extension_types=True,
+        use_arrow_dtype=False,
+    )
+    assert isinstance(res.a.dtype, pd.Int64Dtype)
+    assert isinstance(res.b.dtype, pd.StringDtype)
+    assert res.values.tolist() == [[1, "true"], [2, "false"]]
+
+    df = pd.DataFrame(dict(a=pd.Series(dtype="int32"), b=pd.Series(dtype="bool")))
+    res = PD_UTILS.cast_df(
+        df,
+        expression_to_schema("a:long,b:str"),
+        use_extension_types=True,
+        use_arrow_dtype=False,
+    )
+    assert isinstance(res.a.dtype, pd.Int64Dtype)
+    assert isinstance(res.b.dtype, pd.StringDtype)
+    assert len(res) == 0
+
+
 def test_boolean_enforce():
     df = DF([[1, True], [2, False], [3, None]], "b:int,c:bool", True)
     arr = df.as_array(type_safe=True)
@@ -229,6 +263,41 @@ def test_timestamp_enforce():
         [1, pd.Timestamp("2020-01-02 08:00:00", tz="UTC")],
         [2, pd.Timestamp("2020-01-03 08:00:00", tz="UTC")],
     ] == arr
+
+    df = DF(
+        [
+            [1, "2020-01-02 00:00:00"],
+            [2, "2020-01-03 00:00:00"],
+        ],
+        "b:int,c:datetime",
+        True,
+    )
+    arr = df.as_array(type_safe=True)
+    assert [
+        [1, pd.Timestamp("2020-01-02 00:00:00")],
+        [2, pd.Timestamp("2020-01-03 00:00:00")],
+    ] == arr
+
+    df = DF(
+        [
+            [1, "2020-01-02 00:00:00-0500"],
+            [2, "2020-01-03 00:00:00-0500"],
+        ],
+        "b:int,c:timestamp(ns, UTC)",
+        True,
+    )
+    arr = df.as_array(type_safe=True)
+    assert [
+        [1, pd.Timestamp("2020-01-02 05:00:00", tz="UTC")],
+        [2, pd.Timestamp("2020-01-03 05:00:00", tz="UTC")],
+    ] == arr
+
+    if hasattr(pd, "ArrowDtype"):
+        df = pd.DataFrame(dict(a=pd.Series(["2020-01-02"], dtype="string[pyarrow]")))
+        res = PD_UTILS.enforce_type(
+            df, expression_to_schema("a:datetime"), null_safe=True
+        )
+        assert res.a.iloc[0] == pd.Timestamp("2020-01-02")
 
 
 def test_fillna_default():

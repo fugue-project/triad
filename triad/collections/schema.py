@@ -662,6 +662,30 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         except Exception as e:
             raise SchemaError(e)
 
+    def create_empty_arrow_table(self) -> pa.Table:
+        """Create an empty pyarrow table based on the schema"""
+        if not hasattr(pa.Table, "from_pylist"):  # pragma: no cover
+            arr = [pa.array([])] * len(self)
+            return pa.Table.from_arrays(arr, schema=self.pa_schema)
+        return pa.Table.from_pylist([], schema=self.pa_schema)
+
+    def create_empty_pandas_df(
+        self, use_extension_types: bool = False, use_arrow_dtype: bool = False
+    ) -> pd.DataFrame:
+        """Create an empty pandas dataframe based on the schema
+
+        :param use_extension_types: if True, use pandas extension types,
+            default False
+        :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+            use pyarrow types, default False
+        :return: empty pandas dataframe
+        """
+        dtypes = self.to_pandas_dtype(
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
+        return pd.DataFrame({k: pd.Series(dtype=v) for k, v in dtypes.items()})
+
     def _pre_update(self, op: str, need_reindex: bool = True) -> None:
         if op == "__setitem__":
             super()._pre_update(op, need_reindex)

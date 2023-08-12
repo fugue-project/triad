@@ -20,9 +20,9 @@ setup(
     url="http://github.com/fugue-project/triad",
     install_requires=[
         "numpy",
-        "pandas>=1.2.0",
+        "pandas>=1.3.5",
         "six",
-        "pyarrow",
+        "pyarrow>=7.0.0",
         "fsspec",
         "fs",  # TODO: remove this hard dependency
         "importlib-metadata; python_version < '3.8'",

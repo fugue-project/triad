@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pandas.core.dtypes.base import ExtensionDtype
+from pyarrow.compute import CastOptions
 
 from triad.constants import TRIAD_VAR_QUOTE
 
@@ -25,6 +26,7 @@ LARGE_TYPES_REPLACEMENT: List[Tuple[Any, Any]] = [
     (pa.large_utf8(), pa.utf8()),
     (pa.types.is_large_list, lambda t: pa.list_(t.value_field)),
 ]
+
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "null": pa.null(),
@@ -195,6 +197,56 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     if type(obj) == type and issubclass(obj, date):
         return pa.date32()
     return pa.from_numpy_dtype(np.dtype(obj))
+
+
+def cast_pa_array(col: pa.Array, new_type: pa.DataType) -> pa.Array:  # noqa: C901
+    old_type = col.type
+    if new_type.equals(old_type):
+        return col
+    elif pa.types.is_date(new_type) and not pa.types.is_date(old_type):
+        # -> date
+        return pa.Array.from_pandas(pd.to_datetime(col.to_pandas()).dt.date)
+    elif pa.types.is_timestamp(new_type):
+        # -> datetime
+        if pa.types.is_timestamp(old_type) or pa.types.is_date(old_type):
+            s = pd.to_datetime(col.to_pandas())
+            from_tz = old_type.tz if pa.types.is_timestamp(old_type) else None
+            to_tz = new_type.tz
+            if from_tz is None or to_tz is None:
+                s = s.dt.tz_localize(to_tz)
+            else:
+                s = s.dt.tz_convert(to_tz)
+        else:
+            s = pd.to_datetime(col.to_pandas())
+        return pa.Array.from_pandas(s, type=new_type)
+    elif pa.types.is_integer(new_type):
+        return col.cast(
+            options=CastOptions(
+                new_type, allow_decimal_truncate=True, allow_float_truncate=True
+            ),
+        )
+    elif pa.types.is_string(new_type):
+        if pa.types.is_timestamp(old_type):
+            # datetime -> str
+            # this is to ensure less granular ts series won't output .000000
+            series = pd.to_datetime(col.to_pandas())
+            ns = series.isnull()
+            series = series.astype(str)
+            return pa.Array.from_pandas(series.mask(ns, None), type=new_type)
+    return col.cast(new_type, safe=True)
+
+
+def cast_pa_table(df: pa.Table, schema: pa.Schema) -> pa.Table:
+    """Convert a pyarrow table to another pyarrow table with given schema
+
+    :param df: the pyarrow table
+    :param schema: the pyarrow schema
+    :return: the converted pyarrow table
+    """
+    if df.schema == schema:
+        return df
+    cols = [cast_pa_array(col, new_f.type) for col, new_f in zip(df.columns, schema)]
+    return pa.Table.from_arrays(cols, schema=schema)
 
 
 def to_pandas_types_mapper(

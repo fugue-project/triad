@@ -12,10 +12,13 @@ from triad.utils.pyarrow import (
     SchemaedDataPartitioner,
     _parse_type,
     _type_to_expression,
+    cast_pa_array,
+    cast_pa_table,
     expression_to_schema,
     get_alter_func,
     get_eq_func,
     is_supported,
+    pa_table_to_pandas,
     replace_type,
     replace_types_in_schema,
     replace_types_in_table,
@@ -24,7 +27,6 @@ from triad.utils.pyarrow import (
     to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
-    pa_table_to_pandas,
 )
 
 
@@ -607,6 +609,234 @@ def test_replace_large_types():
                 pa.struct([pa.field("l", pa.list_(pa.field("m", pa.string())))]),
             ),
         ]
+    )
+
+
+def test_cast_pa_table():
+    df = pa.Table.from_arrays(
+        [pa.array([1, 2]), pa.array(["true", None])],
+        schema=pa.schema([("a", pa.int32()), ("b", pa.string())]),
+    )
+    assert df is cast_pa_table(df, df.schema)
+    assert cast_pa_table(df, expression_to_schema("a:str,b:bool")).to_pydict() == {
+        "a": ["1", "2"],
+        "b": [True, None],
+    }
+
+
+def test_cast_pa_array():
+    def _test(arr, orig_type, new_type, expected=None, exact=True):
+        x = pa.array(arr, type=orig_type)
+        res = cast_pa_array(x, new_type)
+        assert res.type == new_type
+        if exact:
+            assert res.to_pylist() == (expected or arr)
+        else:
+            for a, e in zip(res.to_pylist(), (expected or arr)):
+                if pd.isna(e):
+                    assert pd.isna(a)
+                else:
+                    assert abs(a - e) < 1e-6
+
+    # bytes -> bytes
+    _test([b"abc", None], pa.binary(), pa.binary())
+
+    # int -> int
+    _test([1, 2, None], pa.int32(), pa.int32())
+    _test([1, 2, None], pa.int32(), pa.int64())
+    with raises(Exception):
+        _test([1, 200000, None], pa.int64(), pa.int8())
+
+    # int -> float
+    _test([1, 2, None], pa.int32(), pa.float32(), [1.0, 2.0, None])
+
+    # int -> bool
+    _test([0, 1, None], pa.int32(), pa.bool_(), [False, True, None])
+    _test([0, 2, None], pa.int32(), pa.bool_(), [False, True, None])
+
+    # int -> str
+    _test([0, 1, None], pa.int32(), pa.string(), ["0", "1", None])
+
+    # float -> int
+    _test([1.0, 2.0, None], pa.float32(), pa.int32(), [1, 2, None])
+    _test([1.1, 2.2, None], pa.float32(), pa.int64(), [1, 2, None])
+
+    # float -> float
+    _test([1.1, 2.2, None], pa.float32(), pa.float32(), [1.1, 2.2, None], exact=False)
+    _test(
+        [1.1, 2.2, float("nan")],
+        pa.float32(),
+        pa.float32(),
+        [1.1, 2.2, None],
+        exact=False,
+    )
+
+    # float -> bool
+    _test([0.0, 1.1, None], pa.float32(), pa.bool_(), [False, True, None])
+
+    # float -> str
+    _test([0.1, 1.1, None], pa.float32(), pa.string(), ["0.1", "1.1", None])
+
+    # bool -> int
+    _test([True, False, None], pa.bool_(), pa.int32(), [1, 0, None])
+
+    # bool -> float
+    _test([True, False, None], pa.bool_(), pa.float32(), [1.0, 0.0, None], exact=False)
+
+    # bool -> bool
+    _test([True, False, None], pa.bool_(), pa.bool_(), [True, False, None])
+
+    # bool -> str
+    _test([True, False, None], pa.bool_(), pa.string(), ["true", "false", None])
+
+    # str -> int
+    _test(["1", "2", None], pa.string(), pa.int32(), [1, 2, None])
+
+    # str -> float
+    _test(["1", "2", None], pa.string(), pa.float32(), [1.0, 2.0, None], exact=False)
+    _test(
+        ["1.1", "2.1", None], pa.string(), pa.float32(), [1.1, 2.1, None], exact=False
+    )
+
+    # str -> bool
+    _test(["trUe", "False", None], pa.string(), pa.bool_(), [True, False, None])
+
+    # str -> str
+    _test(["a", "b", None], pa.string(), pa.string())
+
+    # str -> datetime no tz
+    _test(
+        ["2023-01-03 00:01:02", None],
+        pa.string(),
+        pa.timestamp("ns"),
+        [datetime(2023, 1, 3, 0, 1, 2), None],
+    )
+
+    # str -> datetime + tz
+    _test(
+        ["2023-01-03 00:01:02-0800", None],
+        pa.string(),
+        pa.timestamp("ns", tz="-08:00"),
+        [pd.Timestamp("2023-01-03 00:01:02-0800", tz="-08:00"), None],
+    )
+
+    # str -> date
+    _test(
+        ["2023-01-03", None],
+        pa.string(),
+        pa.date32(),
+        [date(2023, 1, 3), None],
+    )
+
+    # datetime -> str
+    _test(
+        [datetime(2023, 1, 2, 3, 4), None],
+        pa.timestamp("ns"),
+        pa.string(),
+        ["2023-01-02 03:04:00", None],
+    )
+
+    _test(
+        [datetime(2023, 1, 2, 3, 4), datetime(2023, 1, 2, 3, 4, 5, 6), None],
+        pa.timestamp("ns"),
+        pa.string(),
+        ["2023-01-02 03:04:00.000000", "2023-01-02 03:04:05.000006", None],
+    )
+
+    # datetime -> datetime
+    _test(
+        [datetime(2023, 1, 2, 3, 4), None],
+        pa.timestamp("ns"),
+        pa.timestamp("ns"),
+        [datetime(2023, 1, 2, 3, 4), None],
+    )
+
+    # datetime -> datetime+tz
+    _test(
+        [datetime(2023, 1, 2, 3, 4), None],
+        pa.timestamp("ns"),
+        pa.timestamp("ns", tz="US/Pacific"),
+        [pd.Timestamp("2023-01-02 03:04:00", tz="US/Pacific"), None],
+    )
+
+    # datetime -> date
+    _test(
+        [datetime(2023, 1, 2, 3, 4), None],
+        pa.timestamp("ns"),
+        pa.date32(),
+        [date(2023, 1, 2), None],
+    )
+
+    # datetime+tz -> str
+    _test(
+        [pd.Timestamp("2023-01-03 00:03:04", tz="US/Pacific"), None],
+        pa.timestamp("ns", tz="US/Pacific"),
+        pa.string(),
+        ["2023-01-03 00:03:04-08:00", None],
+    )
+
+    # datetime+tz -> datetime
+    _test(
+        [pd.Timestamp("2023-01-03 00:03:04", tz="US/Pacific"), None],
+        pa.timestamp("ns", tz="US/Pacific"),
+        pa.timestamp("ns"),
+        [pd.Timestamp("2023-01-03 00:03:04"), None],
+    )
+
+    # datetime+tz -> datetime+tz
+    _test(
+        [pd.Timestamp("2023-01-03 00:03:04", tz="US/Pacific"), None],
+        pa.timestamp("ns", tz="US/Pacific"),
+        pa.timestamp("ns", tz="UTC"),
+        [pd.Timestamp("2023-01-03 08:03:04", tz="UTC"), None],
+    )
+
+    # datetime+tz -> date
+    _test(
+        [pd.Timestamp("2023-01-03 00:03:04", tz="US/Pacific"), None],
+        pa.timestamp("ns", tz="US/Pacific"),
+        pa.date32(),
+        [date(2023, 1, 3), None],
+    )
+
+    # datetime+tz -> str
+    _test(
+        [pd.Timestamp("2023-01-03 00:03:04", tz="US/Pacific"), None],
+        pa.timestamp("ns", tz="US/Pacific"),
+        pa.string(),
+        ["2023-01-03 00:03:04-08:00", None],
+    )
+
+    # date -> str
+    _test(
+        [date(2023, 1, 2), None],
+        pa.date32(),
+        pa.string(),
+        ["2023-01-02", None],
+    )
+
+    # date -> datetime
+    _test(
+        [date(2023, 1, 2), None],
+        pa.date32(),
+        pa.timestamp("ns"),
+        [datetime(2023, 1, 2), None],
+    )
+
+    # date -> datetime+tz
+    _test(
+        [date(2023, 1, 2), None],
+        pa.date32(),
+        pa.timestamp("ns", tz="US/Pacific"),
+        [pd.Timestamp("2023-01-02 00:00:00-0800", tz="US/Pacific"), None],
+    )
+
+    # date -> date
+    _test(
+        [date(2023, 1, 2), None],
+        pa.date32(),
+        pa.date64(),
+        [date(2023, 1, 2), None],
     )
 
 

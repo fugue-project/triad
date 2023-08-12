@@ -22,6 +22,8 @@ from triad.utils.pyarrow import (
     apply_schema,
     to_pa_datatype,
     to_pandas_dtype,
+    cast_pa_table,
+    pa_table_to_pandas,
 )
 
 T = TypeVar("T", bound=Any)
@@ -148,6 +150,43 @@ class PandasLikeUtils(Generic[T, ColT]):
                 fields.append(field)
         return pa.schema(fields)
 
+    def cast_df(
+        self,
+        df: T,
+        schema: pa.Schema,
+        use_extension_types: bool = True,
+        use_arrow_dtype: bool = False,
+        **kwargs: Any,
+    ) -> T:
+        """Cast pandas like dataframe to comply with ``schema``.
+
+        :param df: pandas like dataframe
+        :param schema: pyarrow schema to cast to
+        :param use_extension_types: whether to use ``ExtensionDType``, default True
+        :param use_arrow_dtype: whether to use ``ArrowDtype``, default False
+        :param kwargs: other arguments passed to ``pa.Table.from_pandas``
+
+        :return: converted dataframe
+        """
+        dtypes = to_pandas_dtype(
+            schema,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
+        if len(df) == 0:
+            return pd.DataFrame({k: pd.Series(dtype=v) for k, v in dtypes.items()})
+        if dtypes == df.dtypes.to_dict():
+            return df
+        adf = pa.Table.from_pandas(
+            df, preserve_index=False, safe=False, **{"nthreads": 1, **kwargs}
+        )
+        adf = cast_pa_table(adf, schema)
+        return pa_table_to_pandas(
+            adf,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
+
     def enforce_type(  # noqa: C901
         self, df: T, schema: pa.Schema, null_safe: bool = False
     ) -> T:
@@ -158,14 +197,15 @@ class PandasLikeUtils(Generic[T, ColT]):
         :param null_safe: whether to enforce None value for int, string and bool values
         :return: converted dataframe
 
-        :Notice:
-        When `null_safe` is true, the native column types in the dataframe may change,
-        for example, if a column of `int64` has None values, the output will make sure
-        each value in the column is either None or an integer, however, due to the
-        behavior of pandas like dataframes, the type of the columns may
-        no longer be `int64`
+        .. note::
 
-        This method does not enforce struct and list types
+            When `null_safe` is true, the native column types in the dataframe may
+            change, for example, if a column of `int64` has None values, the output will
+            make sure each value in the column is either None or an integer, however,
+            due to the behavior of pandas like dataframes, the type of the columns may
+            no longer be `int64`
+
+            This method does not enforce struct and list types
         """
         if self.empty(df):
             return df

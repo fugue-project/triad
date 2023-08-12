@@ -343,3 +343,25 @@ def test_schema_transform():
     raises(SchemaError, lambda: s.transform("**"))
     raises(SchemaError, lambda: s.transform("*", "*"))
     raises(SchemaError, lambda: s.transform("*-x"))
+
+
+def test_create_empty_tables():
+    schema = Schema("a:long,b:str")
+    tb = schema.create_empty_arrow_table()
+    assert tb.schema == schema.pa_schema
+    assert tb.num_rows == 0
+    df = schema.create_empty_pandas_df(use_extension_types=False, use_arrow_dtype=False)
+    assert df.shape == (0, 2)
+    assert df.dtypes["a"] == np.dtype(int)
+    assert df.dtypes["b"] == np.dtype(object)
+    df = schema.create_empty_pandas_df(use_extension_types=True, use_arrow_dtype=False)
+    assert df.shape == (0, 2)
+    assert df.dtypes["a"] == pd.Int64Dtype()
+    assert df.dtypes["b"] == pd.StringDtype()
+    if hasattr(pd, "ArrowDtype"):
+        df = schema.create_empty_pandas_df(
+            use_extension_types=False, use_arrow_dtype=True
+        )
+        assert df.shape == (0, 2)
+        assert df.dtypes["a"] == pd.ArrowDtype(pa.int64())
+        assert df.dtypes["b"] == pd.ArrowDtype(pa.string())
