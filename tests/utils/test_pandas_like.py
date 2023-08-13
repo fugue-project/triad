@@ -377,6 +377,9 @@ def test_to_parquet_friendly():
         res = PD_UTILS.to_parquet_friendly(pdf)
         assert res.dtypes["a"] == np.dtype(object)
         assert res.dtypes["c"] == pd.Int64Dtype()
+        res = PD_UTILS.to_parquet_friendly(pdf, partition_cols=["c"])
+        assert res.dtypes["a"] == np.dtype(object)
+        assert res.dtypes["c"] == np.dtype(object)
 
 
 def test_safe_group_by_apply_special_types():
