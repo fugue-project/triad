@@ -179,7 +179,7 @@ class PandasLikeUtils(Generic[T, ColT]):
             return df
         adf = pa.Table.from_pandas(
             df, preserve_index=False, safe=False, **{"nthreads": 1, **kwargs}
-        )
+        ).replace_schema_metadata()
         adf = cast_pa_table(adf, schema)
         return pa_table_to_pandas(
             adf,

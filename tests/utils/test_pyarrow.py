@@ -232,26 +232,33 @@ def test_to_pandas_dtype():
 
 def test_pa_table_to_pandas():
     adf = pa.Table.from_pylist(
-        [dict(a=0, b=[1, 2], c="a"), dict(a=1, b=[3, 4], c="b")],
-        schema=expression_to_schema("a:int32,b:[int32],c:str"),
+        [
+            dict(a=0, b=[1, 2], c="a", d=dict(x="x")),
+            dict(a=1, b=[3, 4], c="b", d=dict(x="x")),
+        ],
+        schema=expression_to_schema("a:int32,b:[int32],c:str,d:{x:str}"),
     )
     pdf = pa_table_to_pandas(adf)
     assert pdf["a"].dtype == np.int32
     assert pdf["b"].dtype == np.dtype("O")
+    assert pdf["d"].dtype == np.dtype("O")
     pdf = pa_table_to_pandas(adf, use_extension_types=True)
     assert pdf["a"].dtype == pd.Int32Dtype()
     assert pdf["b"].dtype == np.dtype("O")
     assert pdf["c"].dtype == pd.StringDtype()
+    assert pdf["d"].dtype == np.dtype("O")
 
     if hasattr(pd, "ArrowDtype"):
         pdf = pa_table_to_pandas(adf, use_extension_types=False, use_arrow_dtype=True)
         assert pdf["a"].dtype == pd.ArrowDtype(pa.int32())
         assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
         assert pdf["c"].dtype == pd.ArrowDtype(pa.string())
+        assert pdf["d"].dtype == pd.ArrowDtype(pa.struct([pa.field("x", pa.string())]))
         pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
         assert pdf["a"].dtype == pd.Int32Dtype()
         assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
         assert pdf["c"].dtype == pd.StringDtype()
+        assert pdf["d"].dtype == pd.ArrowDtype(pa.struct([pa.field("x", pa.string())]))
 
 
 def test_is_supported():
