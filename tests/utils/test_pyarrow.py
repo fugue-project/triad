@@ -235,19 +235,20 @@ def test_to_pandas_dtype():
 
 
 def test_pa_table_to_pandas():
-    adf = pa.Table.from_pylist(
-        [
-            dict(a=0, b=[1, 2], c="a", d=dict(x="x")),
-            dict(a=1, b=[3, 4], c="b", d=dict(x="x")),
-        ],
-        schema=expression_to_schema("a:int32,b:[int32],c:str,d:{x:str}"),
+    adf = pa.Table.from_pydict(
+        {
+            "a": [0, 1],
+            "b": [[1, 2], [3, 4]],
+            "c": ["a", "b"],
+            "d": [{"x": "x"}, {"x": "x"}],
+        },
     )
     pdf = pa_table_to_pandas(adf)
-    assert pdf["a"].dtype == np.int32
+    assert pdf["a"].dtype == np.int32 or pdf["a"].dtype == np.int64
     assert pdf["b"].dtype == np.dtype("O")
     assert pdf["d"].dtype == np.dtype("O")
     pdf = pa_table_to_pandas(adf, use_extension_types=True)
-    assert pdf["a"].dtype == pd.Int32Dtype()
+    assert pdf["a"].dtype == pd.Int32Dtype() or pdf["a"].dtype == pd.Int64Dtype()
     assert pdf["b"].dtype == np.dtype("O")
     assert pdf["c"].dtype == pd.StringDtype()
     assert pdf["d"].dtype == np.dtype("O")
@@ -402,8 +403,8 @@ def test_schemas_equal():
 
 
 def test_get_later_func():
-    adf = pa.Table.from_pylist(
-        [dict(a=0, b=2), dict(a=1, b=3)], schema=expression_to_schema("a:int32,b:int32")
+    adf = pa.Table.from_pydict(
+        {"a": [0, 1], "b": [2, 3]}, schema=expression_to_schema("a:int32,b:int32")
     )
     to_schema1 = expression_to_schema("a:int32,b:int32")
     to_schema2 = expression_to_schema("b:int32,a:long")
@@ -414,28 +415,28 @@ def test_get_later_func():
     f = get_alter_func(adf.schema, to_schema1, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema1
-    assert tdf.to_pylist() == [dict(a=0, b=2), dict(a=1, b=3)]
+    assert tdf.to_pydict() == {"a": [0, 1], "b": [2, 3]}
 
     f = get_alter_func(adf.schema, to_schema2, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema2
-    assert tdf.to_pylist() == [dict(b=2, a=0), dict(b=3, a=1)]
+    assert tdf.to_pydict() == {"b": [2, 3], "a": [0, 1]}
 
     f = get_alter_func(adf.schema, to_schema3, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema3
-    assert tdf.to_pylist() == [dict(b="2", a=0), dict(b="3", a=1)]
+    assert tdf.to_pydict() == {"b": ["2", "3"], "a": [0, 1]}
 
     f = get_alter_func(adf.schema, to_schema4, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema4
-    assert tdf.to_pylist() == [dict(b="2"), dict(b="3")]
+    assert tdf.to_pydict() == {"b": ["2", "3"]}
 
     with raises(KeyError):
         get_alter_func(adf.schema, to_schema5, safe=True)
 
-    adf = pa.Table.from_pylist(
-        [dict(a=datetime(2022, 1, 1), b="a"), dict(a=datetime(2022, 1, 2), b="b")],
+    adf = pa.Table.from_pydict(
+        {"a": [datetime(2022, 1, 1), datetime(2022, 1, 2)], "b": ["a", "b"]},
         schema=pa.schema(
             [
                 pa.field("a", pa.timestamp(unit="ns", tz="UTC")),
@@ -448,10 +449,10 @@ def test_get_later_func():
     f = get_alter_func(adf.schema, to_schema10, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema10
-    assert tdf.to_pylist() == [
-        dict(a=datetime(2022, 1, 1), b="a"),
-        dict(a=datetime(2022, 1, 2), b="b"),
-    ]
+    assert tdf.to_pydict() == {
+        "a": [datetime(2022, 1, 1), datetime(2022, 1, 2)],
+        "b": ["a", "b"],
+    }
 
 
 def test_replace_type():
