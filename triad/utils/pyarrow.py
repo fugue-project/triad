@@ -3,10 +3,11 @@ import pickle
 from datetime import date, datetime
 from functools import partial
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
-from packaging import version
+
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from packaging import version
 from pandas.core.dtypes.base import ExtensionDtype
 from pyarrow.compute import CastOptions
 
@@ -17,6 +18,7 @@ from .iter import EmptyAwareIterable, Slicer
 from .json import loads_no_dup
 from .schema import move_to_unquoted, quote_name, unquote_name
 
+PYARROW_VERSION = version.parse(pa.__version__)
 TRIAD_DEFAULT_TIMESTAMP_UNIT = "us"
 TRIAD_DEFAULT_TIMESTAMP = pa.timestamp(TRIAD_DEFAULT_TIMESTAMP_UNIT)
 
@@ -220,7 +222,7 @@ def cast_pa_array(col: pa.Array, new_type: pa.DataType) -> pa.Array:  # noqa: C9
             s = pd.to_datetime(col.to_pandas())
         return pa.Array.from_pandas(s, type=new_type)
     elif pa.types.is_integer(new_type):
-        if version.parse(pa.__version__) < version.parse("9.0.0"):  # pragma: no cover
+        if PYARROW_VERSION.major < 9:  # pragma: no cover
             return col.cast(new_type, safe=False)
         return col.cast(
             options=CastOptions(

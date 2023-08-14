@@ -34,7 +34,7 @@ setup(
         "numpy",
         "pandas>=1.3.5",
         "six",
-        "pyarrow>=7.0.0",
+        "pyarrow>=6.0.1",
         "fsspec",
         "fs",  # TODO: remove this hard dependency
         "importlib-metadata; python_version < '3.8'",

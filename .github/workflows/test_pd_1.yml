@@ -25,6 +25,6 @@ jobs:
     - name: Install dependencies
       run: make dev
     - name: Install Pandas 1.3.5
-      run: pip install pandas==1.3.5 pyarrow==7.0.0
+      run: pip install pandas==1.3.5 pyarrow==6.0.1
     - name: Test
       run: make test

@@ -10,6 +10,7 @@ from pytest import raises
 
 from triad.utils.pyarrow import (
     LARGE_TYPES_REPLACEMENT,
+    PYARROW_VERSION,
     TRIAD_DEFAULT_TIMESTAMP,
     SchemaedDataPartitioner,
     _parse_type,
@@ -31,7 +32,10 @@ from triad.utils.pyarrow import (
     to_single_pandas_dtype,
 )
 
-_PYARROW_MAJOR_VERSION = version.parse(pa.__version__).release[0]
+
+def test_version():
+    assert PYARROW_VERSION.major > 5
+    assert PYARROW_VERSION.major < 100
 
 
 def test_expression_conversion():
@@ -235,32 +239,33 @@ def test_to_pandas_dtype():
 
 
 def test_pa_table_to_pandas():
-    adf = pa.Table.from_pylist(
-        [
-            dict(a=0, b=[1, 2], c="a", d=dict(x="x")),
-            dict(a=1, b=[3, 4], c="b", d=dict(x="x")),
-        ],
-        schema=expression_to_schema("a:int32,b:[int32],c:str,d:{x:str}"),
+    adf = pa.Table.from_pydict(
+        {
+            "a": [0, 1],
+            "b": [[1, 2], [3, 4]],
+            "c": ["a", "b"],
+            "d": [{"x": "x"}, {"x": "x"}],
+        },
     )
     pdf = pa_table_to_pandas(adf)
-    assert pdf["a"].dtype == np.int32
+    assert pdf["a"].dtype == np.int32 or pdf["a"].dtype == np.int64
     assert pdf["b"].dtype == np.dtype("O")
     assert pdf["d"].dtype == np.dtype("O")
     pdf = pa_table_to_pandas(adf, use_extension_types=True)
-    assert pdf["a"].dtype == pd.Int32Dtype()
+    assert pdf["a"].dtype == pd.Int32Dtype() or pdf["a"].dtype == pd.Int64Dtype()
     assert pdf["b"].dtype == np.dtype("O")
     assert pdf["c"].dtype == pd.StringDtype()
     assert pdf["d"].dtype == np.dtype("O")
 
     if hasattr(pd, "ArrowDtype"):
         pdf = pa_table_to_pandas(adf, use_extension_types=False, use_arrow_dtype=True)
-        assert pdf["a"].dtype == pd.ArrowDtype(pa.int32())
-        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
+        assert pdf["a"].dtype == pd.ArrowDtype(pa.int64())
+        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int64()))
         assert pdf["c"].dtype == pd.ArrowDtype(pa.string())
         assert pdf["d"].dtype == pd.ArrowDtype(pa.struct([pa.field("x", pa.string())]))
         pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
-        assert pdf["a"].dtype == pd.Int32Dtype()
-        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
+        assert pdf["a"].dtype == pd.Int64Dtype()
+        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int64()))
         assert pdf["c"].dtype == pd.StringDtype()
         assert pdf["d"].dtype == pd.ArrowDtype(pa.struct([pa.field("x", pa.string())]))
 
@@ -402,8 +407,8 @@ def test_schemas_equal():
 
 
 def test_get_later_func():
-    adf = pa.Table.from_pylist(
-        [dict(a=0, b=2), dict(a=1, b=3)], schema=expression_to_schema("a:int32,b:int32")
+    adf = pa.Table.from_pydict(
+        {"a": [0, 1], "b": [2, 3]}, schema=expression_to_schema("a:int32,b:int32")
     )
     to_schema1 = expression_to_schema("a:int32,b:int32")
     to_schema2 = expression_to_schema("b:int32,a:long")
@@ -414,28 +419,28 @@ def test_get_later_func():
     f = get_alter_func(adf.schema, to_schema1, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema1
-    assert tdf.to_pylist() == [dict(a=0, b=2), dict(a=1, b=3)]
+    assert tdf.to_pydict() == {"a": [0, 1], "b": [2, 3]}
 
     f = get_alter_func(adf.schema, to_schema2, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema2
-    assert tdf.to_pylist() == [dict(b=2, a=0), dict(b=3, a=1)]
+    assert tdf.to_pydict() == {"b": [2, 3], "a": [0, 1]}
 
     f = get_alter_func(adf.schema, to_schema3, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema3
-    assert tdf.to_pylist() == [dict(b="2", a=0), dict(b="3", a=1)]
+    assert tdf.to_pydict() == {"b": ["2", "3"], "a": [0, 1]}
 
     f = get_alter_func(adf.schema, to_schema4, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema4
-    assert tdf.to_pylist() == [dict(b="2"), dict(b="3")]
+    assert tdf.to_pydict() == {"b": ["2", "3"]}
 
     with raises(KeyError):
         get_alter_func(adf.schema, to_schema5, safe=True)
 
-    adf = pa.Table.from_pylist(
-        [dict(a=datetime(2022, 1, 1), b="a"), dict(a=datetime(2022, 1, 2), b="b")],
+    adf = pa.Table.from_pydict(
+        {"a": [datetime(2022, 1, 1), datetime(2022, 1, 2)], "b": ["a", "b"]},
         schema=pa.schema(
             [
                 pa.field("a", pa.timestamp(unit="ns", tz="UTC")),
@@ -448,10 +453,10 @@ def test_get_later_func():
     f = get_alter_func(adf.schema, to_schema10, safe=True)
     tdf = f(adf)
     assert tdf.schema == to_schema10
-    assert tdf.to_pylist() == [
-        dict(a=datetime(2022, 1, 1), b="a"),
-        dict(a=datetime(2022, 1, 2), b="b"),
-    ]
+    assert tdf.to_pydict() == {
+        "a": [datetime(2022, 1, 1), datetime(2022, 1, 2)],
+        "b": ["a", "b"],
+    }
 
 
 def test_replace_type():
@@ -537,7 +542,7 @@ def test_replace_types_in_schema():
     _test("a:{a:[int],b:<int,long>}", "int", "long", "a:{a:[long],b:<long,long>}")
 
 
-@pytest.mark.skipif(_PYARROW_MAJOR_VERSION < 11, reason="requires pyarrow>=11")
+@pytest.mark.skipif(PYARROW_VERSION.major < 11, reason="requires pyarrow>=11")
 def test_replace_types_in_table():
     df = pa.Table.from_arrays(
         [[1], ["sadf"], [["a", "b"]]],
@@ -595,7 +600,7 @@ def test_replace_types_in_table():
     )
 
 
-@pytest.mark.skipif(_PYARROW_MAJOR_VERSION < 11, reason="requires pyarrow>=11")
+@pytest.mark.skipif(PYARROW_VERSION.major < 11, reason="requires pyarrow>=11")
 def test_replace_large_types():
     warnings.filterwarnings("ignore")
     df = pa.Table.from_arrays(
