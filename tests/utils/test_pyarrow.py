@@ -259,13 +259,13 @@ def test_pa_table_to_pandas():
 
     if hasattr(pd, "ArrowDtype"):
         pdf = pa_table_to_pandas(adf, use_extension_types=False, use_arrow_dtype=True)
-        assert pdf["a"].dtype == pd.ArrowDtype(pa.int32())
-        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
+        assert pdf["a"].dtype == pd.ArrowDtype(pa.int64())
+        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int64()))
         assert pdf["c"].dtype == pd.ArrowDtype(pa.string())
         assert pdf["d"].dtype == pd.ArrowDtype(pa.struct([pa.field("x", pa.string())]))
         pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
-        assert pdf["a"].dtype == pd.Int32Dtype()
-        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int32()))
+        assert pdf["a"].dtype == pd.Int64Dtype()
+        assert pdf["b"].dtype == pd.ArrowDtype(pa.list_(pa.int64()))
         assert pdf["c"].dtype == pd.StringDtype()
         assert pdf["d"].dtype == pd.ArrowDtype(pa.struct([pa.field("x", pa.string())]))
 
