@@ -418,6 +418,21 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
                     )
         return Schema(od)
 
+    def alter(self, subschema: Any) -> "Schema":
+        """Alter the schema with a subschema
+
+        :param subschema: a schema like object
+        :return: the altered schema
+        """
+        if subschema is None:
+            return self
+        sub = Schema(subschema)
+        assert_or_throw(
+            sub.names in self,
+            lambda: ValueError(f"{sub.names} are not all in {self}"),
+        )
+        return Schema([(k, sub.get(k, v)) for k, v in self.items()])
+
     def extract(  # noqa: C901
         self,
         obj: Any,
