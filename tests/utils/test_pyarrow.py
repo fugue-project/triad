@@ -4,6 +4,8 @@ from datetime import date, datetime
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pytest
+from packaging import version
 from pytest import raises
 
 from triad.utils.pyarrow import (
@@ -28,6 +30,8 @@ from triad.utils.pyarrow import (
     to_pandas_dtype,
     to_single_pandas_dtype,
 )
+
+_PYARROW_MAJOR_VERSION = version.parse(pa.__version__).release[0]
 
 
 def test_expression_conversion():
@@ -533,6 +537,7 @@ def test_replace_types_in_schema():
     _test("a:{a:[int],b:<int,long>}", "int", "long", "a:{a:[long],b:<long,long>}")
 
 
+@pytest.mark.skipif(_PYARROW_MAJOR_VERSION < 11, reason="requires pyarrow>=11")
 def test_replace_types_in_table():
     df = pa.Table.from_arrays(
         [[1], ["sadf"], [["a", "b"]]],
@@ -590,6 +595,7 @@ def test_replace_types_in_table():
     )
 
 
+@pytest.mark.skipif(_PYARROW_MAJOR_VERSION < 11, reason="requires pyarrow>=11")
 def test_replace_large_types():
     warnings.filterwarnings("ignore")
     df = pa.Table.from_arrays(
