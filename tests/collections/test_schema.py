@@ -194,6 +194,14 @@ def test_schema_remove():
     assert t is not s
 
 
+def test_schema_alter():
+    s = Schema("a:int,b:str,c:int")
+    assert s.alter("c:long,a:long") == "a:long,b:str,c:long"
+    with raises(ValueError):
+        s.alter("aa:long")
+    assert s.alter(None) == s
+
+
 def test_schema_extract():
     s = Schema("a:int,b:str,c:int,``:int")
     t = s.extract(s)
