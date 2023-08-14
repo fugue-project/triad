@@ -24,6 +24,7 @@ pip install triad
 
 * Add sorted batch reslicers
 * Add `ArrowDtype` support
+* Systematically improved pandas and arrow type casts
 
 ### 0.9.1
 
