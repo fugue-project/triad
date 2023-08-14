@@ -1,6 +1,8 @@
-from setuptools import setup, find_packages
-from triad_version import __version__
 import os
+
+from setuptools import find_packages, setup
+
+from triad_version import __version__
 
 with open("README.md") as f:
     LONG_DESCRIPTION = f.read()
