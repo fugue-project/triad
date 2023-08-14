@@ -133,10 +133,33 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
 
     @property
     def pandas_dtype(self) -> Dict[str, np.dtype]:
-        """convert as `dtype` dict for pandas dataframes.
+        """Convert as `dtype` dict for pandas dataframes.
         Currently, struct type is not supported
         """
-        return to_pandas_dtype(self.pa_schema)
+        return self.to_pandas_dtype(self.pa_schema)
+
+    def to_pandas_dtype(
+        self, use_extension_types: bool = False, use_arrow_dtype: bool = False
+    ) -> Dict[str, np.dtype]:
+        """Convert as `dtype` dict for pandas dataframes.
+
+        :param use_extension_types: if True, use pandas extension types,
+            default False
+        :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+            use pyarrow types, default False
+
+        .. note::
+
+            * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+                it converts all types to ``ArrowDType``
+            * If both are true, it converts types to the numpy backend nullable
+                dtypes if possible, otherwise, it converts to ``ArrowDType``
+        """
+        return to_pandas_dtype(
+            self.pa_schema,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
 
     @property
     def pd_dtype(self) -> Dict[str, np.dtype]:
@@ -638,6 +661,30 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
             raise
         except Exception as e:
             raise SchemaError(e)
+
+    def create_empty_arrow_table(self) -> pa.Table:
+        """Create an empty pyarrow table based on the schema"""
+        if not hasattr(pa.Table, "from_pylist"):  # pragma: no cover
+            arr = [pa.array([])] * len(self)
+            return pa.Table.from_arrays(arr, schema=self.pa_schema)
+        return pa.Table.from_pylist([], schema=self.pa_schema)
+
+    def create_empty_pandas_df(
+        self, use_extension_types: bool = False, use_arrow_dtype: bool = False
+    ) -> pd.DataFrame:
+        """Create an empty pandas dataframe based on the schema
+
+        :param use_extension_types: if True, use pandas extension types,
+            default False
+        :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+            use pyarrow types, default False
+        :return: empty pandas dataframe
+        """
+        dtypes = self.to_pandas_dtype(
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
+        return pd.DataFrame({k: pd.Series(dtype=v) for k, v in dtypes.items()})
 
     def _pre_update(self, op: str, need_reindex: bool = True) -> None:
         if op == "__setitem__":

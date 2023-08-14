@@ -13,16 +13,17 @@ from typing import (
 
 import numpy as np
 import pandas as pd
-from pandas.core.frame import DataFrame
 import pyarrow as pa
+from pandas.core.frame import DataFrame
 
 from triad.utils.assertion import assert_or_throw
 from triad.utils.pyarrow import (
     TRIAD_DEFAULT_TIMESTAMP_UNIT,
     apply_schema,
+    cast_pa_table,
+    pa_table_to_pandas,
     to_pa_datatype,
     to_pandas_dtype,
-    to_single_pandas_dtype,
 )
 
 T = TypeVar("T", bound=Any)
@@ -149,6 +150,43 @@ class PandasLikeUtils(Generic[T, ColT]):
                 fields.append(field)
         return pa.schema(fields)
 
+    def cast_df(
+        self,
+        df: T,
+        schema: pa.Schema,
+        use_extension_types: bool = True,
+        use_arrow_dtype: bool = False,
+        **kwargs: Any,
+    ) -> T:
+        """Cast pandas like dataframe to comply with ``schema``.
+
+        :param df: pandas like dataframe
+        :param schema: pyarrow schema to cast to
+        :param use_extension_types: whether to use ``ExtensionDType``, default True
+        :param use_arrow_dtype: whether to use ``ArrowDtype``, default False
+        :param kwargs: other arguments passed to ``pa.Table.from_pandas``
+
+        :return: converted dataframe
+        """
+        dtypes = to_pandas_dtype(
+            schema,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
+        if len(df) == 0:
+            return pd.DataFrame({k: pd.Series(dtype=v) for k, v in dtypes.items()})
+        if dtypes == df.dtypes.to_dict():
+            return df
+        adf = pa.Table.from_pandas(
+            df, preserve_index=False, safe=False, **{"nthreads": 1, **kwargs}
+        ).replace_schema_metadata()
+        adf = cast_pa_table(adf, schema)
+        return pa_table_to_pandas(
+            adf,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
+
     def enforce_type(  # noqa: C901
         self, df: T, schema: pa.Schema, null_safe: bool = False
     ) -> T:
@@ -159,60 +197,88 @@ class PandasLikeUtils(Generic[T, ColT]):
         :param null_safe: whether to enforce None value for int, string and bool values
         :return: converted dataframe
 
-        :Notice:
-        When `null_safe` is true, the native column types in the dataframe may change,
-        for example, if a column of `int64` has None values, the output will make sure
-        each value in the column is either None or an integer, however, due to the
-        behavior of pandas like dataframes, the type of the columns may
-        no longer be `int64`
+        .. note::
 
-        This method does not enforce struct and list types
+            When `null_safe` is true, the native column types in the dataframe may
+            change, for example, if a column of `int64` has None values, the output will
+            make sure each value in the column is either None or an integer, however,
+            due to the behavior of pandas like dataframes, the type of the columns may
+            no longer be `int64`
+
+            This method does not enforce struct and list types
         """
         if self.empty(df):
             return df
         if not null_safe:
             return df.astype(dtype=to_pandas_dtype(schema, use_extension_types=False))
+        df = df.convert_dtypes()  # assuming the default backend is numpy
+        to_types = to_pandas_dtype(
+            schema, use_extension_types=True, use_arrow_dtype=False
+        )
         data: Dict[str, Any] = {}
         for v in schema:
             s = df[v.name]
-            if pa.types.is_string(v.type):
-                ns = s.isnull()
-                s = s.astype(str).mask(ns, None)
-            elif pa.types.is_boolean(v.type):
-                ns = s.isnull()
-                if pd.api.types.is_string_dtype(s.dtype):
-                    try:
+            to_t = to_types[v.name]
+            if s.dtype != to_t:
+                if pa.types.is_string(v.type):
+                    ns = s.isnull()
+                    s = s.astype(to_t).mask(ns, None)
+                elif pa.types.is_boolean(v.type):
+                    ns = s.isnull()
+                    if pd.api.types.is_string_dtype(s.dtype):
                         s = s.str.lower() == "true"
-                    except AttributeError:
-                        s = s.fillna(0).astype(bool)
-                else:
-                    s = s.fillna(0).astype(bool)
-                s = s.mask(ns, None)
-            elif pa.types.is_integer(v.type):
-                ns = s.isnull()
-                s = (
-                    s.fillna(0)
-                    .astype(int)
-                    .astype(to_single_pandas_dtype(v.type))
-                    .mask(ns, None)
-                )
-            elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
-                from_t = s.dtype
-                to_t = to_single_pandas_dtype(v.type)
-                if from_t != to_t:
-                    if pd.api.types.is_datetime64_any_dtype(
-                        from_t
-                    ) and pd.api.types.is_datetime64_any_dtype(to_t):
-                        from_tz = _get_tz(from_t)
-                        to_tz = _get_tz(to_t)
-                        if from_tz is None or to_tz is None:
-                            s = s.dt.tz_localize(to_tz)
-                        else:
-                            s = s.dt.tz_convert(to_tz)
                     else:
-                        s = s.astype(to_single_pandas_dtype(v.type))
+                        s = s.astype(to_t)
+                    s = s.mask(ns, None)
+                elif pa.types.is_integer(v.type):
+                    ns = s.isnull()
+                    s = s.astype(to_t).mask(ns, None)
+                elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
+                    from_t = s.dtype
+                    if from_t != to_t:
+                        if pd.api.types.is_datetime64_any_dtype(
+                            from_t
+                        ) and pd.api.types.is_datetime64_any_dtype(to_t):
+                            from_tz = _get_tz(from_t)
+                            to_tz = _get_tz(to_t)
+                            if from_tz is None or to_tz is None:
+                                s = s.dt.tz_localize(to_tz)
+                            else:
+                                s = s.dt.tz_convert(to_tz)
+                        else:
+                            s = s.astype(to_t)
             data[v.name] = s
         return pd.DataFrame(data)
+
+    def to_parquet_friendly(
+        self, df: T, partition_cols: Optional[List[str]] = None
+    ) -> T:
+        """Parquet doesn't like pd.ArrowDtype(<nested types>), this function
+        converts all nested types to object types
+
+        :param df: the input dataframe
+        :param partition_cols: the partition columns, if any, default None
+        :return: the converted dataframe
+        """
+        pcols = partition_cols or []
+        changed = False
+        new_types: Dict[str, Any] = {}
+        for k, v in df.dtypes.items():
+            if k in pcols:
+                new_types[k] = np.dtype(object)
+                changed = True
+            elif (
+                hasattr(pd, "ArrowDtype")
+                and isinstance(v, pd.ArrowDtype)
+                and pa.types.is_nested(v.pyarrow_dtype)
+            ):
+                new_types[k] = np.dtype(object)
+                changed = True
+            else:
+                new_types[k] = v
+        if changed:
+            df = df.astype(new_types)
+        return df
 
     def safe_groupby_apply(
         self,

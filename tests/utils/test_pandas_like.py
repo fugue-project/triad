@@ -8,7 +8,7 @@ import pyarrow as pa
 from pytest import raises
 
 from triad.utils.pandas_like import _DEFAULT_DATETIME, PD_UTILS
-from triad.utils.pyarrow import expression_to_schema
+from triad.utils.pyarrow import expression_to_schema, pa_table_to_pandas
 
 from .._utils import assert_df_eq
 
@@ -159,7 +159,7 @@ def test_binary():
 
 def test_nan_none():
     df = DF([[None, None]], "b:str,c:double", True)
-    assert df.native.iloc[0, 0] is None
+    assert pd.isna(df.native.iloc[0, 0])
     arr = df.as_array(type_safe=True)[0]
     assert arr[0] is None
     assert arr[1] is None
@@ -171,6 +171,40 @@ def test_nan_none():
 
     df = DF([], "b:str,c:double", True)
     assert len(df.as_array()) == 0
+
+
+def test_cast_df():
+    df = pd.DataFrame(
+        dict(
+            a=pd.Series([1, 2], dtype="int32"), b=pd.Series([True, False], dtype="bool")
+        )
+    )
+    assert df is PD_UTILS.cast_df(
+        df,
+        expression_to_schema("a:int32,b:bool"),
+        use_extension_types=False,
+        use_arrow_dtype=False,
+    )
+    res = PD_UTILS.cast_df(
+        df,
+        expression_to_schema("a:long,b:str"),
+        use_extension_types=True,
+        use_arrow_dtype=False,
+    )
+    assert isinstance(res.a.dtype, pd.Int64Dtype)
+    assert isinstance(res.b.dtype, pd.StringDtype)
+    assert res.values.tolist() == [[1, "true"], [2, "false"]]
+
+    df = pd.DataFrame(dict(a=pd.Series(dtype="int32"), b=pd.Series(dtype="bool")))
+    res = PD_UTILS.cast_df(
+        df,
+        expression_to_schema("a:long,b:str"),
+        use_extension_types=True,
+        use_arrow_dtype=False,
+    )
+    assert isinstance(res.a.dtype, pd.Int64Dtype)
+    assert isinstance(res.b.dtype, pd.StringDtype)
+    assert len(res) == 0
 
 
 def test_boolean_enforce():
@@ -230,6 +264,41 @@ def test_timestamp_enforce():
         [2, pd.Timestamp("2020-01-03 08:00:00", tz="UTC")],
     ] == arr
 
+    df = DF(
+        [
+            [1, "2020-01-02 00:00:00"],
+            [2, "2020-01-03 00:00:00"],
+        ],
+        "b:int,c:datetime",
+        True,
+    )
+    arr = df.as_array(type_safe=True)
+    assert [
+        [1, pd.Timestamp("2020-01-02 00:00:00")],
+        [2, pd.Timestamp("2020-01-03 00:00:00")],
+    ] == arr
+
+    df = DF(
+        [
+            [1, "2020-01-02 00:00:00-0500"],
+            [2, "2020-01-03 00:00:00-0500"],
+        ],
+        "b:int,c:timestamp(ns, UTC)",
+        True,
+    )
+    arr = df.as_array(type_safe=True)
+    assert [
+        [1, pd.Timestamp("2020-01-02 05:00:00", tz="UTC")],
+        [2, pd.Timestamp("2020-01-03 05:00:00", tz="UTC")],
+    ] == arr
+
+    if hasattr(pd, "ArrowDtype"):
+        df = pd.DataFrame(dict(a=pd.Series(["2020-01-02"], dtype="string[pyarrow]")))
+        res = PD_UTILS.enforce_type(
+            df, expression_to_schema("a:datetime"), null_safe=True
+        )
+        assert res.a.iloc[0] == pd.Timestamp("2020-01-02")
+
 
 def test_fillna_default():
     df = pd.DataFrame([[1.0], [None]], columns=["x"])
@@ -270,22 +339,47 @@ def test_safe_group_by_apply():
     PD_UTILS.ensure_compatible(res)
     assert 3 == res.shape[0]
     assert 3 == res.shape[1]
-    assert [["a", 1, 2], ["a", 2, 2], [None, 3, 1]] == res.values.tolist()
+    assert [["a", 1, 2], ["a", 2, 2], [None, 3, 1]] == res.astype(object).where(
+        ~pd.isna(res), None
+    ).values.tolist()
 
     res = PD_UTILS.safe_groupby_apply(df.native, [], _m1)
     PD_UTILS.ensure_compatible(res)
     assert 3 == res.shape[0]
     assert 3 == res.shape[1]
-    assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.values.tolist()
+    assert [["a", 1, 3], ["a", 2, 3], [None, 3, 3]] == res.astype(object).where(
+        ~pd.isna(res), None
+    ).values.tolist()
 
     df = DF([[1.0, "a"], [1.0, "b"], [None, "c"], [None, "d"]], "b:double,c:str", True)
     res = PD_UTILS.safe_groupby_apply(df.native, ["b"], _m1)
     assert [
         [1.0, "a", 2],
         [1.0, "b", 2],
-        [float("nan"), "c", 2],
-        [float("nan"), "d", 2],
+        [pd.NA, "c", 2],
+        [pd.NA, "d", 2],
     ].__repr__() == res.values.tolist().__repr__()
+
+
+def test_to_parquet_friendly():
+    if hasattr(pd, "ArrowDtype"):
+        adf = pa.Table.from_pandas(pd.DataFrame(dict(a=["a", "b"], c=[1, 2])))
+        pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
+        res = PD_UTILS.to_parquet_friendly(pdf)
+        assert res is pdf
+
+        adf = pa.Table.from_pandas(pd.DataFrame(dict(a=[["a", "b"], ["c"]], c=[1, 2])))
+        pdf = pa_table_to_pandas(adf, use_extension_types=False, use_arrow_dtype=True)
+        res = PD_UTILS.to_parquet_friendly(pdf)
+        assert res.dtypes["a"] == np.dtype(object)
+        assert res.dtypes["c"] == pd.ArrowDtype(pa.int64())
+        pdf = pa_table_to_pandas(adf, use_extension_types=True, use_arrow_dtype=True)
+        res = PD_UTILS.to_parquet_friendly(pdf)
+        assert res.dtypes["a"] == np.dtype(object)
+        assert res.dtypes["c"] == pd.Int64Dtype()
+        res = PD_UTILS.to_parquet_friendly(pdf, partition_cols=["c"])
+        assert res.dtypes["a"] == np.dtype(object)
+        assert res.dtypes["c"] == np.dtype(object)
 
 
 def test_safe_group_by_apply_special_types():

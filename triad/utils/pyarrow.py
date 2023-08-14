@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pandas.core.dtypes.base import ExtensionDtype
+from pyarrow.compute import CastOptions
 
 from triad.constants import TRIAD_VAR_QUOTE
 
@@ -25,6 +26,7 @@ LARGE_TYPES_REPLACEMENT: List[Tuple[Any, Any]] = [
     (pa.large_utf8(), pa.utf8()),
     (pa.types.is_large_list, lambda t: pa.list_(t.value_field)),
 ]
+
 
 _TYPE_EXPRESSION_MAPPING: Dict[str, pa.DataType] = {
     "null": pa.null(),
@@ -88,6 +90,8 @@ _PANDAS_EXTENSION_TYPE_TO_PA_MAP: Dict[ExtensionDtype, pa.DataType] = {
     pd.UInt32Dtype(): pa.uint32(),
     pd.Int64Dtype(): pa.int64(),
     pd.UInt64Dtype(): pa.uint64(),
+    pd.Float32Dtype(): pa.float32(),
+    pd.Float64Dtype(): pa.float64(),
     pd.StringDtype(): pa.string(),
     pd.BooleanDtype(): pa.bool_(),
 }
@@ -101,6 +105,8 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
     pa.uint32(): pd.UInt32Dtype(),
     pa.int64(): pd.Int64Dtype(),
     pa.uint64(): pd.UInt64Dtype(),
+    pa.float32(): pd.Float32Dtype(),
+    pa.float64(): pd.Float64Dtype(),
     pa.string(): pd.StringDtype(),
     pa.bool_(): pd.BooleanDtype(),
 }
@@ -181,6 +187,11 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     if isinstance(obj, ExtensionDtype):
         if obj in _PANDAS_EXTENSION_TYPE_TO_PA_MAP:
             return _PANDAS_EXTENSION_TYPE_TO_PA_MAP[obj]
+        if hasattr(pd, "ArrowDtype"):
+            if isinstance(obj, pd.ArrowDtype):
+                return obj.pyarrow_dtype
+            if obj == pd.StringDtype("pyarrow"):
+                return pa.string()
     if type(obj) == type and issubclass(obj, datetime):
         return TRIAD_DEFAULT_TIMESTAMP
     if type(obj) == type and issubclass(obj, date):
@@ -188,48 +199,179 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     return pa.from_numpy_dtype(np.dtype(obj))
 
 
-def to_single_pandas_dtype(
-    pa_type: pa.DataType, use_extension_types: bool = False
-) -> Dict[str, np.dtype]:
-    """convert a pyarrow data type to a pandas datatype.
-    Currently, struct type is not supported
+def cast_pa_array(col: pa.Array, new_type: pa.DataType) -> pa.Array:  # noqa: C901
+    old_type = col.type
+    if new_type.equals(old_type):
+        return col
+    elif pa.types.is_date(new_type) and not pa.types.is_date(old_type):
+        # -> date
+        return pa.Array.from_pandas(pd.to_datetime(col.to_pandas()).dt.date)
+    elif pa.types.is_timestamp(new_type):
+        # -> datetime
+        if pa.types.is_timestamp(old_type) or pa.types.is_date(old_type):
+            s = pd.to_datetime(col.to_pandas())
+            from_tz = old_type.tz if pa.types.is_timestamp(old_type) else None
+            to_tz = new_type.tz
+            if from_tz is None or to_tz is None:
+                s = s.dt.tz_localize(to_tz)
+            else:
+                s = s.dt.tz_convert(to_tz)
+        else:
+            s = pd.to_datetime(col.to_pandas())
+        return pa.Array.from_pandas(s, type=new_type)
+    elif pa.types.is_integer(new_type):
+        return col.cast(
+            options=CastOptions(
+                new_type, allow_decimal_truncate=True, allow_float_truncate=True
+            ),
+        )
+    elif pa.types.is_string(new_type):
+        if pa.types.is_timestamp(old_type):
+            # datetime -> str
+            # this is to ensure less granular ts series won't output .000000
+            series = pd.to_datetime(col.to_pandas())
+            ns = series.isnull()
+            series = series.astype(str)
+            return pa.Array.from_pandas(series.mask(ns, None), type=new_type)
+    return col.cast(new_type, safe=True)
 
+
+def cast_pa_table(df: pa.Table, schema: pa.Schema) -> pa.Table:
+    """Convert a pyarrow table to another pyarrow table with given schema
+
+    :param df: the pyarrow table
     :param schema: the pyarrow schema
-    :param use_extension_types: whether to use pandas extension
-        data types, defaults to False
-    :return: the pandas data type
+    :return: the converted pyarrow table
     """
+    if df.schema == schema:
+        return df
+    cols = [cast_pa_array(col, new_f.type) for col, new_f in zip(df.columns, schema)]
+    return pa.Table.from_arrays(cols, schema=schema)
+
+
+def to_pandas_types_mapper(
+    pa_type: pa.DataType,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
+) -> Optional[pd.api.extensions.ExtensionDtype]:
+    """The types_mapper for ``pa.Table.to_pandas``
+
+    :param pa_type: the pyarrow data type
+    :param use_extension_types: whether to use pandas extension
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
+    :return: the pandas ExtensionDtype if available, otherwise None
+
+    .. note::
+
+        * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+            it converts the type to ``ArrowDType``
+        * If both are true, it converts the type to the numpy backend nullable
+            dtypes if possible, otherwise, it converts to ``ArrowDType``
+    """
+    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
     if use_extension_types:
         return (
             _PA_TO_PANDAS_EXTENSION_TYPE_MAP[pa_type]
             if pa_type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
-            else pa_type.to_pandas_dtype()
+            else (None if not use_arrow_dtype else pd.ArrowDtype(pa_type))
         )
-    return np.dtype(str) if pa.types.is_string(pa_type) else pa_type.to_pandas_dtype()
+    if use_arrow_dtype:
+        return pd.ArrowDtype(pa_type)
+    return None
+
+
+def pa_table_to_pandas(
+    df: pa.Table,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
+    **kwargs: Any,
+) -> pd.DataFrame:
+    """Convert a pyarrow table to pandas dataframe
+
+    :param df: the pyarrow table
+    :param use_extension_types: whether to use pandas extension
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
+    :param kwargs: other arguments for ``pa.Table.to_pandas``
+    :return: the pandas dataframe
+    """
+    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
+    mapper = partial(
+        to_pandas_types_mapper,
+        use_extension_types=use_extension_types,
+        use_arrow_dtype=use_arrow_dtype,
+    )
+    return df.to_pandas(types_mapper=mapper, **kwargs)
+
+
+def to_single_pandas_dtype(
+    pa_type: pa.DataType,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
+) -> np.dtype:
+    """convert a pyarrow data type to a pandas datatype.
+    Currently, struct type is not supported
+
+    :param pa_type: the pyarrow data type
+    :param use_extension_types: whether to use pandas extension
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
+    :return: the pandas data type
+
+    .. note::
+
+        * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+            it converts the type to ``ArrowDType``
+        * If both are true, it converts the type to the numpy backend nullable
+            dtypes if possible, otherwise, it converts to ``ArrowDType``
+    """
+    use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
+    if pa.types.is_nested(pa_type) and not use_arrow_dtype:
+        return np.dtype(object)
+    tp = to_pandas_types_mapper(
+        pa_type,
+        use_extension_types=use_extension_types,
+        use_arrow_dtype=use_arrow_dtype,
+    )
+    if tp is not None:
+        return tp
+    if pa.types.is_string(pa_type) and not use_extension_types and not use_arrow_dtype:
+        return np.dtype(str)
+    return pa_type.to_pandas_dtype()
 
 
 def to_pandas_dtype(
-    schema: pa.Schema, use_extension_types: bool = False
+    schema: pa.Schema,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
 ) -> Dict[str, np.dtype]:
     """convert as `dtype` dict for pandas dataframes.
     Currently, struct type is not supported
 
     :param schema: the pyarrow schema
     :param use_extension_types: whether to use pandas extension
-        data types, defaults to False
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
     :return: the pandas data type dictionary
+
+    .. note::
+
+        * If ``use_extension_types`` is False and ``use_arrow_dtype`` is True,
+            it converts all types to ``ArrowDType``
+        * If both are true, it converts types to the numpy backend nullable
+            dtypes if possible, otherwise, it converts to ``ArrowDType``
     """
-    if use_extension_types:
-        return {
-            f.name: _PA_TO_PANDAS_EXTENSION_TYPE_MAP[f.type]
-            if f.type in _PA_TO_PANDAS_EXTENSION_TYPE_MAP
-            else f.type.to_pandas_dtype()
-            for f in schema
-        }
     return {
-        f.name: np.dtype(str)
-        if pa.types.is_string(f.type)
-        else f.type.to_pandas_dtype()
+        f.name: to_single_pandas_dtype(
+            f.type,
+            use_extension_types=use_extension_types,
+            use_arrow_dtype=use_arrow_dtype,
+        )
         for f in schema
     }
 
