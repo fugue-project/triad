@@ -19,7 +19,6 @@ from pandas.core.frame import DataFrame
 from triad.utils.assertion import assert_or_throw
 from triad.utils.pyarrow import (
     TRIAD_DEFAULT_TIMESTAMP_UNIT,
-    apply_schema,
     cast_pa_table,
     pa_table_to_pandas,
     to_pa_datatype,
@@ -29,7 +28,6 @@ from triad.utils.pyarrow import (
 T = TypeVar("T", bound=Any)
 ColT = TypeVar("ColT", bound=Any)
 
-_DEFAULT_JOIN_KEYS: List[str] = []
 _DEFAULT_DATETIME = datetime(2000, 1, 1)
 _ANTI_INDICATOR = "__anti_indicator__"
 _CROSS_INDICATOR = "__corss_indicator__"
@@ -73,9 +71,6 @@ class PandasLikeUtils(Generic[T, ColT]):
         :param type_safe: whether to enforce the types in schema, if False, it will
             return the original values from the dataframe
         :return: iterable of rows, each row is a list
-
-        :Notice:
-        If there are nested types in schema, the conversion can be slower
         """
         if self.empty(df):
             return
@@ -87,22 +82,12 @@ class PandasLikeUtils(Generic[T, ColT]):
         if not type_safe:
             for arr in df.itertuples(index=False, name=None):
                 yield list(arr)
-        elif all(not pa.types.is_nested(x) for x in schema.types):
+        else:
             p = self.as_arrow(df, schema)
             d = p.to_pydict()
             cols = [d[n] for n in schema.names]
             for arr in zip(*cols):
                 yield list(arr)
-        else:
-            # If schema has nested types, the conversion will be much slower
-            for arr in apply_schema(
-                schema,
-                df.itertuples(index=False, name=None),
-                copy=True,
-                deep=True,
-                str_as_json=True,
-            ):
-                yield arr
 
     def to_schema(self, df: T) -> pa.Schema:
         """Extract pandas dataframe schema as pyarrow schema. This is a replacement
@@ -186,69 +171,6 @@ class PandasLikeUtils(Generic[T, ColT]):
             use_extension_types=use_extension_types,
             use_arrow_dtype=use_arrow_dtype,
         )
-
-    def enforce_type(  # noqa: C901
-        self, df: T, schema: pa.Schema, null_safe: bool = False
-    ) -> T:
-        """Enforce the pandas like dataframe to comply with `schema`.
-
-        :param df: pandas like dataframe
-        :param schema: pyarrow schema
-        :param null_safe: whether to enforce None value for int, string and bool values
-        :return: converted dataframe
-
-        .. note::
-
-            When `null_safe` is true, the native column types in the dataframe may
-            change, for example, if a column of `int64` has None values, the output will
-            make sure each value in the column is either None or an integer, however,
-            due to the behavior of pandas like dataframes, the type of the columns may
-            no longer be `int64`
-
-            This method does not enforce struct and list types
-        """
-        if self.empty(df):
-            return df
-        if not null_safe:
-            return df.astype(dtype=to_pandas_dtype(schema, use_extension_types=False))
-        df = df.convert_dtypes()  # assuming the default backend is numpy
-        to_types = to_pandas_dtype(
-            schema, use_extension_types=True, use_arrow_dtype=False
-        )
-        data: Dict[str, Any] = {}
-        for v in schema:
-            s = df[v.name]
-            to_t = to_types[v.name]
-            if s.dtype != to_t:
-                if pa.types.is_string(v.type):
-                    ns = s.isnull()
-                    s = s.astype(to_t).mask(ns, None)
-                elif pa.types.is_boolean(v.type):
-                    ns = s.isnull()
-                    if pd.api.types.is_string_dtype(s.dtype):
-                        s = s.str.lower() == "true"
-                    else:
-                        s = s.astype(to_t)
-                    s = s.mask(ns, None)
-                elif pa.types.is_integer(v.type):
-                    ns = s.isnull()
-                    s = s.astype(to_t).mask(ns, None)
-                elif not pa.types.is_struct(v.type) and not pa.types.is_list(v.type):
-                    from_t = s.dtype
-                    if from_t != to_t:
-                        if pd.api.types.is_datetime64_any_dtype(
-                            from_t
-                        ) and pd.api.types.is_datetime64_any_dtype(to_t):
-                            from_tz = _get_tz(from_t)
-                            to_tz = _get_tz(to_t)
-                            if from_tz is None or to_tz is None:
-                                s = s.dt.tz_localize(to_tz)
-                            else:
-                                s = s.dt.tz_convert(to_tz)
-                        else:
-                            s = s.astype(to_t)
-            data[v.name] = s
-        return pd.DataFrame(data)
 
     def to_parquet_friendly(
         self, df: T, partition_cols: Optional[List[str]] = None
@@ -534,9 +456,3 @@ class PandasUtils(PandasLikeUtils[pd.DataFrame, pd.Series]):
 
 
 PD_UTILS = PandasUtils()
-
-
-def _get_tz(ts: Any) -> Any:
-    if hasattr(ts, "tz"):
-        return ts.tz
-    return None

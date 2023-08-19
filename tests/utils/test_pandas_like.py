@@ -82,15 +82,15 @@ def test_as_array_iterable():
     # prevent pandas auto type casting
     df = DF([[1.0, 1.1]], "a:double,b:int")
     assert [[1.0, 1]] == df.as_array()
-    assert isinstance(df.as_array()[0][0], float)
-    assert isinstance(df.as_array()[0][1], int)
+    np.issubdtype(df.as_array()[0][0], np.float_)
+    np.issubdtype(df.as_array()[0][1], np.integer)
     assert [[1.0, 1]] == df.as_array(["a", "b"])
     assert [[1, 1.0]] == df.as_array(["b", "a"])
 
     df = DF([[np.float64(1.0), 1.1]], "a:double,b:int")
     assert [[1.0, 1]] == df.as_array()
-    assert isinstance(df.as_array()[0][0], float)
-    assert isinstance(df.as_array()[0][1], int)
+    np.issubdtype(df.as_array()[0][0], np.float_)
+    np.issubdtype(df.as_array()[0][1], np.integer)
 
     df = DF([[pd.Timestamp("2020-01-01"), 1.1]], "a:datetime,b:int")
     assert [[datetime(2020, 1, 1), 1]] == df.as_array()
@@ -103,8 +103,8 @@ def test_as_array_iterable():
 
     df = DF([[1.0, 1.1]], "a:double,b:int")
     assert [[1.0, 1]] == df.as_array(type_safe=True)
-    assert isinstance(df.as_array()[0][0], float)
-    assert isinstance(df.as_array()[0][1], int)
+    np.issubdtype(df.as_array()[0][0], np.float_)
+    np.issubdtype(df.as_array()[0][1], np.integer)
 
 
 def test_as_array_iterable_datetime():
@@ -129,23 +129,14 @@ def test_as_array_iterable_datetime():
 
 
 def test_nested():
-    # data = [[dict(b=[30, "40"])]]
-    # s = expression_to_schema("a:{a:str,b:[int]}")
-    # df = DF(data, "a:{a:str,b:[int]}")
-    # a = df.as_array(type_safe=True)
-    # assert [[dict(a=None, b=[30, 40])]] == a
-
-    data = [[[json.dumps(dict(b=[30, "40"]))]]]
-    s = expression_to_schema("a:[{a:str,b:[int]}]")
-    df = DF(data, "a:[{a:str,b:[int]}]")
-    a = df.as_array(type_safe=True)
-    assert [[[dict(a=None, b=[30, 40])]]] == a
-
-    data = [[json.dumps(["1", 2])]]
-    s = expression_to_schema("a:[int]")
-    df = DF(data, "a:[int]")
-    a = df.as_array(type_safe=True)
-    assert [[[1, 2]]] == a
+    data = [[dict(b=[30, 40]), 2, 2.2]]
+    df = DF(data, "a:{b:[int]},b:int,c:double")
+    res = df.as_array(type_safe=True)
+    assert res == data
+    assert isinstance(res[0][1], int)
+    assert not isinstance(res[0][1], np.number)
+    assert isinstance(res[0][2], float)
+    assert not isinstance(res[0][2], np.number)
 
 
 def test_binary():
@@ -294,9 +285,7 @@ def test_timestamp_enforce():
 
     if hasattr(pd, "ArrowDtype"):
         df = pd.DataFrame(dict(a=pd.Series(["2020-01-02"], dtype="string[pyarrow]")))
-        res = PD_UTILS.enforce_type(
-            df, expression_to_schema("a:datetime"), null_safe=True
-        )
+        res = PD_UTILS.cast_df(df, expression_to_schema("a:datetime"))
         assert res.a.iloc[0] == pd.Timestamp("2020-01-02")
 
 
@@ -624,7 +613,9 @@ class DF:  # This is a mock
     def __init__(self, data, schema, enforce=False):
         s = expression_to_schema(schema)
         df = pd.DataFrame(data, columns=s.names)
-        self.native = PD_UTILS.enforce_type(df, s, enforce)
+        self.native = PD_UTILS.cast_df(
+            df, s, use_extension_types=True, use_arrow_dtype=False
+        )
         self.schema = s
 
     def as_array(self, cols=None, type_safe=False, null_schema=False):

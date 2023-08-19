@@ -25,6 +25,7 @@ pip install triad
 * Add sorted batch reslicers
 * Add `ArrowDtype` support
 * Systematically improved pandas and arrow type casts
+* Remove `PandasLikeUtils.enfoce_type`
 
 ### 0.9.1
 
