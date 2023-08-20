@@ -5,10 +5,15 @@ from datetime import date, datetime
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pytest
 from pytest import raises
 
 from triad.utils.pandas_like import _DEFAULT_DATETIME, PD_UTILS
-from triad.utils.pyarrow import expression_to_schema, pa_table_to_pandas
+from triad.utils.pyarrow import (
+    PYARROW_VERSION,
+    expression_to_schema,
+    pa_table_to_pandas,
+)
 
 from .._utils import assert_df_eq
 
@@ -128,6 +133,7 @@ def test_as_array_iterable_datetime():
     assert type(v1[1]) == type(v2[1])
 
 
+@pytest.mark.skipif(PYARROW_VERSION.major < 8, reason="pyarrow>=8.0.0 required")
 def test_nested():
     data = [[dict(b=[30, 40]), 2, 2.2]]
     df = DF(data, "a:{b:[int]},b:int,c:double")
