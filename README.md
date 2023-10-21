@@ -20,16 +20,13 @@ pip install triad
 
 ## Release History
 
-### 0.9.3
-
-* Add more util functions for pyarrow
-
 ### 0.9.2
 
 * Add sorted batch reslicers
 * Add `ArrowDtype` support
 * Systematically improved pandas and arrow type casts
 * Remove `PandasLikeUtils.enfoce_type`
+* Add more util functions for pyarrow
 
 ### 0.9.1
 
