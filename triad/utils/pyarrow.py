@@ -302,13 +302,59 @@ def pa_table_to_pandas(
     :param kwargs: other arguments for ``pa.Table.to_pandas``
     :return: the pandas dataframe
     """
+
+    def _get_batches() -> Iterable[pa.RecordBatch]:
+        if df.num_rows == 0:
+            yield pa.RecordBatch.from_pydict(
+                {name: [] for name in df.schema.names}, schema=df.schema
+            )
+        else:
+            for batch in df.to_batches():
+                if batch.num_rows > 0:
+                    yield batch
+
+    return pd.concat(
+        pa_batch_to_pandas(batch, use_extension_types, use_arrow_dtype, **kwargs)
+        for batch in _get_batches()
+    )
+
+
+def pa_batch_to_pandas(
+    batch: pa.RecordBatch,
+    use_extension_types: bool = False,
+    use_arrow_dtype: bool = False,
+    **kwargs: Any,
+) -> pd.DataFrame:
+    """Convert a pyarrow record batch to pandas dataframe
+
+    :param batch: the pyarrow record batch
+    :param use_extension_types: whether to use pandas extension
+        data types, default to False
+    :param use_arrow_dtype: if True and when pandas supports ``ArrowDType``,
+        use pyarrow types, default False
+    :param kwargs: other arguments for ``pa.Table.to_pandas``
+    :return: the pandas dataframe
+    """
     use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
     mapper = partial(
         to_pandas_types_mapper,
         use_extension_types=use_extension_types,
         use_arrow_dtype=use_arrow_dtype,
     )
-    return df.to_pandas(types_mapper=mapper, **kwargs)
+    return batch.to_pandas(types_mapper=mapper, **kwargs)
+
+
+def pa_batch_to_dicts(batch: pa.RecordBatch) -> List[Dict[str, Any]]:
+    """Convert a pyarrow record batch to list of dict
+
+    :param batch: the pyarrow record batch
+    :return: the list of dict
+    """
+    if PYARROW_VERSION.major < 7:  # pragma: no cover
+        names = batch.schema.names
+        return [dict(zip(names, tp)) for tp in zip(batch.to_pydict().values())]
+    else:
+        return batch.to_pylist()
 
 
 def to_single_pandas_dtype(
