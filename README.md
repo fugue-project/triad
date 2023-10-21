@@ -30,6 +30,7 @@ pip install triad
 * Add `ArrowDtype` support
 * Systematically improved pandas and arrow type casts
 * Remove `PandasLikeUtils.enfoce_type`
+* Add more util functions for pyarrow
 
 ### 0.9.1
 
