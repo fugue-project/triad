@@ -30,6 +30,7 @@ from triad.utils.pyarrow import (
     to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
+    pa_batch_to_dicts,
 )
 
 
@@ -237,6 +238,26 @@ def test_to_pandas_dtype():
         assert pd.ArrowDtype(schema[2].type) == res["c"]
         assert pd.ArrowDtype(schema[3].type) == res["d"]
         assert pd.ArrowDtype(schema[4].type) == res["e"]
+
+
+def test_pa_batch_to_dicts():
+    adf = pa.Table.from_pydict(
+        {"a": [], "b": []}, schema=expression_to_schema("a:int,b:str")
+    )
+    assert pa_batch_to_dicts(adf) == []
+
+    adf = pa.Table.from_pydict(
+        {
+            "a": [0, 1],
+            "b": [[1, 2], [3, 4]],
+            "c": ["a", "b"],
+            "d": [{"x": "x"}, {"x": "x"}],
+        },
+    )
+    assert pa_batch_to_dicts(adf) == [
+        {"a": 0, "b": [1, 2], "c": "a", "d": {"x": "x"}},
+        {"a": 1, "b": [3, 4], "c": "b", "d": {"x": "x"}},
+    ]
 
 
 def test_pa_table_to_pandas():
