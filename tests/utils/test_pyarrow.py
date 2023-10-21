@@ -30,6 +30,7 @@ from triad.utils.pyarrow import (
     to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
+    pa_batch_to_dicts,
 )
 
 
@@ -209,13 +210,14 @@ def test_to_pandas_dtype():
     assert np.int32 == res["b"]
     assert np.float64 == res["c"]
     assert np.dtype("<U") == res["d"]
-    assert np.dtype("<M8[ns]") == res["e"]
+    # should be us, but arrow<13 has a bug
+    assert np.dtype("<M8[ns]") == res["e"] or np.dtype("<M8[us]") == res["e"]
     res = to_pandas_dtype(schema, True)
     assert pd.BooleanDtype() == res["a"]
     assert pd.Int32Dtype() == res["b"]
     assert pd.Float64Dtype() == res["c"]
     assert pd.StringDtype() == res["d"]
-    assert np.dtype("<M8[ns]") == res["e"]
+    assert np.dtype("<M8[ns]") == res["e"] or np.dtype("<M8[us]") == res["e"]
 
     schema2 = expression_to_schema("a:[bool],b:{c:long}")
     res = to_pandas_dtype(schema2, False)
@@ -238,7 +240,34 @@ def test_to_pandas_dtype():
         assert pd.ArrowDtype(schema[4].type) == res["e"]
 
 
+def test_pa_batch_to_dicts():
+    adf = pa.Table.from_pydict(
+        {"a": [], "b": []}, schema=expression_to_schema("a:int,b:str")
+    )
+    assert pa_batch_to_dicts(adf) == []
+
+    adf = pa.Table.from_pydict(
+        {
+            "a": [0, 1],
+            "b": [[1, 2], [3, 4]],
+            "c": ["a", "b"],
+            "d": [{"x": "x"}, {"x": "x"}],
+        },
+    )
+    assert pa_batch_to_dicts(adf) == [
+        {"a": 0, "b": [1, 2], "c": "a", "d": {"x": "x"}},
+        {"a": 1, "b": [3, 4], "c": "b", "d": {"x": "x"}},
+    ]
+
+
 def test_pa_table_to_pandas():
+    adf = pa.Table.from_pydict(
+        {"a": [], "b": []}, schema=expression_to_schema("a:int,b:str")
+    )
+    pdf = pa_table_to_pandas(adf)
+    assert pdf["a"].dtype == np.int32
+    assert pdf["b"].dtype == np.dtype("O")
+
     adf = pa.Table.from_pydict(
         {
             "a": [0, 1],
