@@ -352,7 +352,7 @@ def pa_batch_to_dicts(batch: pa.RecordBatch) -> List[Dict[str, Any]]:
     """
     if PYARROW_VERSION.major < 7:  # pragma: no cover
         names = batch.schema.names
-        return [dict(zip(names, tp)) for tp in zip(batch.to_pydict().values())]
+        return [dict(zip(names, tp)) for tp in zip(*batch.to_pydict().values())]
     else:
         return batch.to_pylist()
 
