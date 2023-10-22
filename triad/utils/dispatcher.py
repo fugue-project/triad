@@ -105,14 +105,17 @@ def conditional_dispatcher(
     :param entry_point: the entry point to preload dispatchers, defaults to None
     """
 
-    def _run(_func: Callable) -> "ConditionalDispatcher":
-        class _Dispatcher(ConditionalDispatcher):
-            def __call__(self, *args: Any, **kwds: Any) -> Any:
-                return self.run_top(*args, **kwds)
-
-        return _Dispatcher(_func, entry_point=entry_point)
-
-    return _run if default_func is None else _run(default_func)  # type:ignore
+    return (
+        (  # type: ignore
+            lambda func: ConditionalDispatcher(
+                func, is_broadcast=False, entry_point=entry_point
+            )
+        )
+        if default_func is None
+        else ConditionalDispatcher(
+            default_func, is_broadcast=False, entry_point=entry_point
+        )
+    )
 
 
 def conditional_broadcaster(
@@ -191,14 +194,17 @@ def conditional_broadcaster(
     :param entry_point: the entry point to preload dispatchers, defaults to None
     """
 
-    def _run(_func: Callable) -> "ConditionalDispatcher":
-        class _Dispatcher(ConditionalDispatcher):
-            def __call__(self, *args: Any, **kwds: Any) -> None:
-                list(self.run(*args, **kwds))
-
-        return _Dispatcher(_func, entry_point=entry_point)
-
-    return _run if default_func is None else _run(default_func)  # type:ignore
+    return (
+        (  # type: ignore
+            lambda func: ConditionalDispatcher(
+                func, is_broadcast=True, entry_point=entry_point
+            )
+        )
+        if default_func is None
+        else ConditionalDispatcher(
+            default_func, is_broadcast=True, entry_point=entry_point
+        )
+    )
 
 
 class ConditionalDispatcher:
@@ -219,20 +225,24 @@ class ConditionalDispatcher:
     """
 
     def __init__(
-        self, default_func: Callable[..., Any], entry_point: Optional[str] = None
+        self,
+        default_func: Callable[..., Any],
+        is_broadcast: bool,
+        entry_point: Optional[str] = None,
     ):
         self._func = default_func
         self._funcs: List[
             Tuple[float, int, Callable[..., bool], Callable[..., Any]]
         ] = []
         self._entry_point = entry_point
+        self._is_broadcast = is_broadcast
         update_wrapper(self, default_func)
 
     def __getstate__(self) -> Dict[str, Any]:
         return {
             k: v
             for k, v in self.__dict__.items()
-            if k in ["_func", "_funcs", "_entry_point"]
+            if k in ["_func", "_funcs", "_entry_point", "_is_broadcast"]
         }
 
     def __setstate__(self, data: Dict[str, Any]) -> None:
@@ -241,7 +251,9 @@ class ConditionalDispatcher:
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         """The abstract method to mimic the function call"""
-        raise NotImplementedError  # pragma: no cover
+        if self._is_broadcast:
+            return list(self.run(*args, **kwds))
+        return self.run_top(*args, **kwds)
 
     def run(self, *args: Any, **kwargs: Any) -> Iterable[Any]:
         """Execute all matching children functions as a generator.
