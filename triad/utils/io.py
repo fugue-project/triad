@@ -54,6 +54,15 @@ def isfile(path: str) -> bool:
     return fs.isfile(path)
 
 
+def touch(path: str) -> None:
+    """Create an empty file or update the timestamp of the file
+
+    :param path: the file path
+    """
+    fs, path = url_to_fs(path)
+    fs.touch(path, truncate=True)
+
+
 def rm(path: str, recursive: bool = False) -> None:
     """Remove a file or a directory
 

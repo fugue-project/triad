@@ -80,6 +80,19 @@ def test_is_dir_or_file(tmpdir):
         assert iou.isdir(path)
 
 
+def test_touch(tmpdir):
+    for base in [str(tmpdir), "memory://"]:
+        path = os.path.join(base, "a.txt")
+        iou.touch(path)
+        assert iou.isfile(path)
+
+        iou.write_text(path, "a")
+        assert iou.read_text(path) == "a"
+        iou.touch(path)
+        assert iou.isfile(path)
+        assert iou.read_text(path) == ""
+
+
 def test_rm(tmpdir):
     path = os.path.join(str(tmpdir), "a.txt")
     for recursive in [True, False]:
