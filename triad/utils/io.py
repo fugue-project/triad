@@ -9,6 +9,7 @@ from typing import Any, Iterator, Tuple
 import fsspec
 import fsspec.core as fc
 from fsspec import AbstractFileSystem
+from fsspec.implementations.local import LocalFileSystem
 
 _SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
 
@@ -31,6 +32,22 @@ def exists(path: str) -> bool:
     """
     fs, path = url_to_fs(path)
     return fs.exists(path)
+
+
+def makedirs(path: str, exist_ok: bool = False) -> str:
+    """Create a directory
+
+    :param path: the directory path
+    :param exist_ok: if True, do not raise error if the directory exists,
+        defaults to False
+
+    :return: the absolute directory path
+    """
+    fs, _path = url_to_fs(path)
+    fs.makedirs(_path, exist_ok=exist_ok)
+    if isinstance(fs, LocalFileSystem):
+        return str(Path(path).resolve())
+    return path
 
 
 def join(base_path: str, *paths: str) -> str:

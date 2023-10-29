@@ -12,12 +12,14 @@ def test_join(tmpdir):
     assert iou.join(str(tmpdir), "a", "b") == os.path.join(str(tmpdir), "a", "b")
     assert iou.join("dummy://", "a", "b", "c/") == "dummy://a/b/c"
     assert iou.join("dummy://a/", "b/", "c/") == "dummy://a/b/c"
+    assert iou.join("dummy://a/", "b/", "*.parquet") == "dummy://a/b/*.parquet"
 
 
 @pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
 def test_join_not_win():
     assert iou.join("a", "b", "c/") == "a/b/c"
     assert iou.join("/a", "b", "c/") == "/a/b/c"
+    assert iou.join("/a", "b", "*.parquet") == "/a/b/*.parquet"
 
 
 @pytest.mark.skipif(
@@ -26,6 +28,20 @@ def test_join_not_win():
 def test_join_is_win():
     assert iou.join("a", "b", "c") == "a\\b\\c"
     assert iou.join("c:\\a", "b", "c") == "c:\\a\\b\\c"
+    assert iou.join("c:\\a", "b", "*.parquet") == "c:\\a\\b\\*.parquet"
+
+
+def test_makedirs(tmpdir):
+    iou.makedirs(os.path.join(str(tmpdir), "temp", "a"), exist_ok=False)
+    assert iou.exists(os.path.join(str(tmpdir), "temp", "a"))
+    with pytest.raises(OSError):
+        iou.makedirs(os.path.join(str(tmpdir), "temp", "a"), exist_ok=False)
+    iou.makedirs(os.path.join(str(tmpdir), "temp", "a"), exist_ok=True)
+
+    iou.makedirs("memory://temp/a", exist_ok=True)
+    assert iou.exists("memory://temp/a")
+    with pytest.raises(OSError):
+        iou.makedirs("memory://temp/a", exist_ok=False)
 
 
 def test_exists(tmpdir):
