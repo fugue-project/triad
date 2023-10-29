@@ -3,6 +3,7 @@ from io import BytesIO
 
 import pytest
 import sys
+import os
 
 import triad.utils.io as iou
 
@@ -32,16 +33,27 @@ def test_join_is_win():
 
 
 def test_makedirs(tmpdir):
-    iou.makedirs(os.path.join(str(tmpdir), "temp", "a"), exist_ok=False)
-    assert iou.exists(os.path.join(str(tmpdir), "temp", "a"))
+    path = os.path.join(str(tmpdir), "temp", "a")
+    assert path == iou.makedirs(path, exist_ok=False)
+    assert iou.exists(path)
     with pytest.raises(OSError):
-        iou.makedirs(os.path.join(str(tmpdir), "temp", "a"), exist_ok=False)
-    iou.makedirs(os.path.join(str(tmpdir), "temp", "a"), exist_ok=True)
+        iou.makedirs(path, exist_ok=False)
+    iou.makedirs(path, exist_ok=True)
 
-    iou.makedirs("memory://temp/a", exist_ok=True)
-    assert iou.exists("memory://temp/a")
+    op = os.getcwd()
+    os.chdir(str(tmpdir))
+    assert os.path.join(str(tmpdir), "temp", "b") == iou.makedirs(
+        iou.join("temp", "b"), exist_ok=False
+    )
+    assert iou.exists(iou.join("temp", "b"))
+    assert iou.exists(os.path.join(str(tmpdir), "temp", "b"))
+    os.chdir(op)
+
+    path = "memory://temp/a"
+    assert path == iou.makedirs(path, exist_ok=True)
+    assert iou.exists(path)
     with pytest.raises(OSError):
-        iou.makedirs("memory://temp/a", exist_ok=False)
+        iou.makedirs(path, exist_ok=False)
 
 
 def test_exists(tmpdir):
@@ -52,6 +64,21 @@ def test_exists(tmpdir):
     assert iou.exists(os.path.join(str(tmpdir), "temp", "a.txt"))
     assert iou.exists(os.path.join(str(tmpdir), "temp"))
     assert iou.exists(str(tmpdir))
+
+
+def test_rm(tmpdir):
+    path = os.path.join(str(tmpdir), "a.txt")
+    for recursive in [True, False]:
+        iou.write_text(os.path.join(str(tmpdir), "a.txt"), "a")
+        assert iou.exists(path)
+        iou.rm(path, recursive=recursive)
+        assert not iou.exists(path)
+
+    path = os.path.join(str(tmpdir), "b", "c")
+    iou.write_text(os.path.join(path, "a.txt"), "a")
+    assert iou.exists(path)
+    iou.rm(path, recursive=True)
+    assert not iou.exists(path)
 
 
 def test_read_write_content(tmpdir):

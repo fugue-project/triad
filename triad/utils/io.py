@@ -34,6 +34,17 @@ def exists(path: str) -> bool:
     return fs.exists(path)
 
 
+def rm(path: str, recursive: bool = False) -> None:
+    """Remove a file or a directory
+
+    :param path: the path to remove
+    :param recursive: if True and the path is directory,
+        remove the directory recursively, defaults to False
+    """
+    fs, path = url_to_fs(path)
+    fs.rm(path, recursive=recursive)
+
+
 def makedirs(path: str, exist_ok: bool = False) -> str:
     """Create a directory
 
