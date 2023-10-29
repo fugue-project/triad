@@ -66,6 +66,20 @@ def test_exists(tmpdir):
     assert iou.exists(str(tmpdir))
 
 
+def test_is_dir_or_file(tmpdir):
+    for base in [str(tmpdir), "memory://"]:
+        path = os.path.join(base, "a.txt")
+        assert not iou.isfile(path)
+        assert not iou.isdir(path)
+        iou.write_text(path, "a")
+        assert iou.isfile(path)
+        assert not iou.isdir(path)
+        path = os.path.join(base, "b")
+        iou.makedirs(path)
+        assert not iou.isfile(path)
+        assert iou.isdir(path)
+
+
 def test_rm(tmpdir):
     path = os.path.join(str(tmpdir), "a.txt")
     for recursive in [True, False]:

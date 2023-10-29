@@ -3,7 +3,7 @@ import re
 import tempfile
 import zipfile
 from contextlib import contextmanager
-from pathlib import PurePosixPath, Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterator, Tuple
 
 import fsspec
@@ -32,6 +32,26 @@ def exists(path: str) -> bool:
     """
     fs, path = url_to_fs(path)
     return fs.exists(path)
+
+
+def isdir(path: str) -> bool:
+    """Check if a path is a directory
+
+    :param path: the path to check
+    :return: whether the path is a directory
+    """
+    fs, path = url_to_fs(path)
+    return fs.isdir(path)
+
+
+def isfile(path: str) -> bool:
+    """Check if a path is a file
+
+    :param path: the path to check
+    :return: whether the path is a file
+    """
+    fs, path = url_to_fs(path)
+    return fs.isfile(path)
 
 
 def rm(path: str, recursive: bool = False) -> None:
