@@ -1,9 +1,31 @@
 import os
 from io import BytesIO
 
-from pytest import raises
+import pytest
+import sys
 
 import triad.utils.io as iou
+
+
+def test_join(tmpdir):
+    assert iou.join(str(tmpdir)) == os.path.join(str(tmpdir))
+    assert iou.join(str(tmpdir), "a", "b") == os.path.join(str(tmpdir), "a", "b")
+    assert iou.join("dummy://", "a", "b", "c/") == "dummy://a/b/c"
+    assert iou.join("dummy://a/", "b/", "c/") == "dummy://a/b/c"
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
+def test_join_not_win():
+    assert iou.join("a", "b", "c/") == "a/b/c"
+    assert iou.join("/a", "b", "c/") == "/a/b/c"
+
+
+@pytest.mark.skipif(
+    not sys.platform.startswith("win"), reason="a test only for windows"
+)
+def test_join_is_win():
+    assert iou.join("a", "b", "c") == "a\\b\\c"
+    assert iou.join("c:\\a", "b", "c") == "c:\\a\\b\\c"
 
 
 def test_exists(tmpdir):
