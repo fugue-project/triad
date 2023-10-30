@@ -1,9 +1,59 @@
 import os
 from io import BytesIO
 
-from pytest import raises
+import pytest
+import sys
+import os
 
 import triad.utils.io as iou
+
+
+def test_join(tmpdir):
+    assert iou.join(str(tmpdir)) == os.path.join(str(tmpdir))
+    assert iou.join(str(tmpdir), "a", "b") == os.path.join(str(tmpdir), "a", "b")
+    assert iou.join("dummy://", "a", "b", "c/") == "dummy://a/b/c"
+    assert iou.join("dummy://a/", "b/", "c/") == "dummy://a/b/c"
+    assert iou.join("dummy://a/", "b/", "*.parquet") == "dummy://a/b/*.parquet"
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
+def test_join_not_win():
+    assert iou.join("a", "b", "c/") == "a/b/c"
+    assert iou.join("/a", "b", "c/") == "/a/b/c"
+    assert iou.join("/a", "b", "*.parquet") == "/a/b/*.parquet"
+
+
+@pytest.mark.skipif(
+    not sys.platform.startswith("win"), reason="a test only for windows"
+)
+def test_join_is_win():
+    assert iou.join("a", "b", "c") == "a\\b\\c"
+    assert iou.join("c:\\a", "b", "c") == "c:\\a\\b\\c"
+    assert iou.join("c:\\a", "b", "*.parquet") == "c:\\a\\b\\*.parquet"
+
+
+def test_makedirs(tmpdir):
+    path = os.path.join(str(tmpdir), "temp", "a")
+    assert path == iou.makedirs(path, exist_ok=False)
+    assert iou.exists(path)
+    with pytest.raises(OSError):
+        iou.makedirs(path, exist_ok=False)
+    iou.makedirs(path, exist_ok=True)
+
+    op = os.getcwd()
+    os.chdir(str(tmpdir))
+    assert os.path.join(str(tmpdir), "temp", "b") == iou.makedirs(
+        iou.join("temp", "b"), exist_ok=False
+    )
+    assert iou.exists(iou.join("temp", "b"))
+    assert iou.exists(os.path.join(str(tmpdir), "temp", "b"))
+    os.chdir(op)
+
+    path = "memory://temp/a"
+    assert path == iou.makedirs(path, exist_ok=True)
+    assert iou.exists(path)
+    with pytest.raises(OSError):
+        iou.makedirs(path, exist_ok=False)
 
 
 def test_exists(tmpdir):
@@ -14,6 +64,48 @@ def test_exists(tmpdir):
     assert iou.exists(os.path.join(str(tmpdir), "temp", "a.txt"))
     assert iou.exists(os.path.join(str(tmpdir), "temp"))
     assert iou.exists(str(tmpdir))
+
+
+def test_is_dir_or_file(tmpdir):
+    for base in [str(tmpdir), "memory://"]:
+        path = os.path.join(base, "a.txt")
+        assert not iou.isfile(path)
+        assert not iou.isdir(path)
+        iou.write_text(path, "a")
+        assert iou.isfile(path)
+        assert not iou.isdir(path)
+        path = os.path.join(base, "b")
+        iou.makedirs(path)
+        assert not iou.isfile(path)
+        assert iou.isdir(path)
+
+
+def test_touch(tmpdir):
+    for base in [str(tmpdir), "memory://"]:
+        path = os.path.join(base, "a.txt")
+        iou.touch(path)
+        assert iou.isfile(path)
+
+        iou.write_text(path, "a")
+        assert iou.read_text(path) == "a"
+        iou.touch(path)
+        assert iou.isfile(path)
+        assert iou.read_text(path) == ""
+
+
+def test_rm(tmpdir):
+    path = os.path.join(str(tmpdir), "a.txt")
+    for recursive in [True, False]:
+        iou.write_text(os.path.join(str(tmpdir), "a.txt"), "a")
+        assert iou.exists(path)
+        iou.rm(path, recursive=recursive)
+        assert not iou.exists(path)
+
+    path = os.path.join(str(tmpdir), "b", "c")
+    iou.write_text(os.path.join(path, "a.txt"), "a")
+    assert iou.exists(path)
+    iou.rm(path, recursive=True)
+    assert not iou.exists(path)
 
 
 def test_read_write_content(tmpdir):

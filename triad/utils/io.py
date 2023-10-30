@@ -3,11 +3,25 @@ import re
 import tempfile
 import zipfile
 from contextlib import contextmanager
-from typing import Any, Iterator
+from pathlib import Path, PurePosixPath
+from typing import Any, Iterator, Tuple
 
 import fsspec
+import fsspec.core as fc
+from fsspec import AbstractFileSystem
+from fsspec.implementations.local import LocalFileSystem
 
 _SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
+
+
+def url_to_fs(path: str, **kwargs: Any) -> Tuple[AbstractFileSystem, str]:
+    """A wrapper of ``fsspec.core.url_to_fs``
+
+    :param path: the path to be used
+    :param kwargs: additional arguments to ``fsspec.core.url_to_fs``
+    :return: the file system and the path
+    """
+    return fc.url_to_fs(path, **kwargs)
 
 
 def exists(path: str) -> bool:
@@ -16,8 +30,79 @@ def exists(path: str) -> bool:
     :param path: the path to check
     :return: whether the path (resource) exists
     """
-    fs, path = fsspec.core.url_to_fs(path)
+    fs, path = url_to_fs(path)
     return fs.exists(path)
+
+
+def isdir(path: str) -> bool:
+    """Check if a path is a directory
+
+    :param path: the path to check
+    :return: whether the path is a directory
+    """
+    fs, path = url_to_fs(path)
+    return fs.isdir(path)
+
+
+def isfile(path: str) -> bool:
+    """Check if a path is a file
+
+    :param path: the path to check
+    :return: whether the path is a file
+    """
+    fs, path = url_to_fs(path)
+    return fs.isfile(path)
+
+
+def touch(path: str) -> None:
+    """Create an empty file or update the timestamp of the file
+
+    :param path: the file path
+    """
+    fs, path = url_to_fs(path)
+    fs.touch(path, truncate=True)
+
+
+def rm(path: str, recursive: bool = False) -> None:
+    """Remove a file or a directory
+
+    :param path: the path to remove
+    :param recursive: if True and the path is directory,
+        remove the directory recursively, defaults to False
+    """
+    fs, path = url_to_fs(path)
+    fs.rm(path, recursive=recursive)
+
+
+def makedirs(path: str, exist_ok: bool = False) -> str:
+    """Create a directory
+
+    :param path: the directory path
+    :param exist_ok: if True, do not raise error if the directory exists,
+        defaults to False
+
+    :return: the absolute directory path
+    """
+    fs, _path = url_to_fs(path)
+    fs.makedirs(_path, exist_ok=exist_ok)
+    if isinstance(fs, LocalFileSystem):
+        return str(Path(path).resolve())
+    return path
+
+
+def join(base_path: str, *paths: str) -> str:
+    """Join paths with the base path
+
+    :param base_path: the base path
+    :param paths: the paths to join to the base path
+    :return: the joined path
+    """
+    if len(paths) == 0:
+        return base_path
+    p, path = fc.split_protocol(base_path)
+    if p is None:  # local path
+        return str(Path(base_path).joinpath(*paths))
+    return p + "://" + str(PurePosixPath(path).joinpath(*paths))
 
 
 def write_text(path: str, contents: str) -> None:
@@ -50,7 +135,7 @@ def write_bytes(path: str, contents: bytes, create_dir: bool = True) -> None:
     :param create_dir: if True, create the directory if not exists,
         defaults to True
     """
-    fs, path = fsspec.core.url_to_fs(path)
+    fs, path = url_to_fs(path)
     with fs.open(path, "wb") as f:
         f.write(contents)
 
@@ -61,7 +146,7 @@ def read_bytes(path: str) -> bytes:
     :param path: the file path
     :return: the bytes
     """
-    fs, path = fsspec.core.url_to_fs(path)
+    fs, path = url_to_fs(path)
     with fs.open(path, "rb") as f:
         return f.read()
 
