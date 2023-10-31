@@ -4,7 +4,7 @@ import tempfile
 import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterator, Tuple
+from typing import Any, Iterator, Tuple, List
 
 import fsspec
 import fsspec.core as fc
@@ -54,13 +54,17 @@ def isfile(path: str) -> bool:
     return fs.isfile(path)
 
 
-def touch(path: str) -> None:
+def touch(path: str, auto_mkdir: bool = False) -> None:
     """Create an empty file or update the timestamp of the file
 
     :param path: the file path
+    :param makedirs: if True, create the directory if not exists,
+        defaults to False
     """
-    fs, path = url_to_fs(path)
-    fs.touch(path, truncate=True)
+    fs, _path = url_to_fs(path)
+    if auto_mkdir:
+        fs.makedirs(fs._parent(_path), exist_ok=True)
+    fs.touch(_path, truncate=True)
 
 
 def rm(path: str, recursive: bool = False) -> None:
@@ -103,6 +107,16 @@ def join(base_path: str, *paths: str) -> str:
     if p is None:  # local path
         return str(Path(base_path).joinpath(*paths))
     return p + "://" + str(PurePosixPath(path).joinpath(*paths))
+
+
+def glob(path: str) -> List[str]:
+    """Glob files
+
+    :param path: the path to glob
+    :return: the matched files
+    """
+    fs, path = url_to_fs(path)
+    return list(fs.glob(path))
 
 
 def write_text(path: str, contents: str) -> None:
