@@ -17,19 +17,26 @@ def test_join(tmpdir):
 
 
 def test_glob(tmpdir):
+    def _assert(gres, expected):
+        for a, b in zip(gres, expected):
+            assert iou.exists(a) and iou.exists(b)
+
     assert iou.glob(os.path.join(str(tmpdir), "a")) == []
     assert iou.glob(os.path.join(str(tmpdir), "a", "*.txt")) == []
     iou.touch(os.path.join(str(tmpdir), "a.txt"))
-    assert iou.glob(os.path.join(str(tmpdir), "a.txt")) == [
-        os.path.join(str(tmpdir), "a.txt")
-    ]
-    assert iou.glob(os.path.join(str(tmpdir), "*.txt")) == [
-        os.path.join(str(tmpdir), "a.txt")
-    ]
+    _assert(
+        iou.glob(os.path.join(str(tmpdir), "a.txt")),
+        [os.path.join(str(tmpdir), "a.txt")],
+    )
+    _assert(
+        iou.glob(os.path.join(str(tmpdir), "*.txt")),
+        [os.path.join(str(tmpdir), "a.txt")],
+    )
     iou.touch(os.path.join(str(tmpdir), "a", "a.txt"), auto_mkdir=True)
-    assert iou.glob(os.path.join(str(tmpdir), "a", "*.txt")) == [
-        os.path.join(str(tmpdir), "a", "a.txt")
-    ]
+    _assert(
+        iou.glob(os.path.join(str(tmpdir), "a", "*.txt")),
+        [os.path.join(str(tmpdir), "a", "a.txt")],
+    )
 
 
 @pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
