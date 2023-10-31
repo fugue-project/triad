@@ -16,6 +16,29 @@ def test_join(tmpdir):
     assert iou.join("dummy://a/", "b/", "*.parquet") == "dummy://a/b/*.parquet"
 
 
+def test_glob(tmpdir):
+    def _assert(gres, expected):
+        for a, b in zip(gres, expected):
+            assert iou.exists(a) and iou.exists(b)
+
+    assert iou.glob(os.path.join(str(tmpdir), "a")) == []
+    assert iou.glob(os.path.join(str(tmpdir), "a", "*.txt")) == []
+    iou.touch(os.path.join(str(tmpdir), "a.txt"))
+    _assert(
+        iou.glob(os.path.join(str(tmpdir), "a.txt")),
+        [os.path.join(str(tmpdir), "a.txt")],
+    )
+    _assert(
+        iou.glob(os.path.join(str(tmpdir), "*.txt")),
+        [os.path.join(str(tmpdir), "a.txt")],
+    )
+    iou.touch(os.path.join(str(tmpdir), "a", "a.txt"), auto_mkdir=True)
+    _assert(
+        iou.glob(os.path.join(str(tmpdir), "a", "*.txt")),
+        [os.path.join(str(tmpdir), "a", "a.txt")],
+    )
+
+
 @pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
 def test_join_not_win():
     assert iou.join("a", "b", "c/") == "a/b/c"
@@ -91,6 +114,12 @@ def test_touch(tmpdir):
         iou.touch(path)
         assert iou.isfile(path)
         assert iou.read_text(path) == ""
+
+        if not base.startswith("memory"):
+            pytest.raises(OSError, lambda: iou.touch(iou.join(base, "b", "c.txt")))
+
+        iou.touch(iou.join(base, "b", "c.txt"), auto_mkdir=True)
+        iou.exists(iou.join(base, "b", "c.txt"))
 
 
 def test_rm(tmpdir):
