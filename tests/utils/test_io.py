@@ -38,6 +38,9 @@ def test_glob(tmpdir):
         [os.path.join(str(tmpdir), "a", "a.txt")],
     )
 
+    iou.touch("memory://gtest/m.txt", auto_mkdir=True)
+    assert iou.glob("memory://gtest/*.txt") == ["memory:///gtest/m.txt"]
+
 
 @pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
 def test_join_not_win():
@@ -77,6 +80,17 @@ def test_makedirs(tmpdir):
     assert iou.exists(path)
     with pytest.raises(OSError):
         iou.makedirs(path, exist_ok=False)
+
+
+@pytest.mark.skipif(
+    not sys.platform.startswith("win"), reason="a test only for windows"
+)
+def test_makedirs_is_win(tmpdir):
+    path = os.path.join(str(tmpdir), "temp", "a")
+    fs, _path = iou.url_to_fs(path)
+    _path = fs.unstrip_protocol(_path)  # file:///...
+    iou.makedirs(_path, exist_ok=False)
+    assert iou.exists(path)
 
 
 def test_exists(tmpdir):

@@ -113,10 +113,10 @@ def glob(path: str) -> List[str]:
     """Glob files
 
     :param path: the path to glob
-    :return: the matched files
+    :return: the matched files (absolute paths)
     """
-    fs, path = url_to_fs(path)
-    return list(fs.glob(path))
+    fs, _path = url_to_fs(path)
+    return [fs.unstrip_protocol(x) for x in fs.glob(_path)]
 
 
 def write_text(path: str, contents: str) -> None:
