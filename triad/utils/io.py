@@ -4,7 +4,7 @@ import tempfile
 import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterator, Tuple, List
+from typing import Any, Iterator, List, Tuple
 
 import fsspec
 import fsspec.core as fc
@@ -12,6 +12,29 @@ from fsspec import AbstractFileSystem
 from fsspec.implementations.local import LocalFileSystem
 
 _SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
+
+
+@contextmanager
+def chdir(path: str) -> Iterator[None]:
+    """Change the current working directory to the given path
+
+    :param path: the path to change to
+
+    .. admonition:: Examples
+
+        .. code-block:: python
+
+            from fugue_ml.utils.io import chdir
+
+            with chdir("/tmp"):
+                # do something
+    """
+    op = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(op)
 
 
 def url_to_fs(path: str, **kwargs: Any) -> Tuple[AbstractFileSystem, str]:
@@ -52,6 +75,18 @@ def isfile(path: str) -> bool:
     """
     fs, path = url_to_fs(path)
     return fs.isfile(path)
+
+
+def abs_path(path: str) -> str:
+    """Get the absolute path of a path
+
+    :param path: the path to check
+    :return: the absolute path
+    """
+    p, _path = fc.split_protocol(path)
+    if p is None or p == "file":  # local path
+        return str(Path(_path).resolve())
+    return path
 
 
 def touch(path: str, auto_mkdir: bool = False) -> None:
