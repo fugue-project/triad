@@ -44,6 +44,8 @@ def url_to_fs(path: str, **kwargs: Any) -> Tuple[AbstractFileSystem, str]:
     :param kwargs: additional arguments to ``fsspec.core.url_to_fs``
     :return: the file system and the path
     """
+    if path.startswith("file://"):
+        path = path[7:]
     return fc.url_to_fs(path, **kwargs)
 
 
