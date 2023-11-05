@@ -78,6 +78,7 @@ def test_abs_path_is_win(tmpdir):
     assert iou.abs_path("file://c:/tmp/x") == "c:\\tmp\\x"
     assert iou.abs_path("memory://tmp/x") == "memory://tmp/x"
     assert iou.abs_path("memory:///tmp/x") == "memory:///tmp/x"
+    assert iou.abs_path("dummy:///tmp/x") == "dummy:///tmp/x"
 
 
 def test_makedirs(tmpdir):
