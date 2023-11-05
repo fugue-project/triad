@@ -7,6 +7,7 @@
 				"terminal.integrated.shell.linux": "/bin/bash",
 				"python.pythonPath": "/usr/local/bin/python",
 				"python.defaultInterpreterPath": "/usr/local/bin/python",
+				"editor.defaultFormatter": "ms-python.black-formatter",
 				"isort.interpreter": [
 					"/usr/local/bin/python"
 				],
@@ -14,6 +15,9 @@
 					"/usr/local/bin/python"
 				],
 				"pylint.interpreter": [
+					"/usr/local/bin/python"
+				],
+				"black-formatter.interpreter": [
 					"/usr/local/bin/python"
 				]
 			},
@@ -23,6 +27,7 @@
 				"ms-python.flake8",
 				"ms-python.pylint",
 				"ms-python.mypy",
+				"ms-python.black-formatter",
 				"GitHub.copilot",
 				"njpwerner.autodocstring"
 			]
@@ -32,7 +37,10 @@
 		8888
 	],
 	"postCreateCommand": "make devenv",
-	"mounts": [
-		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-	]
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/devcontainers/features/java:1": {
+			"version": "11"
+		}
+	}
 }

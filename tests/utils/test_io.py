@@ -1,9 +1,8 @@
 import os
+import sys
 from io import BytesIO
 
 import pytest
-import sys
-import os
 
 import triad.utils.io as iou
 
@@ -38,6 +37,9 @@ def test_glob(tmpdir):
         [os.path.join(str(tmpdir), "a", "a.txt")],
     )
 
+    iou.touch("memory://gtest/m.txt", auto_mkdir=True)
+    assert iou.glob("memory://gtest/*.txt") == ["memory:///gtest/m.txt"]
+
 
 @pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
 def test_join_not_win():
@@ -55,6 +57,30 @@ def test_join_is_win():
     assert iou.join("c:\\a", "b", "*.parquet") == "c:\\a\\b\\*.parquet"
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="not a test for windows")
+def test_abs_path_not_win(tmpdir):
+    with iou.chdir(str(tmpdir)):
+        assert iou.abs_path("a") == os.path.join(str(tmpdir), "a")
+    assert iou.abs_path("/tmp/x") == "/tmp/x"
+    assert iou.abs_path("file:///tmp/x") == "/tmp/x"
+    assert iou.abs_path("memory://tmp/x") == "memory://tmp/x"
+    assert iou.abs_path("memory:///tmp/x") == "memory:///tmp/x"
+    assert iou.abs_path("dummy:///tmp/x") == "dummy:///tmp/x"
+
+
+@pytest.mark.skipif(
+    not sys.platform.startswith("win"), reason="a test only for windows"
+)
+def test_abs_path_is_win(tmpdir):
+    with iou.chdir(str(tmpdir)):
+        assert iou.abs_path("a") == os.path.join(str(tmpdir), "a")
+    assert iou.abs_path("c:\\tmp\\x") == "c:\\tmp\\x"
+    assert iou.abs_path("file://c:/tmp/x") == "c:\\tmp\\x"
+    assert iou.abs_path("memory://tmp/x") == "memory://tmp/x"
+    assert iou.abs_path("memory:///tmp/x") == "memory:///tmp/x"
+    assert iou.abs_path("dummy:///tmp/x") == "dummy:///tmp/x"
+
+
 def test_makedirs(tmpdir):
     path = os.path.join(str(tmpdir), "temp", "a")
     assert path == iou.makedirs(path, exist_ok=False)
@@ -63,20 +89,24 @@ def test_makedirs(tmpdir):
         iou.makedirs(path, exist_ok=False)
     iou.makedirs(path, exist_ok=True)
 
-    op = os.getcwd()
-    os.chdir(str(tmpdir))
-    assert os.path.join(str(tmpdir), "temp", "b") == iou.makedirs(
-        iou.join("temp", "b"), exist_ok=False
-    )
-    assert iou.exists(iou.join("temp", "b"))
-    assert iou.exists(os.path.join(str(tmpdir), "temp", "b"))
-    os.chdir(op)
+    with iou.chdir(str(tmpdir)):
+        assert os.path.join(str(tmpdir), "temp", "b") == iou.makedirs(
+            iou.join("temp", "b"), exist_ok=False
+        )
+        assert iou.exists(iou.join("temp", "b"))
+        assert iou.exists(os.path.join(str(tmpdir), "temp", "b"))
 
     path = "memory://temp/a"
     assert path == iou.makedirs(path, exist_ok=True)
     assert iou.exists(path)
     with pytest.raises(OSError):
         iou.makedirs(path, exist_ok=False)
+
+    path = os.path.join(str(tmpdir), "temp", "aa")
+    fs, _path = iou.url_to_fs(path)
+    _path = fs.unstrip_protocol(_path)  # file:///...
+    iou.makedirs(_path, exist_ok=False)
+    assert iou.exists(path)
 
 
 def test_exists(tmpdir):
@@ -87,6 +117,12 @@ def test_exists(tmpdir):
     assert iou.exists(os.path.join(str(tmpdir), "temp", "a.txt"))
     assert iou.exists(os.path.join(str(tmpdir), "temp"))
     assert iou.exists(str(tmpdir))
+
+    with iou.chdir(str(tmpdir)):
+        assert iou.exists("a.txt")
+        assert iou.exists(os.path.join("temp", "a.txt"))
+        assert iou.exists("temp")
+        assert iou.exists(".")
 
 
 def test_is_dir_or_file(tmpdir):

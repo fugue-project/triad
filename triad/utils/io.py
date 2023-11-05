@@ -4,7 +4,7 @@ import tempfile
 import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterator, Tuple, List
+from typing import Any, Iterator, List, Tuple
 
 import fsspec
 import fsspec.core as fc
@@ -14,6 +14,29 @@ from fsspec.implementations.local import LocalFileSystem
 _SCHEME_PREFIX = re.compile(r"^[a-zA-Z0-9\-_]+:")
 
 
+@contextmanager
+def chdir(path: str) -> Iterator[None]:
+    """Change the current working directory to the given path
+
+    :param path: the path to change to
+
+    .. admonition:: Examples
+
+        .. code-block:: python
+
+            from fugue_ml.utils.io import chdir
+
+            with chdir("/tmp"):
+                # do something
+    """
+    op = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(op)
+
+
 def url_to_fs(path: str, **kwargs: Any) -> Tuple[AbstractFileSystem, str]:
     """A wrapper of ``fsspec.core.url_to_fs``
 
@@ -21,6 +44,8 @@ def url_to_fs(path: str, **kwargs: Any) -> Tuple[AbstractFileSystem, str]:
     :param kwargs: additional arguments to ``fsspec.core.url_to_fs``
     :return: the file system and the path
     """
+    if path.startswith("file://"):
+        path = path[7:]
     return fc.url_to_fs(path, **kwargs)
 
 
@@ -52,6 +77,19 @@ def isfile(path: str) -> bool:
     """
     fs, path = url_to_fs(path)
     return fs.isfile(path)
+
+
+def abs_path(path: str) -> str:
+    """Get the absolute path of a path
+
+    :param path: the path to check
+    :return: the absolute path
+    """
+    p, _path = fc.split_protocol(path)
+    if p is None or p == "file":  # local path
+        # Path doesn't work with windows
+        return os.path.abspath(_path)
+    return path
 
 
 def touch(path: str, auto_mkdir: bool = False) -> None:
@@ -90,7 +128,7 @@ def makedirs(path: str, exist_ok: bool = False) -> str:
     fs, _path = url_to_fs(path)
     fs.makedirs(_path, exist_ok=exist_ok)
     if isinstance(fs, LocalFileSystem):
-        return str(Path(path).resolve())
+        return str(Path(_path).resolve())
     return path
 
 
@@ -113,10 +151,10 @@ def glob(path: str) -> List[str]:
     """Glob files
 
     :param path: the path to glob
-    :return: the matched files
+    :return: the matched files (absolute paths)
     """
-    fs, path = url_to_fs(path)
-    return list(fs.glob(path))
+    fs, _path = url_to_fs(path)
+    return [fs.unstrip_protocol(x) for x in fs.glob(_path)]
 
 
 def write_text(path: str, contents: str) -> None:
