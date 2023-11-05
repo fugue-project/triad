@@ -87,7 +87,8 @@ def abs_path(path: str) -> str:
     """
     p, _path = fc.split_protocol(path)
     if p is None or p == "file":  # local path
-        return str(Path(_path).resolve())
+        # Path doesn't work with windows
+        return os.path.abspath(_path)
     return path
 
 
@@ -127,7 +128,7 @@ def makedirs(path: str, exist_ok: bool = False) -> str:
     fs, _path = url_to_fs(path)
     fs.makedirs(_path, exist_ok=exist_ok)
     if isinstance(fs, LocalFileSystem):
-        return str(Path(path).resolve())
+        return str(Path(_path).resolve())
     return path
 
 
