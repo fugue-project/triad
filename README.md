@@ -23,6 +23,7 @@ pip install triad
 
 ### 0.9.2
 
+* Remove support for Python 3.7
 * Add more util functions for fsspec
 * Add more util functions for pyarrow
 * Add sorted batch reslicers
