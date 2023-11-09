@@ -20,6 +20,9 @@ pip install triad
 
 ## Release History
 
+### 0.9.3
+
+* Add version constraint on fsspec
 
 ### 0.9.2
 
