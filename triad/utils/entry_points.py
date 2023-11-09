@@ -4,16 +4,9 @@ from typing import Any, List
 
 from .threading import run_once
 
-if sys.version_info >= (3, 8):
-    from importlib.metadata import EntryPoint, entry_points
+from importlib.metadata import EntryPoint, entry_points
 
-    _IMPORTLIB_META_VERSION: Any = ()
-else:  # pragma: no cover
-    from importlib_metadata import EntryPoint, entry_points, version
-
-    _IMPORTLIB_META_VERSION = tuple(
-        int(i) for i in version("importlib_metadata").split(".")[:2]
-    )
+_IMPORTLIB_META_VERSION: Any = ()
 
 
 @run_once(key_func=lambda name: name)

@@ -28,7 +28,7 @@ setup(
     license="Apache-2.0",
     author="The Fugue Development Team",
     author_email="hello@fugue.ai",
-    keywords="fugue util utils utility utilities",
+    keywords="fugue utilities",
     url="http://github.com/fugue-project/triad",
     install_requires=[
         "numpy",
@@ -37,7 +37,6 @@ setup(
         "pyarrow>=6.0.1",
         "fsspec",
         "fs",  # TODO: remove this hard dependency
-        "importlib-metadata; python_version < '3.8'",
     ],
     extras_require={"ciso8601": ["ciso8601"]},
     classifiers=[
@@ -46,11 +45,11 @@ setup(
         "Intended Audience :: Developers",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3 :: Only",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 )

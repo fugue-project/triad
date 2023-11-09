@@ -20,12 +20,12 @@ pip install triad
 
 ## Release History
 
-### 0.9.3
-
-* Add more util functions for pyarrow
 
 ### 0.9.2
 
+* Remove support for Python 3.7
+* Add more util functions for fsspec
+* Add more util functions for pyarrow
 * Add sorted batch reslicers
 * Add `ArrowDtype` support
 * Systematically improved pandas and arrow type casts
