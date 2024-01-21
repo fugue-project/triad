@@ -57,6 +57,11 @@ def test_to_schema():
         PD_UTILS.to_schema(df)
     )
 
+    # large string test (pandas>=2.2)
+    df = pd.DataFrame([["abc"]], columns=["a"])
+    df = df.astype("string[pyarrow]")
+    assert PD_UTILS.to_schema(df) == expression_to_schema("a:str")
+
     # test index
     df = pd.DataFrame([[3.0, 2], [2.0, 3]], columns=["x", "y"])
     df = df.sort_values(["x"])
