@@ -131,6 +131,8 @@ class PandasLikeUtils(Generic[T, ColT]):
                         pa.timestamp(TRIAD_DEFAULT_TIMESTAMP_UNIT, field.type.tz),
                     )
                 )
+            elif pa.types.is_large_string(field.type):
+                fields.append(pa.field(field.name, pa.string()))
             else:
                 fields.append(field)
         return pa.schema(fields)
