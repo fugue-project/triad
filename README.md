@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.9.4
+
+* Handle Pandas 2.2 change on [arrow string type](https://pandas.pydata.org/docs/dev/whatsnew/v2.2.0.html#other-enhancements)
+
 ### 0.9.3
 
 * Add version constraint on fsspec
