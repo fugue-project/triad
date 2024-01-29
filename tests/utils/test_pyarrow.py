@@ -1,6 +1,6 @@
 import warnings
 from datetime import date, datetime
-
+import json
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -31,6 +31,7 @@ from triad.utils.pyarrow import (
     to_pandas_dtype,
     to_single_pandas_dtype,
     pa_batch_to_dicts,
+    parse_json_columns,
 )
 
 
@@ -885,6 +886,70 @@ def test_cast_pa_array():
         pa.date64(),
         [date(2023, 1, 2), None],
     )
+
+
+def test_parse_json_columns():
+    df = pa.Table.from_arrays(
+        [pa.array([1, 2]), pa.array([json.dumps([1, 2]), json.dumps([3, 4])])],
+        schema=pa.schema([("a", pa.int32()), ("b", pa.string())]),
+    )
+    assert df is parse_json_columns(df, [])
+    tdf = parse_json_columns(df, ["b"])
+    assert tdf.schema == pa.schema([("a", pa.int32()), ("b", pa.list_(pa.int64()))])
+    assert tdf.to_pydict() == {
+        "a": [1, 2],
+        "b": [[1, 2], [3, 4]],
+    }
+    tdf = parse_json_columns(df, columns=expression_to_schema("b:[int32]"))
+    assert tdf.schema == pa.schema([("a", pa.int32()), ("b", pa.list_(pa.int32()))])
+    assert tdf.to_pydict() == {
+        "a": [1, 2],
+        "b": [[1, 2], [3, 4]],
+    }
+
+    df = pa.Table.from_arrays(
+        [
+            pa.array([1, 2]),
+            pa.array([json.dumps([1, 2]), None]),
+            pa.array([json.dumps({"a": 1, "b": "x"}), json.dumps({"b": "y"})]),
+        ],
+        schema=pa.schema([("a", pa.int32()), ("b", pa.string()), ('"c"', pa.string())]),
+    )
+    assert df is parse_json_columns(df, [])
+    tdf = parse_json_columns(df, ['"c"', "b"])
+    assert tdf.schema == pa.schema(
+        [
+            ("a", pa.int32()),
+            ("b", pa.list_(pa.int64())),
+            ('"c"', pa.struct([pa.field("a", pa.int64()), pa.field("b", pa.string())])),
+        ]
+    )
+    assert tdf.to_pydict() == {
+        "a": [1, 2],
+        "b": [[1, 2], None],
+        '"c"': [{"a": 1, "b": "x"}, {"a": None, "b": "y"}],
+    }
+    tdf = parse_json_columns(
+        df, columns=expression_to_schema('b:[int32],`"c"`:{a:int32,b:str}')
+    )
+    assert tdf.schema == pa.schema(
+        [
+            ("a", pa.int32()),
+            ("b", pa.list_(pa.int32())),
+            ('"c"', pa.struct([pa.field("a", pa.int32()), pa.field("b", pa.string())])),
+        ]
+    )
+    assert tdf.to_pydict() == {
+        "a": [1, 2],
+        "b": [[1, 2], None],
+        '"c"': [{"a": 1, "b": "x"}, {"a": None, "b": "y"}],
+    }
+
+    with raises(ValueError):
+        parse_json_columns(df, ["a"])
+
+    with raises(Exception):
+        parse_json_columns(df, ["x"])
 
 
 def _test_partition(partitioner, data, expression):

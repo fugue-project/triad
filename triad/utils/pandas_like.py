@@ -113,7 +113,7 @@ class PandasLikeUtils(Generic[T, ColT]):
                 yield from pa.Schema.from_pandas(df, preserve_index=False)
             else:
                 for i in range(df.shape[1]):
-                    tp = df.dtypes[i]
+                    tp = df.dtypes.iloc[i]
                     if tp == np.dtype("object") or pd.api.types.is_string_dtype(tp):
                         t = pa.string()
                     elif isinstance(tp, pd.DatetimeTZDtype):

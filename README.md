@@ -20,6 +20,11 @@ pip install triad
 
 ## Release History
 
+### 0.9.5
+
+* Add parse json column function to pyarrow utils
+* Fix the pandas [legacy usage](https://github.com/fugue-project/triad/issues/127)
+
 ### 0.9.4
 
 * Handle Pandas 2.2 change on [arrow string type](https://pandas.pydata.org/docs/dev/whatsnew/v2.2.0.html#other-enhancements)
