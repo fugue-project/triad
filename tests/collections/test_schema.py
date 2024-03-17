@@ -114,6 +114,10 @@ def test_schema_eq():
     assert s == [("a", "int"), ("b", str)]
     assert s == OrderedDict([("a", "int"), ("b", str)])
 
+    assert s.is_like(s)
+    assert not s.is_like("a:long,b:str")
+    assert s.is_like("a:long,b:str", equal_groups=[(pa.types.is_integer,)])
+
 
 def test_schema_contains():
     s = Schema("a:int,b:str,``:str")

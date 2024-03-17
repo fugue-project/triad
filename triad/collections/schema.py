@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,7 @@ from triad.utils.pyarrow import (
     expression_to_schema,
     is_supported,
     schema_to_expression,
+    pa_schemas_equal,
     to_pa_datatype,
     to_pandas_dtype,
 )
@@ -267,15 +268,7 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
         :param other: a schema like object
         :return: True if the two schemas are equal
         """
-        if other is None:
-            return False
-        if other is self:
-            return True
-        if isinstance(other, Schema):
-            return super().__eq__(other)
-        if isinstance(other, str):
-            return self.__repr__() == other
-        return self == Schema(other)
+        return self.is_like(other)
 
     def __contains__(self, key: Any) -> bool:  # noqa: C901
         """Check if the schema contains the key.
@@ -305,6 +298,44 @@ class Schema(IndexedOrderedDict[str, pa.Field]):
                     return False
             return True
         return Schema(key) in self
+
+    def is_like(
+        self,
+        other: Any,
+        equal_groups: Optional[List[List[Callable[[pa.DataType], bool]]]] = None,
+    ) -> bool:
+        """Check if the two schemas are equal or similar
+
+        :param other: a schema like object
+        :param equal_groups: a list of list of functions to check if two types
+            are equal, default None
+
+        :return: True if the two schemas are equal
+
+        .. admonition:: Examples
+
+            .. code-block:: python
+
+                s = Schema("a:int,b:str")
+                assert s.is_like("a:int,b:str")
+                assert not s.is_like("a:long,b:str")
+                assert s.is_like("a:long,b:str", equal_groups=[(pa.types.is_integer,)])
+        """
+        if other is None:
+            return False
+        if other is self:
+            return True
+        if isinstance(other, Schema):
+            _other = other
+        elif isinstance(other, str):
+            if equal_groups is None:
+                return self.__repr__() == other
+            _other = Schema(other)
+        else:
+            _other = Schema(other)
+        return pa_schemas_equal(
+            self.pa_schema, _other.pa_schema, equal_groups=equal_groups
+        )
 
     def append(self, obj: Any) -> "Schema":  # noqa: C901
         """Append schema like object to the current schema. Only new columns

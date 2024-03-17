@@ -202,6 +202,118 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     return pa.from_numpy_dtype(np.dtype(obj))
 
 
+def pa_datatypes_equal(  # noqa: C901
+    t1: pa.DataType,
+    t2: pa.DataType,
+    ignore_list_item_name: bool = True,
+    equal_groups: Optional[List[List[Callable[[pa.DataType], bool]]]] = None,
+) -> bool:
+    """Check if two pyarrow data types are equal
+
+    :param t1: the first pyarrow data type
+    :param t2: the second pyarrow data type
+    :param ignore_list_item_name: whether to ignore list item name,
+        defaults to True
+    :param equal_groups: a list of groups of functions to check equality,
+        defaults to None
+
+    :return: if the two data types are equal
+
+    .. admonition:: Examples
+
+        .. code-block:: python
+
+            assert not pa_datatypes_equal(pa.int32(), pa.int64())
+            assert pa_datatypes_equal(
+                pa.int32(),
+                pa.int64(),
+                equal_groups=[[pa.types.is_integer]],
+            )
+    """
+    if t1 is t2:
+        return True
+    if (
+        not ignore_list_item_name
+        and pa.types.is_list(t1)
+        and pa.types.is_list(t2)
+        and t1.value_field.name != t2.value_field.name
+    ):
+        return False
+    if t1 == t2:
+        return True
+    if equal_groups is not None:
+        for group in equal_groups:
+            if any(f(t1) for f in group) and any(f(t2) for f in group):
+                return True
+    params: Dict[str, Any] = dict(  # noqa: C408
+        ignore_list_item_name=ignore_list_item_name,
+        equal_groups=equal_groups,
+    )
+    if pa.types.is_struct(t1) and pa.types.is_struct(t2):
+        if len(t1) != len(t2):
+            return False
+        for f1, f2 in zip(t1, t2):
+            if f1.name != f2.name:
+                return False
+            if not pa_datatypes_equal(f1.type, f2.type, **params):
+                return False
+        return True
+    if pa.types.is_map(t1) and pa.types.is_map(t2):
+        return pa_datatypes_equal(
+            t1.key_type, t2.key_type, **params
+        ) and pa_datatypes_equal(t1.item_type, t2.item_type, **params)
+
+    return False
+
+
+def pa_schemas_equal(
+    s1: pa.Schema,
+    s2: pa.Schema,
+    ignore_list_item_name: bool = True,
+    equal_groups: Optional[List[List[Callable[[pa.DataType], bool]]]] = None,
+) -> bool:
+    """Check if two pyarrow schemas are equal
+
+    :param s1: the first pyarrow schema
+    :param s2: the second pyarrow schema
+    :param ignore_list_item_name: whether to ignore list item name,
+        defaults to True
+    :param equal_groups: a list of groups of functions to check equality,
+        defaults to None
+
+    :return: if the two schemas are equal
+
+    .. admonition:: Examples
+
+        .. code-block:: python
+
+            s1 = pa.schema([("a", pa.int32()), ("b", pa.string())])
+            s2 = pa.schema([("a", pa.int64()), ("b", pa.string())])
+            assert not pa_schemas_equal(s1, s2)
+            assert pa_schemas_equal(
+                s1,
+                s2,
+                equal_groups=[[pa.types.is_integer]],
+            )
+    """
+    if ignore_list_item_name:
+        if s1 is s2 or s1.equals(s2):
+            return True
+    elif s1 is s2:
+        return True
+    if s1.names != s2.names:
+        return False
+    for f1, f2 in zip(s1, s2):
+        if not pa_datatypes_equal(
+            f1.type,
+            f2.type,
+            ignore_list_item_name=ignore_list_item_name,
+            equal_groups=equal_groups,
+        ):
+            return False
+    return True
+
+
 def cast_pa_array(col: pa.Array, new_type: pa.DataType) -> pa.Array:  # noqa: C901
     old_type = col.type
     if new_type.equals(old_type):
