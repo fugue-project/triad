@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.9.6
+
+* Add `is_like` to Schema to compare similar schemas
+
 ### 0.9.5
 
 * Add parse json column function to pyarrow utils

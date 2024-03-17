@@ -219,6 +219,11 @@ def pa_datatypes_equal(  # noqa: C901
 
     :return: if the two data types are equal
 
+    .. note::
+
+        In the lastest version of pyarrow, in the default comparison logic,
+        list field names are not compared.
+
     .. admonition:: Examples
 
         .. code-block:: python
@@ -286,6 +291,11 @@ def pa_schemas_equal(
         defaults to None
 
     :return: if the two schemas are equal
+
+    .. note::
+
+        In the lastest version of pyarrow, in the default comparison logic,
+        list field names are not compared.
 
     .. admonition:: Examples
 
