@@ -250,6 +250,8 @@ def pa_datatypes_equal(  # noqa: C901
         equal_groups=equal_groups,
     )
     if pa.types.is_list(t1) and pa.types.is_list(t2):  # pragma: no cover
+        # for lower version of pyarrow, list field names are compared
+        # for higher version of pyarrow, list field names are ignored
         return pa_datatypes_equal(t1.value_type, t2.value_type, **params)
     if pa.types.is_struct(t1) and pa.types.is_struct(t2):
         if len(t1) != len(t2):
