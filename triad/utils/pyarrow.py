@@ -249,6 +249,8 @@ def pa_datatypes_equal(  # noqa: C901
         ignore_list_item_name=ignore_list_item_name,
         equal_groups=equal_groups,
     )
+    if pa.types.is_list(t1) and pa.types.is_list(t2):  # pragma: no cover
+        return pa_datatypes_equal(t1.value_type, t2.value_type, **params)
     if pa.types.is_struct(t1) and pa.types.is_struct(t2):
         if len(t1) != len(t2):
             return False
