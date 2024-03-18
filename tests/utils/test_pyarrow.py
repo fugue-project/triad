@@ -1,6 +1,7 @@
+import json
 import warnings
 from datetime import date, datetime
-import json
+
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -21,7 +22,11 @@ from triad.utils.pyarrow import (
     get_alter_func,
     get_eq_func,
     is_supported,
+    pa_batch_to_dicts,
+    pa_datatypes_equal,
+    pa_schemas_equal,
     pa_table_to_pandas,
+    parse_json_columns,
     replace_type,
     replace_types_in_schema,
     replace_types_in_table,
@@ -30,8 +35,6 @@ from triad.utils.pyarrow import (
     to_pa_datatype,
     to_pandas_dtype,
     to_single_pandas_dtype,
-    pa_batch_to_dicts,
-    parse_json_columns,
 )
 
 
@@ -158,6 +161,70 @@ def test_to_pa_datatype():
 
     raises(TypeError, lambda: to_pa_datatype(123))
     raises(TypeError, lambda: to_pa_datatype(None))
+
+
+def test_pa_datatypes_equal():
+    tp = pa.int32()
+    assert pa_datatypes_equal(tp, tp)
+    assert pa_datatypes_equal(pa.int32(), pa.int32())
+    assert not pa_datatypes_equal(pa.int32(), pa.int64())
+    assert pa_datatypes_equal(
+        pa.int32(), pa.int64(), equal_groups=[(pa.types.is_integer,)]
+    )
+    assert pa_datatypes_equal(
+        pa.int32(),
+        pa.float64(),
+        equal_groups=[(pa.types.is_integer, pa.types.is_floating)],
+    )
+    assert pa_datatypes_equal(pa.list_(pa.field("a", pa.int32())), pa.list_(pa.int32()))
+    assert not pa_datatypes_equal(
+        pa.list_(pa.field("a", pa.int32())),
+        pa.list_(pa.int32()),
+        ignore_list_item_name=False,
+    )
+    assert not pa_datatypes_equal(
+        pa.struct([pa.field("a", pa.int32())]), pa.struct([("a", pa.int64())])
+    )
+    assert not pa_datatypes_equal(
+        pa.struct([pa.field("a", pa.int32()), pa.field("b", pa.int32())]),
+        pa.struct([("a", pa.int64())]),
+    )
+    assert pa_datatypes_equal(
+        pa.struct([pa.field("a", pa.int32())]),
+        pa.struct([("a", pa.int64())]),
+        equal_groups=[(pa.types.is_integer,)],
+    )
+    assert not pa_datatypes_equal(
+        pa.struct([pa.field("a", pa.int32())]),
+        pa.struct([("b", pa.int64())]),
+        equal_groups=[(pa.types.is_integer,)],
+    )
+    assert not pa_datatypes_equal(
+        pa.map_(pa.int32(), pa.string()), pa.map_(pa.int64(), pa.string())
+    )
+    assert pa_datatypes_equal(
+        pa.map_(pa.int32(), pa.string()),
+        pa.map_(pa.int64(), pa.string()),
+        equal_groups=[(pa.types.is_integer,)],
+    )
+
+
+def test_pa_schema_eq():
+    s1 = expression_to_schema("a:int,b:[str]")
+    s2 = expression_to_schema("a:int,b:[str]")
+    s3 = expression_to_schema("a:long,b:[str]")
+    assert pa_schemas_equal(s1, s1)
+    assert pa_schemas_equal(s1, s1, ignore_list_item_name=False)
+    assert pa_schemas_equal(s1, s2)
+    assert not pa_schemas_equal(s1, s3)
+    assert pa_schemas_equal(s1, s3, equal_groups=[(pa.types.is_integer,)])
+    s4 = pa.schema(
+        [pa.field("a", pa.int32()), pa.field("b", pa.list_(pa.field("a", pa.string())))]
+    )
+    assert pa_schemas_equal(s1, s4)
+    assert not pa_schemas_equal(s1, s4, ignore_list_item_name=False)
+    s5 = expression_to_schema("aa:int,b:[str]")
+    assert not pa_schemas_equal(s1, s5)
 
 
 def test_to_single_pandas_dtype():
