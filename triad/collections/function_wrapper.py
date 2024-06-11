@@ -15,7 +15,7 @@ from typing import (
 
 from ..exceptions import InvalidOperationError
 from ..utils.assertion import assert_or_throw
-from ..utils.convert import get_full_type_path
+from ..utils.convert import compare_annotations, get_full_type_path
 from ..utils.entry_points import load_entry_point
 from ..utils.hash import to_uuid
 from .dict import IndexedOrderedDict
@@ -165,7 +165,7 @@ class FunctionWrapper:
                 anno = annotation
 
                 def _m(a: Any) -> bool:
-                    return a == anno
+                    return compare_annotations(a, anno, compare_origin=True)
 
                 _matcher = _m
 

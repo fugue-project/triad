@@ -1,31 +1,28 @@
+from __future__ import annotations
+
 import builtins
 import urllib  # must keep for testing purpose
 import urllib.request  # must keep for testing purpose
 from datetime import date, datetime, timedelta
 
+from typing import Any, Callable, Dict, List, Union, get_type_hints
+import pytest
+import sys
 import numpy as np
 import pandas as pd
-import tests.utils.convert_examples as ex
 from pytest import raises
+
+import tests.utils.convert_examples as ex
 from tests.utils.convert_examples import BaseClass, Class2
 from tests.utils.convert_examples import SubClass
 from tests.utils.convert_examples import SubClass as SubClassSame
-from triad.utils.convert import (
-    _parse_value_and_unit,
-    as_type,
-    get_caller_global_local_vars,
-    get_full_type_path,
-    str_to_instance,
-    str_to_object,
-    str_to_type,
-    to_bool,
-    to_datetime,
-    to_function,
-    to_instance,
-    to_size,
-    to_timedelta,
-    to_type,
-)
+from triad.utils.convert import (_parse_value_and_unit, as_type,
+                                 compare_annotations,
+                                 get_caller_global_local_vars,
+                                 get_full_type_path, str_to_instance,
+                                 str_to_object, str_to_type, to_bool,
+                                 to_datetime, to_function, to_instance,
+                                 to_size, to_timedelta, to_type)
 
 _GLOBAL_DUMMY = 1
 
@@ -346,6 +343,53 @@ def test_get_caller_global_local_vars():
         f2()
 
     f1()
+
+
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="python<3.9")
+def test_compare_annotations():
+    def _assert(f, arg_a, arg_b, expected=True, **kwargs):
+        # get the argument type annoptation of name arg_a  in function f
+        sig = get_type_hints(f)
+        a = sig.get(arg_a, Any)
+        b = sig.get(arg_b, Any)
+        assert compare_annotations(a, b, **kwargs) == expected
+
+    def f1(a: int, b: str, c, d: None, e: Any):
+        pass
+
+    _assert(f1, "a", "a")
+    _assert(f1, "a", "b", False)
+    _assert(f1, "a", "c", False)
+    _assert(f1, "c", "c")
+    _assert(f1, "c", "d", False)
+    _assert(f1, "c", "e")
+    _assert(f1, "e", "e")
+
+    def f2(a: List, b: Dict, c: Union[int, str], d: Callable):
+        pass
+
+    for o in [True, False]:
+        kwargs = dict(compare_origin=o)
+        _assert(f2, "a", "a", **kwargs)
+        _assert(f2, "a", "b", False, **kwargs)
+        _assert(f2, "c", "c", **kwargs)
+        _assert(f2, "c", "d", False, **kwargs)
+
+    def f3(a: List[Dict[str, Any]], b: list[dict[str, Any]], c: List):
+        pass
+
+    _assert(f3, "a", "a")
+    _assert(f3, "a", "b", True)
+    _assert(f3, "a", "b", False, compare_origin=False)
+    _assert(f3, "a", "c", False)
+
+    def f4(a: Callable[..., Dict[str, Any]], b: Callable[..., dict[str, Any]], c: callable):
+        pass
+
+    _assert(f4, "a", "a")
+    _assert(f4, "a", "b", True)
+    _assert(f4, "a", "b", False, compare_origin=False)
+    _assert(f3, "a", "c", False)
 
 
 # This is for test_obj_to_function
