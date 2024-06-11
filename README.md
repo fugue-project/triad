@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.9.7
+
+* Make FunctionWrapper compare annotation origins by default
+
 ### 0.9.6
 
 * Add `is_like` to Schema to compare similar schemas

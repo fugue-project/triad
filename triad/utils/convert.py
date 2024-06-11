@@ -2,7 +2,7 @@ import datetime
 import importlib
 import inspect
 from types import ModuleType
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, get_args, get_origin
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,6 @@ try:  # pragma: no cover
 except ImportError:  # pragma: no cover
     _HAS_CISO8601 = False
 from triad.utils.assertion import assert_or_throw
-
 
 EMPTY_ARGS: List[Any] = []
 EMPTY_KWARGS: Dict[str, Any] = {}
@@ -403,6 +402,7 @@ def to_timedelta(obj: Any) -> datetime.timedelta:
 
     :param obj: object
     :raises TypeError: if failed to convert
+
     :return: timedelta value
     """
     if obj is None:
@@ -449,15 +449,9 @@ def to_size(exp: Any) -> int:
     default unit is byte if not provided. Unit can be `b`, `byte`,
     `k`, `kb`, `m`, `mb`, `g`, `gb`, `t`, `tb`.
 
-    Args:
-        exp (Any): expression string or numerical value
-
-    Raises:
-        ValueError: for invalid expression
-        ValueError: for negative values
-
-    Returns:
-        int: size in byte
+    :param exp: expression string or numerical value
+    :raises ValueError: for invalid expression and negative values
+    :return: size in byte
     """
     n, u = _parse_value_and_unit(exp)
     assert n >= 0.0, "Size can't be negative"
@@ -472,6 +466,27 @@ def to_size(exp: Any) -> int:
     if u in ["t", "tb"]:
         return int(n * 1024 * 1024 * 1024 * 1024)
     raise ValueError(f"Invalid size expression {exp}")
+
+
+def compare_annotations(a: Any, b: Any, compare_origin: bool = True) -> bool:
+    """Compare two type annotations
+
+    :param a: first type annotation
+    :param b: second type annotation
+    :param compare_origin: whether to compare the origin of the type annotation
+    :return: whether the two type annotations are equal
+    """
+    if compare_origin:
+        ta = get_origin(a) or a
+        tb = get_origin(b) or b
+        if ta != tb:
+            return False
+        aa = get_args(a)
+        ba = get_args(b)
+        if len(aa) != len(ba):
+            return False
+        return all(compare_annotations(x, y, compare_origin) for x, y in zip(aa, ba))
+    return a == b
 
 
 def _parse_value_and_unit(exp: Any) -> Tuple[float, str]:

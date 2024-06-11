@@ -1,17 +1,16 @@
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from __future__ import annotations
+
 from copy import deepcopy
+from typing import Any, Callable, Dict, Iterable, List, Optional
+
 import pandas as pd
 from pytest import raises
 
-from triad.collections.function_wrapper import (
-    AnnotatedParam,
-    FunctionWrapper,
-    NoneParam,
-    OtherParam,
-    function_wrapper,
-)
-from triad.exceptions import InvalidOperationError
 from triad import to_uuid
+from triad.collections.function_wrapper import (AnnotatedParam,
+                                                FunctionWrapper, NoneParam,
+                                                OtherParam, function_wrapper)
+from triad.exceptions import InvalidOperationError
 
 
 class _Dummy:
@@ -35,6 +34,11 @@ class Df2Param(DfParam):
 
 @MockFunctionWrapper.annotated_param("[Series]", "s", lambda a: a == pd.Series)
 class SeriesParam(AnnotatedParam):
+    pass
+
+
+@MockFunctionWrapper.annotated_param(List[List[int]], "l")
+class ListParam(AnnotatedParam):
     pass
 
 
@@ -113,6 +117,7 @@ def test_parse_function():
     _parse_function(f4, "^0x$", "d")
     _parse_function(f6, "^d$", "n")
     _parse_function(f7, "^yz$", "n")
+    _parse_function(f8, "^l$", "n")
 
 
 def f1(a: pd.DataFrame, b: pd.Series) -> None:
@@ -140,4 +145,8 @@ def f6(a: _Dummy) -> None:
 
 
 def f7(*args: Any, **kwargs: int):
+    pass
+
+
+def f8(a: list[list[int]]) -> None:
     pass
