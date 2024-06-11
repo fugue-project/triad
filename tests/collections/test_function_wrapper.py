@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import pandas as pd
 from pytest import raises
+import sys
 
 from triad import to_uuid
 from triad.collections.function_wrapper import (AnnotatedParam,
@@ -117,14 +118,15 @@ def test_parse_function():
     _parse_function(f4, "^0x$", "d")
     _parse_function(f6, "^d$", "n")
     _parse_function(f7, "^yz$", "n")
-    _parse_function(f8, "^l$", "n")
+    if sys.version_info >= (3, 9):
+        _parse_function(f8, "^l$", "n")
 
 
 def f1(a: pd.DataFrame, b: pd.Series) -> None:
     pass
 
 
-def f2(e: int, a, b: int, c):
+def f2(e: "int", a, b: int, c):
     return e + a + b - c
 
 

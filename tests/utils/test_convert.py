@@ -4,9 +4,10 @@ import builtins
 import urllib  # must keep for testing purpose
 import urllib.request  # must keep for testing purpose
 from datetime import date, datetime, timedelta
-from inspect import signature
-from typing import Any, Callable, Dict, List, Union, get_type_hints
 
+from typing import Any, Callable, Dict, List, Union, get_type_hints
+import pytest
+import sys
 import numpy as np
 import pandas as pd
 from pytest import raises
@@ -344,6 +345,7 @@ def test_get_caller_global_local_vars():
     f1()
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="python<3.9")
 def test_compare_annotations():
     def _assert(f, arg_a, arg_b, expected=True, **kwargs):
         # get the argument type annoptation of name arg_a  in function f
