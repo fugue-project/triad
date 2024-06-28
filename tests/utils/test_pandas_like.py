@@ -92,14 +92,14 @@ def test_as_array_iterable():
     # prevent pandas auto type casting
     df = DF([[1.0, 1.1]], "a:double,b:int")
     assert [[1.0, 1]] == df.as_array()
-    np.issubdtype(df.as_array()[0][0], np.float_)
+    np.issubdtype(df.as_array()[0][0], np.float64)
     np.issubdtype(df.as_array()[0][1], np.integer)
     assert [[1.0, 1]] == df.as_array(["a", "b"])
     assert [[1, 1.0]] == df.as_array(["b", "a"])
 
     df = DF([[np.float64(1.0), 1.1]], "a:double,b:int")
     assert [[1.0, 1]] == df.as_array()
-    np.issubdtype(df.as_array()[0][0], np.float_)
+    np.issubdtype(df.as_array()[0][0], np.float64)
     np.issubdtype(df.as_array()[0][1], np.integer)
 
     df = DF([[pd.Timestamp("2020-01-01"), 1.1]], "a:datetime,b:int")
@@ -113,7 +113,7 @@ def test_as_array_iterable():
 
     df = DF([[1.0, 1.1]], "a:double,b:int")
     assert [[1.0, 1]] == df.as_array(type_safe=True)
-    np.issubdtype(df.as_array()[0][0], np.float_)
+    np.issubdtype(df.as_array()[0][0], np.float64)
     np.issubdtype(df.as_array()[0][1], np.integer)
 
 
