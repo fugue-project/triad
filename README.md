@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 0.9.8
+
+* Support Python 3.12
+
 ### 0.9.7
 
 * Make FunctionWrapper compare annotation origins by default
