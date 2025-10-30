@@ -1,7 +1,7 @@
 # flake8: noqa
 from triad_version import __version__
 
-from triad.collections import FileSystem, IndexedOrderedDict, ParamDict, Schema
+from triad.collections import IndexedOrderedDict, ParamDict, Schema
 from triad.utils import (
     SerializableRLock,
     assert_arg_not_none,
