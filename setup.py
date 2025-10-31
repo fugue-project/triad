@@ -36,7 +36,6 @@ setup(
         "six",
         "pyarrow>=6.0.1",
         "fsspec>=2022.5.0",
-        "fs",  # TODO: remove this hard dependency
     ],
     extras_require={"ciso8601": ["ciso8601"]},
     classifiers=[
