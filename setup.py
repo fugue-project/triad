@@ -36,7 +36,6 @@ setup(
         "six",
         "pyarrow>=6.0.1",
         "fsspec>=2022.5.0",
-        "fs",  # TODO: remove this hard dependency
     ],
     extras_require={"ciso8601": ["ciso8601"]},
     classifiers=[
@@ -45,12 +44,11 @@ setup(
         "Intended Audience :: Developers",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3 :: Only",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
 )

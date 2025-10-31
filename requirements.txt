@@ -17,6 +17,8 @@ furo
 
 cloudpickle
 
+setuptools>=80.9.0
+
 # publish to pypi
 wheel
 twine

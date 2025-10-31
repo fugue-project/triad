@@ -20,6 +20,10 @@ pip install triad
 
 ## Release History
 
+### 1.0.0
+
+* Remove dependency on `fs`
+
 ### 0.9.8
 
 * Support Python 3.12
