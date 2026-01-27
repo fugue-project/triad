@@ -20,6 +20,12 @@ pip install triad
 
 ## Release History
 
+### 1.0.1
+
+* Make compatibility with pandas 3.0
+* Move to uv
+* Support Python 3.13 and 3.14
+
 ### 1.0.0
 
 * Remove dependency on `fs`

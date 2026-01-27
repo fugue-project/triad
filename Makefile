@@ -39,3 +39,13 @@ test:
 lab:
 	mkdir -p tmp
 	uv run jupyter lab --port=8888 --ip=0.0.0.0 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.allow_origin='*'
+
+release_branch:
+	$(eval VERSION := $(shell python -c "import triad; print(triad.__version__)"))
+	@if echo "$(VERSION)" | grep -q "dev"; then \
+		git tag v$(VERSION); \
+		git push origin v$(VERSION); \
+	else \
+		echo "Error: Can only release dev versions (current: $(VERSION))"; \
+		exit 1; \
+	fi
