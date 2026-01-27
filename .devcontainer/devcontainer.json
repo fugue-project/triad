@@ -22,14 +22,14 @@
 				]
 			},
 			"extensions": [
-				"ms-python.python",
-				"ms-python.isort",
-				"ms-python.flake8",
-				"ms-python.pylint",
-				"ms-python.mypy",
-				"ms-python.black-formatter",
-				"GitHub.copilot",
-				"njpwerner.autodocstring"
+                "ms-python.python",
+                "ms-python.mypy",
+                "ms-python.vscode-pylance",
+                "ms-toolsai.jupyter",
+                "charliermarsh.ruff",
+                "GitHub.copilot",
+                "tamasfe.even-better-toml",
+                "anthropic.claude-code"
 			]
 		}
 	},
@@ -38,7 +38,8 @@
 	],
 	"postCreateCommand": "make devenv",
 	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2.12.4": {},
+		// "ghcr.io/devcontainers/features/docker-in-docker:2.14.0": {},
+		"ghcr.io/va-h/devcontainers-features/uv:1.1.4": {},
 		"ghcr.io/devcontainers/features/java:1": {
 			"version": "11"
 		},

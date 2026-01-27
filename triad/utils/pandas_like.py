@@ -104,7 +104,7 @@ class PandasLikeUtils(Generic[T, ColT]):
         """
         self.ensure_compatible(df)
         assert_or_throw(
-            df.columns.dtype == "object",
+            df.columns.dtype in ["object", "str"],
             ValueError("Pandas dataframe must have named schema"),
         )
 
@@ -234,8 +234,13 @@ class PandasLikeUtils(Generic[T, ColT]):
         self.ensure_compatible(df)
         if len(cols) == 0:
             return func(df)
+        # return (
+        #    df.groupby(cols, dropna=False, group_keys=False)
+        #    .apply(lambda df: _wrapper(df), **kwargs)
+        #    .reset_index(drop=True)
+        # )
         return (
-            df.groupby(cols, dropna=False, group_keys=False)
+            df.groupby(cols, dropna=False, group_keys=True, as_index=False)[df.columns]
             .apply(lambda df: _wrapper(df), **kwargs)
             .reset_index(drop=True)
         )

@@ -433,7 +433,7 @@ def as_type(obj: Any, target: type) -> Any:
     """
     if issubclass(type(obj), target):
         return obj
-    if target == bool:
+    if target is bool:
         return to_bool(obj)
     if target == datetime.datetime:
         return to_datetime(obj)

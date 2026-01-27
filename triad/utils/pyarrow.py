@@ -117,6 +117,18 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
 _SPECIAL_TOKENS: Set[str] = {",", "{", "}", "[", "]", "<", ">", ":"}
 
 
+def normalize_large_types(schema: pa.Schema) -> pa.Schema:
+    """Normalize a schema by converting large types to their regular counterparts.
+
+    This is useful for comparing schemas where one may have large_string/large_binary
+    and the other has string/binary.
+
+    :param schema: the pyarrow schema to normalize
+    :return: a new schema with large types replaced by regular types
+    """
+    return replace_types_in_schema(schema, LARGE_TYPES_REPLACEMENT, recursive=True)
+
+
 def expression_to_schema(expr: str) -> pa.Schema:
     """Convert schema expression to `pyarrow.Schema`.
 
@@ -193,11 +205,11 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
         if hasattr(pd, "ArrowDtype"):
             if isinstance(obj, pd.ArrowDtype):
                 return obj.pyarrow_dtype
-            if obj == pd.StringDtype("pyarrow"):
+            if obj == pd.StringDtype("pyarrow"):  # pragma: no cover
                 return pa.string()
-    if type(obj) == type and issubclass(obj, datetime):
+    if type(obj) is type and issubclass(obj, datetime):
         return TRIAD_DEFAULT_TIMESTAMP
-    if type(obj) == type and issubclass(obj, date):
+    if type(obj) is type and issubclass(obj, date):
         return pa.date32()
     return pa.from_numpy_dtype(np.dtype(obj))
 
@@ -664,9 +676,7 @@ def replace_types_in_schema(
         for is_type, convert_type in pairs:
             _is_type = is_type if callable(is_type) else lambda t: t == is_type  # noqa
             _convert_type = (
-                convert_type
-                if callable(convert_type)
-                else lambda t: convert_type  # noqa
+                convert_type if callable(convert_type) else lambda t: convert_type  # noqa
             )
             new_type = replace_type(
                 new_type, _is_type, _convert_type, recursive=recursive
@@ -722,9 +732,10 @@ def replace_type(  # noqa: C901
             return res
         if pa.types.is_map(current_type):
             old_k, old_v = current_type.key_field, current_type.item_field
-            k, v = _replace_field(
-                old_k, is_type, convert_type, recursive=recursive
-            ), _replace_field(old_v, is_type, convert_type, recursive=recursive)
+            k, v = (
+                _replace_field(old_k, is_type, convert_type, recursive=recursive),
+                _replace_field(old_v, is_type, convert_type, recursive=recursive),
+            )
             if k is old_k and v is old_v:
                 return current_type
             return pa.map_(k, v)

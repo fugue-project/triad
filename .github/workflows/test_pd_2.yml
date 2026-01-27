@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Test
+name: Test Pandas<3
 
 on:
   push:
@@ -27,18 +27,18 @@ jobs:
         cache-dependency-glob: "pyproject.toml"
         python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
+    - name: Install Pandas 2
       run: |
         make devenv
-        uv pip install -U pandas
+        uv sync --group pandas2
 
-    - name: Test
+    - name: Test Pandas 2
       run: make test
 
-    - name: "Upload coverage to Codecov"
-      if: matrix.python-version == '3.11'
-      uses: codecov/codecov-action@v4
-      with:
-        fail_ci_if_error: false
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    - name: Install Pandas 1
+      run: |
+        make devenv
+        uv sync --group pandas1
+
+    - name: Test Pandas 1
+      run: make test

@@ -334,7 +334,7 @@ def test_pa_table_to_pandas():
     )
     pdf = pa_table_to_pandas(adf)
     assert pdf["a"].dtype == np.int32
-    assert pdf["b"].dtype == np.dtype("O")
+    assert pdf["b"].dtype in [np.dtype("O"), "str"]
 
     adf = pa.Table.from_pydict(
         {

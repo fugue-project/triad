@@ -7,126 +7,126 @@ triad.utils.assertion
 
 .. automodule:: triad.utils.assertion
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.batch\_reslicers
 ----------------------------
 
 .. automodule:: triad.utils.batch_reslicers
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.class\_extension
 ----------------------------
 
 .. automodule:: triad.utils.class_extension
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.convert
 -------------------
 
 .. automodule:: triad.utils.convert
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.dispatcher
 ----------------------
 
 .. automodule:: triad.utils.dispatcher
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.entry\_points
 -------------------------
 
 .. automodule:: triad.utils.entry_points
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.hash
 ----------------
 
 .. automodule:: triad.utils.hash
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.io
 --------------
 
 .. automodule:: triad.utils.io
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.iter
 ----------------
 
 .. automodule:: triad.utils.iter
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.json
 ----------------
 
 .. automodule:: triad.utils.json
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.pandas\_like
 ------------------------
 
 .. automodule:: triad.utils.pandas_like
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.pyarrow
 -------------------
 
 .. automodule:: triad.utils.pyarrow
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.rename
 ------------------
 
 .. automodule:: triad.utils.rename
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.schema
 ------------------
 
 .. automodule:: triad.utils.schema
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.string
 ------------------
 
 .. automodule:: triad.utils.string
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.utils.threading
 ---------------------
 
 .. automodule:: triad.utils.threading
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
