@@ -30,7 +30,7 @@ jobs:
     - name: Install dependencies
       run: |
         make devenv
-        uv pip install -U pandas
+        uv pip install "pandas>=3"
 
     - name: Test
       run: make test
