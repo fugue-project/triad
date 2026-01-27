@@ -41,6 +41,7 @@ lab:
 	uv run jupyter lab --port=8888 --ip=0.0.0.0 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.allow_origin='*'
 
 release_branch:
+	uv pip install -e .
 	$(eval VERSION := $(shell python -c "import triad; print(triad.__version__)"))
 	@if echo "$(VERSION)" | grep -q "dev"; then \
 		git tag v$(VERSION); \
