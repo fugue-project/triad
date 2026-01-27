@@ -30,15 +30,7 @@ jobs:
     - name: Install Pandas 2
       run: |
         make devenv
-        uv sync --group pandas2
-
-    - name: Test Pandas 2
-      run: make test
-
-    - name: Install Pandas 1
-      run: |
-        make devenv
         uv pip install "pandas<3"
 
-    - name: Test Pandas 1
+    - name: Test Pandas 2
       run: make test
