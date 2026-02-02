@@ -13,7 +13,7 @@ def loads_no_dup(json_str: str) -> Any:
 
 
 def check_for_duplicate_keys(
-    ordered_pairs: List[Tuple[Hashable, Any]]
+    ordered_pairs: List[Tuple[Hashable, Any]],
 ) -> Dict[Any, Any]:
     """Raise ValueError if a duplicate key exists in provided ordered list of pairs,
     otherwise return a dict.

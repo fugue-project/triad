@@ -12,6 +12,7 @@ from triad.utils.pandas_like import _DEFAULT_DATETIME, PD_UTILS
 from triad.utils.pyarrow import (
     PYARROW_VERSION,
     expression_to_schema,
+    normalize_large_types,
     pa_table_to_pandas,
 )
 
@@ -24,7 +25,8 @@ def test_to_schema():
     df = pd.DataFrame([[1.0, 2], [2.0, 3]], columns=["x", "y"])
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
     df = pd.DataFrame([["a", 2], ["b", 3]], columns=["x", "y"])
-    assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
+    assert list(normalize_large_types(pa.Schema.from_pandas(df))
+                ) == list(PD_UTILS.to_schema(df))
     df = pd.DataFrame([], columns=["x", "y"])
     df = df.astype(dtype={"x": np.int32, "y": np.dtype("object")})
     assert [pa.field("x", pa.int32()), pa.field("y", pa.string())] == list(
@@ -514,8 +516,9 @@ def test_intersect():
 
     a = _to_df([["x", "a"], ["x", "a"], [None, None]], ["a", "b"])
     b = _to_df([["xx", "aa"], [None, None], [None, None], ["a", "x"]], ["b", "a"])
-    assert_eq(a, b, False, [[None, None]], ["a", "b"])
-    assert_eq(a, b, True, [[None, None]], ["a", "b"])
+    c = _to_df([["a", "b"], [None, None]], ["a", "b"]).tail(1)
+    assert_eq(a, b, False, c, ["a", "b"])
+    assert_eq(a, b, True, c, ["a", "b"])
     b = _to_df([["xx", "aa"], [None, None], ["x", "a"]], ["b", "a"])
     assert_eq(a, b, False, [["x", "a"], ["x", "a"], [None, None]], ["a", "b"])
     assert_eq(a, b, True, [["x", "a"], [None, None]], ["a", "b"])
@@ -549,7 +552,7 @@ def test_joins():
     assert_eq(df1, df2, "left_semi", ["a"], [[0, 1]], ["a", "b"])
     assert_eq(df3, df4, "left_semi", ["a"], [[0, 1]], ["a", "b"])
     assert_eq(df1, df2, "left_anti", ["a"], [[2, 3]], ["a", "b"])
-    assert_eq(df3, df4, "left_anti", ["a"], [[None, 3]], ["a", "b"])
+    assert_eq(df3, df4, "left_anti", ["a"], df3.iloc[1:2], ["a", "b"])
     assert_eq(
         df1,
         df2,

@@ -1,5 +1,5 @@
 # flake8: noqa
-from triad_version import __version__
+from importlib.metadata import version
 
 from triad.collections import IndexedOrderedDict, ParamDict, Schema
 from triad.utils import (
@@ -15,3 +15,5 @@ from triad.utils import (
     run_once,
     to_uuid,
 )
+
+__version__ = version("triad")

@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "triad"
+version = "1.0.1"
+description = "A collection of python utils for Fugue projects"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    {name = "The Fugue Development Team", email = "hello@fugue.ai"}
+]
+keywords = ["fugue", "utilities"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas>=2",
+    "six",
+    "pyarrow>=6.0.1",
+    "fsspec>=2022.5.0",
+]
+
+[project.optional-dependencies]
+ciso8601 = ["ciso8601"]
+
+[project.urls]
+Homepage = "http://github.com/fugue-project/triad"
+
+[tool.setuptools.packages.find]
+include = ["triad*"]
+
+[tool.setuptools.package-data]
+triad = ["py.typed"]
+
+[dependency-groups]
+dev = [
+    "cloudpickle>=3.1.2",
+    "furo>=2025.12.19",
+    "jupyterlab>=4.5.3",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+    "ruff>=0.14.14",
+    "sphinx>=7.4.7",
+    "sphinx-autodoc-typehints>=2.3.0",
+    "sphinx-rtd-theme>=3.1.0",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=triad",
+    "--cov-report=term-missing:skip-covered",
+    "-vvv",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10

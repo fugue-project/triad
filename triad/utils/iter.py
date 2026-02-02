@@ -170,9 +170,9 @@ class Slicer:
             self._size_limit = 0
         else:
             self._size_limit = to_size(str(size_limit))
-        assert (
-            self._size_limit == 0 or self._sizer is not None
-        ), "sizer must be set when size_limit>0"
+        assert self._size_limit == 0 or self._sizer is not None, (
+            "sizer must be set when size_limit>0"
+        )
         self._current_row = 1
         self._current_size = 0
 

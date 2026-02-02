@@ -13,14 +13,14 @@ triad.constants
 
 .. automodule:: triad.constants
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 triad.exceptions
 ----------------
 
 .. automodule:: triad.exceptions
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 

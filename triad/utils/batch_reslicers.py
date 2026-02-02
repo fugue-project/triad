@@ -233,9 +233,7 @@ class SortedBatchReslicer(Generic[T]):
         """
         raise NotImplementedError  # pragma: no cover
 
-    def reslice(
-        self, batches: Iterable[T]
-    ) -> Iterable[Iterable[T]]:  # noqa: C901, A003
+    def reslice(self, batches: Iterable[T]) -> Iterable[Iterable[T]]:  # noqa: C901, A003
         """Reslice the batch stream into a stream of iterable of batches of the
         same keys
 
@@ -261,9 +259,7 @@ class SortedBatchReslicer(Generic[T]):
         for res in slice_iterable(get_slices(), slicer):
             yield transform(res)
 
-    def reslice_and_merge(
-        self, batches: Iterable[T]
-    ) -> Iterable[T]:  # noqa: C901, A003
+    def reslice_and_merge(self, batches: Iterable[T]) -> Iterable[T]:  # noqa: C901, A003
         """Reslice the batch stream into new batches, each containing the same keys
 
         :param batches: the batch stream
