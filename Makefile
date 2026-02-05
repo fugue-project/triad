@@ -11,7 +11,8 @@ help:
 	@echo "	 lab			start jupyter lab server"
 
 devenv:
-	uv sync --quiet --dev --all-extras --frozen
+	uv sync --quiet --dev --all-extras $(if $(upgrade),--upgrade,--frozen)
+	uv pip freeze
 	uv run --no-sync pre-commit install
 
 init_codespace:
