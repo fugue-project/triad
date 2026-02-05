@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: release
-      url: https://pypi.org/p/tune
+      url: https://pypi.org/p/triad
     permissions:
       contents: read
       id-token: write  # Required for trusted publishing (OIDC)

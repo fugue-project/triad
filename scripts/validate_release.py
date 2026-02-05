@@ -30,7 +30,6 @@ def validate_release_tag():
         print(
             f"❌ ERROR: Tag version '{tag_version}' does not match package version '{package_version}'"
         )
-        print(f"   Please update tsmp/__init__.py to __version__ = '{tag_version}'")
         sys.exit(1)
 
     print(f"✅ Version validation passed: {tag_version}")
