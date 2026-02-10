@@ -7,4 +7,7 @@ on:
 
 jobs:
   publish:
+    permissions:
+      contents: read
+      id-token: write
     uses: fugue-project/.common/.github/workflows/pypi-publish.yml@main
