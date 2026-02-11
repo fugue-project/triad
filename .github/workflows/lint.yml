@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-
 jobs:
   lint:
     uses: fugue-project/.common/.github/workflows/lint.yml@setup/2
