@@ -43,8 +43,7 @@ lab:
 
 release_branch:
 	uv pip install -e .
-	uv pip show triad
-	$(eval VERSION := $(shell python -c "import triad; print(triad.__version__)"))
+	$(eval VERSION := $(shell uv pip show triad | grep "^Version:" | cut -d' ' -f2))
 	@if echo "$(VERSION)" | grep -q "dev"; then \
 		git tag v$(VERSION); \
 		git push origin v$(VERSION); \
