@@ -7,6 +7,6 @@ on:
 
 jobs:
   publish:
-    uses: fugue-project/.common/.github/workflows/pypi-publish.yml@setup/2
+    uses: fugue-project/.common/.github/workflows/pypi-publish.yml@main
     secrets:
       PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
