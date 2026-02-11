@@ -8,4 +8,4 @@ on:
 
 jobs:
   lint:
-    uses: fugue-project/.common/.github/workflows/lint.yml@setup/3
+    uses: fugue-project/.common/.github/workflows/lint.yml@setup/2
