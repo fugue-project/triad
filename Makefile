@@ -11,7 +11,8 @@ help:
 	@echo "	 lab			start jupyter lab server"
 
 devenv:
-	uv sync --quiet --dev --all-extras --frozen
+	uv sync --quiet --dev --all-extras $(if $(upgrade),--upgrade,--frozen)
+	uv pip freeze
 	uv run --no-sync pre-commit install
 
 init_codespace:
@@ -42,7 +43,7 @@ lab:
 
 release_branch:
 	uv pip install -e .
-	$(eval VERSION := $(shell python -c "import triad; print(triad.__version__)"))
+	$(eval VERSION := $(shell uv pip show triad | grep "^Version:" | cut -d' ' -f2))
 	@if echo "$(VERSION)" | grep -q "dev"; then \
 		git tag v$(VERSION); \
 		git push origin v$(VERSION); \
