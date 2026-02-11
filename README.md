@@ -20,6 +20,12 @@ pip install triad
 
 ## Release History
 
+### 1.0.2
+
+* Switched from master to main
+* Switched lint and publish to shared workflows
+* Cleaned up old files and logic
+
 ### 1.0.1
 
 * Make compatibility with pandas 3.0
