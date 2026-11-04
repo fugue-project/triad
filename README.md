@@ -20,6 +20,11 @@ pip install triad
 
 ## Release History
 
+### 1.0.3
+
+* Support Python 3.15
+* Drop support for Python 3.9 and 3.10
+
 ### 1.0.2
 
 * Switched from master to main

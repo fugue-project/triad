@@ -1,12 +1,9 @@
 import logging
-import sys
-from typing import Any, List
+from typing import List
 
 from .threading import run_once
 
 from importlib.metadata import EntryPoint, entry_points
-
-_IMPORTLIB_META_VERSION: Any = ()
 
 
 @run_once(key_func=lambda name: name)
@@ -55,7 +52,4 @@ def _load_plugin(entrypoint: str, plugin: EntryPoint) -> None:
 
 
 def _entry_points_for(key: str) -> List[EntryPoint]:  # pragma: no cover
-    if sys.version_info >= (3, 10) or _IMPORTLIB_META_VERSION >= (3, 6):
-        return entry_points().select(group=key)  # type: ignore
-    else:
-        return entry_points().get(key, {})  # type: ignore
+    return list(entry_points().select(group=key))
