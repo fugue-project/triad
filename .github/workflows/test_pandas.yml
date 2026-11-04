@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Test Pandas 3
+name: Test Pandas
 
 on:
   push:
@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        pandas-version: ["<3", ">=3"]
 
     steps:
     - name: Clone repo
@@ -27,10 +28,10 @@ jobs:
         cache-dependency-glob: "pyproject.toml"
         python-version: ${{ matrix.python-version }}
 
-    - name: Install Pandas 3
+    - name: Install dependencies (pandas${{ matrix.pandas-version }})
       run: |
         make devenv
-        uv pip install "pandas>=3"
+        uv pip install "pandas${{ matrix.pandas-version }}"
 
-    - name: Test Pandas 3
+    - name: Test
       run: make test
