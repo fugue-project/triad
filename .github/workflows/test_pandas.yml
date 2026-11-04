@@ -16,6 +16,10 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         pandas-version: ["<3", ">=3"]
+        exclude:
+          # pandas<3 does not support Python 3.15
+          - python-version: "3.15"
+            pandas-version: "<3"
 
     steps:
     - name: Clone repo
