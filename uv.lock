@@ -3901,7 +3901,7 @@ wheels = [
 
 [[package]]
 name = "triad"
-version = "1.0.1.dev0"
+version = "1.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "fsspec", version = "2025.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -3909,6 +3909,7 @@ dependencies = [
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "numpy", version = "2.4.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "packaging" },
     { name = "pandas" },
     { name = "pyarrow", version = "21.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "pyarrow", version = "23.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -3948,6 +3949,7 @@ requires-dist = [
     { name = "ciso8601", marker = "extra == 'ciso8601'" },
     { name = "fsspec", specifier = ">=2022.5.0" },
     { name = "numpy" },
+    { name = "packaging" },
     { name = "pandas", specifier = ">=2" },
     { name = "pyarrow", specifier = ">=6.0.1" },
     { name = "six" },
