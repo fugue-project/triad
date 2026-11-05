@@ -425,10 +425,15 @@ def to_timedelta(obj: Any) -> datetime.timedelta:
     if np.isreal(obj):
         return datetime.timedelta(seconds=float(obj))
     try:
-        # pandas 3 dropped the legacy unit aliases (ISO "P..." strings are case-sensitive)
-        if isinstance(obj, str) and not obj.lstrip("+- ").startswith("P"):
+        try:
+            return pd.to_timedelta(obj).to_pytimedelta()
+        except ValueError:
+            # pandas 3 dropped the legacy unit aliases (ISO "P..." strings are
+            # case-sensitive, so they are never rewritten)
+            if not isinstance(obj, str) or obj.lstrip("+- ").startswith("P"):
+                raise
             obj = _TD_LEGACY_UNIT.sub(lambda m: m[1] + _TD_UNIT_MAP[m[2]], obj)
-        return pd.to_timedelta(obj).to_pytimedelta()
+            return pd.to_timedelta(obj).to_pytimedelta()
     except Exception as e:
         if isinstance(obj, str):
             obj = obj.lower()

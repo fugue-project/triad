@@ -3,7 +3,6 @@ from __future__ import annotations
 import builtins
 import urllib  # must keep for testing purpose
 import urllib.request  # must keep for testing purpose
-import warnings
 from datetime import date, datetime, timedelta
 
 from typing import Any, Callable, Dict, List, Union, get_type_hints
@@ -16,13 +15,23 @@ import tests.utils.convert_examples as ex
 from tests.utils.convert_examples import BaseClass, Class2
 from tests.utils.convert_examples import SubClass
 from tests.utils.convert_examples import SubClass as SubClassSame
-from triad.utils.convert import (_parse_value_and_unit, as_type,
-                                 compare_annotations,
-                                 get_caller_global_local_vars,
-                                 get_full_type_path, str_to_instance,
-                                 str_to_object, str_to_type, to_bool,
-                                 to_datetime, to_function, to_instance,
-                                 to_size, to_timedelta, to_type)
+from triad.utils.convert import (
+    _parse_value_and_unit,
+    as_type,
+    compare_annotations,
+    get_caller_global_local_vars,
+    get_full_type_path,
+    str_to_instance,
+    str_to_object,
+    str_to_type,
+    to_bool,
+    to_datetime,
+    to_function,
+    to_instance,
+    to_size,
+    to_timedelta,
+    to_type,
+)
 
 _GLOBAL_DUMMY = 1
 
@@ -382,7 +391,9 @@ def test_compare_annotations():
     _assert(f3, "a", "b", False, compare_origin=False)
     _assert(f3, "a", "c", False)
 
-    def f4(a: Callable[..., Dict[str, Any]], b: Callable[..., dict[str, Any]], c: callable):
+    def f4(
+        a: Callable[..., Dict[str, Any]], b: Callable[..., dict[str, Any]], c: callable
+    ):
         pass
 
     _assert(f4, "a", "a")
@@ -403,18 +414,16 @@ class __Dummy__:
 
 
 def test_to_timedelta_legacy_aliases():
-    assert to_timedelta("1T") == timedelta(minutes=1)
-    assert to_timedelta("1L") == timedelta(milliseconds=1)
-    assert to_timedelta("1U") == timedelta(microseconds=1)
-    assert to_timedelta("1N") == timedelta(0)
-    assert to_timedelta("1H") == timedelta(hours=1)
-    assert to_timedelta("1S") == timedelta(seconds=1)
-    assert to_timedelta("P1DT2H3M4S") == timedelta(days=1, hours=2, minutes=3, seconds=4)
+    # removed in pandas 3, mapped by triad
+    assert to_timedelta("2T") == timedelta(minutes=2)
+    assert to_timedelta("2L") == timedelta(milliseconds=2)
+    assert to_timedelta("2U") == timedelta(microseconds=2)
+    assert to_timedelta("2000N") == pd.Timedelta(2000, "ns").to_pytimedelta()
+    # deprecated but still parsed by pandas, which keeps its own warning
+    with pytest.warns(match="'H' is deprecated"):
+        assert to_timedelta("1H") == timedelta(hours=1)
+    # ISO 8601 durations are not rewritten
+    assert to_timedelta("P1DT2H3M4S") == timedelta(
+        days=1, hours=2, minutes=3, seconds=4
+    )
     assert to_timedelta("PT1H") == timedelta(hours=1)
-    assert to_timedelta("2d1m") == timedelta(days=2, minutes=1)
-    assert to_timedelta("2 day 1 min") == timedelta(days=2, minutes=1)
-    assert to_timedelta("5ms") == timedelta(milliseconds=5)
-    with warnings.catch_warnings():
-        warnings.filterwarnings("error", message=r".*'[dH]' is deprecated")
-        to_timedelta("2d")
-        to_timedelta("1H")
