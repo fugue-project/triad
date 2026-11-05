@@ -1154,3 +1154,10 @@ def test_normalize_large_types_in_table_empty():
     assert res.schema.field("a").type == pa.string()
     assert res.schema.metadata == tb.schema.metadata
     assert res.num_rows == 0
+
+
+def test_to_pa_datatype_string_dtypes():
+    assert to_pa_datatype(pd.StringDtype("python")) == pa.string()
+    assert to_pa_datatype(pd.StringDtype("pyarrow")) == pa.string()
+    if hasattr(pd.StringDtype(), "na_value") and version.parse(pd.__version__) >= version.parse("2.3"):
+        assert to_pa_datatype(pd.StringDtype(na_value=np.nan)) == pa.string()
