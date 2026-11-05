@@ -409,6 +409,8 @@ def test_to_timedelta_legacy_aliases():
     assert to_timedelta("1N") == timedelta(0)
     assert to_timedelta("1H") == timedelta(hours=1)
     assert to_timedelta("1S") == timedelta(seconds=1)
+    assert to_timedelta("P1DT2H3M4S") == timedelta(days=1, hours=2, minutes=3, seconds=4)
+    assert to_timedelta("PT1H") == timedelta(hours=1)
     assert to_timedelta("2d1m") == timedelta(days=2, minutes=1)
     assert to_timedelta("2 day 1 min") == timedelta(days=2, minutes=1)
     assert to_timedelta("5ms") == timedelta(milliseconds=5)

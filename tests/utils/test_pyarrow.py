@@ -1,6 +1,6 @@
 import json
 import warnings
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -22,8 +22,8 @@ from triad.utils.pyarrow import (
     get_alter_func,
     get_eq_func,
     is_supported,
-    normalize_large_types_in_table,
     normalize_large_types,
+    normalize_large_types_in_table,
     pa_batch_to_dicts,
     pa_datatypes_equal,
     pa_schemas_equal,
@@ -236,7 +236,9 @@ _PD_STR = np.dtype(str) if _x == np.dtype(object) else _x
 def test_to_single_pandas_dtype_default_str():
     expected = _PD_STR
     assert to_single_pandas_dtype(pa.string(), False) == expected
-    assert to_single_pandas_dtype(pa.large_string(), False) == expected
+    # pandas 2 keeps main's behavior: large_string -> object
+    large_expected = expected if expected != np.dtype(str) else np.dtype(object)
+    assert to_single_pandas_dtype(pa.large_string(), False) == large_expected
     s = pd.Series(["x", None]).astype(to_single_pandas_dtype(pa.string(), False))
     if expected != np.dtype(str):  # pandas 3: missing must stay missing, not "nan"
         assert pd.isna(s.iloc[1])
@@ -514,9 +516,7 @@ def test_schemas_equal():
 
     # ignore must not drop metadata, so a (with metadata) != d (without)
     assert not schemas_equal(a, d, ignore=[(pa.int32(), pa.int64())])
-    assert schemas_equal(
-        a, d, check_metadata=False, ignore=[(pa.int32(), pa.int64())]
-    )
+    assert schemas_equal(a, d, check_metadata=False, ignore=[(pa.int32(), pa.int64())])
     assert schemas_equal(
         a,
         d,
@@ -1124,7 +1124,7 @@ def test_get_alter_func_nullability_only_change():
 def test_get_alter_func_non_null_violation():
     tb = pa.table({"a": [1, None]})
     to = pa.schema([pa.field("a", pa.int64(), nullable=False)])
-    with raises(ValueError, match="a"):
+    with raises(ValueError, match="a is not nullable"):
         get_alter_func(tb.schema, to, safe=True)(tb)
 
 
@@ -1167,12 +1167,13 @@ def test_normalize_large_types_in_table_empty():
     assert res.schema.field("a").type == pa.string()
     assert res.schema.metadata == tb.schema.metadata
     assert res.num_rows == 0
+    assert b"pandas" in tb.schema.metadata
 
 
 def test_to_pa_datatype_string_dtypes():
     assert to_pa_datatype(pd.StringDtype("python")) == pa.string()
     assert to_pa_datatype(pd.StringDtype("pyarrow")) == pa.string()
-    if hasattr(pd.StringDtype(), "na_value") and version.parse(pd.__version__) >= version.parse("2.3"):
+    if version.parse(pd.__version__) >= version.parse("2.3"):
         assert to_pa_datatype(pd.StringDtype(na_value=np.nan)) == pa.string()
 
 
@@ -1180,11 +1181,15 @@ def test_cast_pa_array_mixed_offsets_to_tz():
     arr = pa.array(["2024-01-01 10:00:00+01:00", "2024-01-01 10:00:00+02:00", None])
     res = cast_pa_array(arr, pa.timestamp("us", "UTC"))
     assert res.to_pylist() == [
-        datetime(2024, 1, 1, 9, tzinfo=timezone.utc),
-        datetime(2024, 1, 1, 8, tzinfo=timezone.utc),
+        datetime(2024, 1, 1, 9, tzinfo=UTC),
+        datetime(2024, 1, 1, 8, tzinfo=UTC),
         None,
     ]
-    single = cast_pa_array(pa.array(["2024-01-01 10:00:00+01:00"]), pa.timestamp("us", "Asia/Tokyo"))
-    assert single.to_pylist()[0].astimezone(timezone.utc) == datetime(2024, 1, 1, 9, tzinfo=timezone.utc)
+    single = cast_pa_array(
+        pa.array(["2024-01-01 10:00:00+01:00"]), pa.timestamp("us", "Asia/Tokyo")
+    )
+    assert single.to_pylist()[0].astimezone(UTC) == datetime(
+        2024, 1, 1, 9, tzinfo=UTC
+    )
     naive = cast_pa_array(pa.array(["2024-01-01 10:00:00"]), pa.timestamp("us", "UTC"))
-    assert naive.to_pylist()[0] == datetime(2024, 1, 1, 10, tzinfo=timezone.utc)
+    assert naive.to_pylist()[0] == datetime(2024, 1, 1, 10, tzinfo=UTC)

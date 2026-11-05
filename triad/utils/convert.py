@@ -425,7 +425,8 @@ def to_timedelta(obj: Any) -> datetime.timedelta:
     if np.isreal(obj):
         return datetime.timedelta(seconds=float(obj))
     try:
-        if isinstance(obj, str):  # pandas 3 dropped the legacy unit aliases
+        # pandas 3 dropped the legacy unit aliases (ISO "P..." strings are case-sensitive)
+        if isinstance(obj, str) and not obj.lstrip("+- ").startswith("P"):
             obj = _TD_LEGACY_UNIT.sub(lambda m: m[1] + _TD_UNIT_MAP[m[2]], obj)
         return pd.to_timedelta(obj).to_pytimedelta()
     except Exception as e:

@@ -663,11 +663,24 @@ def test_union_ignores_empty_frame_dtype():
     assert PD_UTILS.union(e, f, unique=False).dtypes["a"] == np.float64
 
 
+def test_cast_df_large_string_keeps_index_pandas2():
+    # on pandas 3 object != str dtype, so the cast legitimately rebuilds the frame
+    if pd.Series(["x"]).dtype != np.dtype(object):
+        return
+    df = pd.DataFrame({"a": pd.Series(["x", "y"], dtype=object)}, index=[5, 6])
+    schema = pa.schema([pa.field("a", pa.large_string())])
+    res = PD_UTILS.cast_df(df, schema, use_extension_types=False)
+    assert list(res.index) == [5, 6]
+
+
 def test_concat_dfs_all_empty():
     e1 = pd.DataFrame({"a": pd.Series([], dtype=object)})
     e2 = pd.DataFrame({"a": pd.Series([], dtype=object)})
     res = PD_UTILS.concat_dfs(e1, e2)
     assert len(res) == 0 and list(res.columns) == ["a"]
+    assert res is not e1
+    eb = pd.DataFrame({"b": pd.Series([], dtype=object)})
+    assert list(PD_UTILS.concat_dfs(e1, eb).columns) == ["a", "b"]
 
 
 def test_as_array_iterable_missing_str_is_none():

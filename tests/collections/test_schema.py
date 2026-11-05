@@ -369,9 +369,7 @@ def test_create_empty_tables():
     assert df.shape == (0, 2)
     assert df.dtypes["a"] == np.dtype("int64")
     # pandas 2 keeps object for empty string columns
-    assert df.dtypes["b"] == (
-        np.dtype(object) if _PD_STR == np.dtype(str) else _PD_STR
-    )
+    assert df.dtypes["b"] == (np.dtype(object) if _PD_STR == np.dtype(str) else _PD_STR)
     df = schema.create_empty_pandas_df(use_extension_types=True, use_arrow_dtype=False)
     assert df.shape == (0, 2)
     assert df.dtypes["a"] == pd.Int64Dtype()
