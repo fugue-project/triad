@@ -20,6 +20,14 @@ pip install triad
 
 ## Release History
 
+### 1.0.4
+
+* Lossless large type normalization (keeps nullability, metadata and `keys_sorted`); add `normalize_large_types_in_table`
+* `get_alter_func` applies `to_schema`'s metadata and nullability; pyarrow raises on nulls into non-nullable fields
+* `schemas_equal(ignore=...)` respects metadata on both sides
+* pandas 3 fixes: `to_pa_datatype` for every `StringDtype`, string dtype of empty frames, `as_array_iterable` returns None for missing strings, mixed-offset strings cast to tz-aware timestamps, `to_timedelta` accepts legacy unit aliases
+* On pandas 3, `cast_df(..., use_extension_types=False)` returns the input frame unchanged (keeping its index) when dtypes already match
+
 ### 1.0.3
 
 * Support Python 3.15
