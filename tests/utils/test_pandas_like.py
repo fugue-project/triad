@@ -642,3 +642,29 @@ class DF:  # This is a mock
 
     def assert_eq(self, df):
         pd.testing.assert_frame_equal(self.native, df, check_dtype=False)
+
+
+def test_cast_df_empty_matches_non_empty_str_dtype():
+    schema = pa.schema([pa.field("a", pa.string())])
+    empty = PD_UTILS.cast_df(
+        pd.DataFrame({"a": pd.Series([], dtype=object)}),
+        schema,
+        use_extension_types=False,
+    )
+    full = PD_UTILS.cast_df(
+        pd.DataFrame({"a": ["x"]}), schema, use_extension_types=False
+    )
+    assert empty.dtypes["a"] == full.dtypes["a"]
+
+
+def test_union_ignores_empty_frame_dtype():
+    e = pd.DataFrame({"a": pd.Series([], dtype=object)})
+    f = pd.DataFrame({"a": [1.0, 2.0]})
+    assert PD_UTILS.union(e, f, unique=False).dtypes["a"] == np.float64
+
+
+def test_concat_dfs_all_empty():
+    e1 = pd.DataFrame({"a": pd.Series([], dtype=object)})
+    e2 = pd.DataFrame({"a": pd.Series([], dtype=object)})
+    res = PD_UTILS.concat_dfs(e1, e2)
+    assert len(res) == 0 and list(res.columns) == ["a"]

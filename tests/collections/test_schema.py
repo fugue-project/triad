@@ -10,6 +10,9 @@ from pytest import raises
 from triad.collections.schema import Schema, SchemaError
 from triad.exceptions import InvalidOperationError, NoneArgumentError
 
+_x = pd.Series(["x"]).dtype
+_PD_STR = np.dtype(str) if _x == np.dtype(object) else _x
+
 
 def test_schema_init():
     s = Schema("a:int,b:str")
@@ -64,7 +67,7 @@ def test_schema_properties():
     assert s.pandas_dtype == s.pd_dtype
 
     s = Schema("a:str,b:[bool]")
-    assert s.to_pandas_dtype() == {"a": np.dtype(str), "b": np.dtype(object)}
+    assert s.to_pandas_dtype() == {"a": _PD_STR, "b": np.dtype(object)}
     assert s.to_pandas_dtype(use_extension_types=True) == {
         "a": pd.StringDtype(),
         "b": np.dtype(object),
@@ -365,7 +368,10 @@ def test_create_empty_tables():
     df = schema.create_empty_pandas_df(use_extension_types=False, use_arrow_dtype=False)
     assert df.shape == (0, 2)
     assert df.dtypes["a"] == np.dtype("int64")
-    assert df.dtypes["b"] == np.dtype(object)
+    # pandas 2 keeps object for empty string columns
+    assert df.dtypes["b"] == (
+        np.dtype(object) if _PD_STR == np.dtype(str) else _PD_STR
+    )
     df = schema.create_empty_pandas_df(use_extension_types=True, use_arrow_dtype=False)
     assert df.shape == (0, 2)
     assert df.dtypes["a"] == pd.Int64Dtype()

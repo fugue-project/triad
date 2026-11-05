@@ -19,6 +19,12 @@ from .json import loads_no_dup
 from .schema import move_to_unquoted, quote_name, unquote_name
 from .assertion import assert_or_throw
 
+# ponytail: computed at import time; toggling infer_string later on pandas 2
+# isn't picked up
+_DEFAULT_PD_STR_DTYPE = (
+    np.dtype(str) if pd.Series(["x"]).dtype == np.dtype(object) else pd.Series(["x"]).dtype
+)
+
 PYARROW_VERSION = version.parse(pa.__version__)
 TRIAD_DEFAULT_TIMESTAMP_UNIT = "us"
 TRIAD_DEFAULT_TIMESTAMP = pa.timestamp(TRIAD_DEFAULT_TIMESTAMP_UNIT)
@@ -539,8 +545,12 @@ def to_single_pandas_dtype(
     )
     if tp is not None:
         return tp
-    if pa.types.is_string(pa_type) and not use_extension_types and not use_arrow_dtype:
-        return np.dtype(str)
+    if (
+        (pa.types.is_string(pa_type) or pa.types.is_large_string(pa_type))
+        and not use_extension_types
+        and not use_arrow_dtype
+    ):
+        return _DEFAULT_PD_STR_DTYPE
     return pa_type.to_pandas_dtype()
 
 

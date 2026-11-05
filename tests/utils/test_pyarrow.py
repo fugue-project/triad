@@ -229,12 +229,25 @@ def test_pa_schema_eq():
     assert not pa_schemas_equal(s1, s5)
 
 
+_x = pd.Series(["x"]).dtype
+_PD_STR = np.dtype(str) if _x == np.dtype(object) else _x
+
+
+def test_to_single_pandas_dtype_default_str():
+    expected = _PD_STR
+    assert to_single_pandas_dtype(pa.string(), False) == expected
+    assert to_single_pandas_dtype(pa.large_string(), False) == expected
+    s = pd.Series(["x", None]).astype(to_single_pandas_dtype(pa.string(), False))
+    if expected != np.dtype(str):  # pandas 3: missing must stay missing, not "nan"
+        assert pd.isna(s.iloc[1])
+
+
 def test_to_single_pandas_dtype():
     assert np.bool_ == to_single_pandas_dtype(pa.bool_(), False)
     assert np.int16 == to_single_pandas_dtype(pa.int16(), False)
     assert np.uint32 == to_single_pandas_dtype(pa.uint32(), False)
     assert np.float32 == to_single_pandas_dtype(pa.float32(), False)
-    assert np.dtype(str) == to_single_pandas_dtype(pa.string(), False)
+    assert _PD_STR == to_single_pandas_dtype(pa.string(), False)
     assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), False)
 
     assert pd.BooleanDtype() == to_single_pandas_dtype(pa.bool_(), True)
@@ -279,7 +292,7 @@ def test_to_pandas_dtype():
     assert np.bool_ == res["a"]
     assert np.int32 == res["b"]
     assert np.float64 == res["c"]
-    assert np.dtype("<U") == res["d"]
+    assert _PD_STR == res["d"]
     # should be us, but arrow<13 has a bug
     assert np.dtype("<M8[ns]") == res["e"] or np.dtype("<M8[us]") == res["e"]
     res = to_pandas_dtype(schema, True)

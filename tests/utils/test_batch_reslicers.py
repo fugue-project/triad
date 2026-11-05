@@ -205,3 +205,12 @@ def test_sorted_arrow_reslicer():
     _test([[], [1], [1], [2], [2]], ["1-0", "2-0"])
 
     _test([[], [1], [1, 1, 2], [], [2], [], [2]], ["1-3", "2-3"], mode="all")
+
+
+def test_pandas_reslicers_concat_ignore_empty():
+    e = pd.DataFrame({"a": pd.Series([], dtype=object)})
+    f = pd.DataFrame({"a": [1.0]})
+    assert PandasBatchReslicer().concat([e, f]).dtypes["a"] == np.float64
+    assert (
+        PandasSortedBatchReslicer(keys=["a"]).concat([e, f]).dtypes["a"] == np.float64
+    )
