@@ -129,6 +129,17 @@ def normalize_large_types(schema: pa.Schema) -> pa.Schema:
     return replace_types_in_schema(schema, LARGE_TYPES_REPLACEMENT, recursive=True)
 
 
+def normalize_large_types_in_table(df: pa.Table) -> pa.Table:
+    """Normalize a table by converting large types to their regular counterparts,
+    keeping the schema metadata (such as the pandas index information).
+
+    :param df: the pyarrow table to normalize
+    :return: the table itself if it has no large types, otherwise a new table
+        with large types replaced by regular types
+    """
+    return replace_types_in_table(df, LARGE_TYPES_REPLACEMENT, recursive=True)
+
+
 def expression_to_schema(expr: str) -> pa.Schema:
     """Convert schema expression to `pyarrow.Schema`.
 

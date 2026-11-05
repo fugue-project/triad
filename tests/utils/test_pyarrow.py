@@ -22,6 +22,7 @@ from triad.utils.pyarrow import (
     get_alter_func,
     get_eq_func,
     is_supported,
+    normalize_large_types_in_table,
     normalize_large_types,
     pa_batch_to_dicts,
     pa_datatypes_equal,
@@ -1121,3 +1122,35 @@ def test_get_alter_func_reorder_drops_source_pandas_metadata():
     res = get_alter_func(tb.schema, to, safe=True)(tb)
     assert res.schema.metadata is None
     assert res.to_pandas()["b"].tolist() == ["x", "y"]
+
+
+def test_normalize_large_types_in_table():
+    tb = pa.Table.from_pandas(pd.DataFrame(dict(a=["x", None]), index=[3, 4]))
+    tb = tb.cast(tb.schema.set(0, pa.field("a", pa.large_string())))
+    assert tb.schema.metadata is not None
+    res = normalize_large_types_in_table(tb)
+    assert res.schema.field("a").type == pa.string()
+    assert res.schema.metadata == tb.schema.metadata
+    assert res.to_pandas().index.tolist() == [3, 4]
+    assert normalize_large_types_in_table(res) is res
+
+    tb = pa.Table.from_pandas(
+        pd.DataFrame(dict(a=["x", "y"]), index=pd.RangeIndex(10, 12))
+    )
+    tb = tb.cast(tb.schema.set(0, pa.field("a", pa.large_string())))
+    assert normalize_large_types_in_table(tb).to_pandas().index.tolist() == [10, 11]
+
+    nn = pa.table(
+        [pa.array(["x"], pa.large_string())],
+        schema=pa.schema([pa.field("a", pa.large_string(), nullable=False)]),
+    )
+    assert not normalize_large_types_in_table(nn).schema.field("a").nullable
+
+
+def test_normalize_large_types_in_table_empty():
+    tb = pa.Table.from_pandas(pd.DataFrame(dict(a=pd.Series([], dtype=object))))
+    tb = tb.cast(tb.schema.set(0, pa.field("a", pa.large_string())))
+    res = normalize_large_types_in_table(tb)
+    assert res.schema.field("a").type == pa.string()
+    assert res.schema.metadata == tb.schema.metadata
+    assert res.num_rows == 0
