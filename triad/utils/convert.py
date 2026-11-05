@@ -1,6 +1,7 @@
 import datetime
 import importlib
 import inspect
+import re
 from types import ModuleType
 from typing import Any, Dict, List, Optional, Tuple, get_args, get_origin
 
@@ -392,6 +393,10 @@ def to_datetime(obj: Any) -> datetime.datetime:
     raise TypeError(f"{type(obj)} {obj} can't convert to datetime")
 
 
+_TD_LEGACY_UNIT = re.compile(r"(\d\s*)(T|L|U|N|H|S|d)(?![A-Za-z])")
+_TD_UNIT_MAP = {"T": "min", "L": "ms", "U": "us", "N": "ns", "H": "h", "S": "s", "d": "D"}
+
+
 def to_timedelta(obj: Any) -> datetime.timedelta:
     """Convert an object to python datetime.
 
@@ -412,6 +417,8 @@ def to_timedelta(obj: Any) -> datetime.timedelta:
     if np.isreal(obj):
         return datetime.timedelta(seconds=float(obj))
     try:
+        if isinstance(obj, str):  # pandas 3 dropped the legacy unit aliases
+            obj = _TD_LEGACY_UNIT.sub(lambda m: m[1] + _TD_UNIT_MAP[m[2]], obj)
         return pd.to_timedelta(obj).to_pytimedelta()
     except Exception as e:
         if isinstance(obj, str):

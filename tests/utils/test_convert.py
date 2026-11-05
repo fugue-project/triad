@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+import warnings
 import urllib  # must keep for testing purpose
 import urllib.request  # must keep for testing purpose
 from datetime import date, datetime, timedelta
@@ -239,7 +240,7 @@ def test_to_timedelta():
     dt = timedelta(days=2, minutes=1)
     assert dt == to_timedelta("2 day 1 min")
     assert dt == to_timedelta("2d1m")
-    dt = pd.Timedelta("2d")
+    dt = pd.Timedelta("2D")
     assert timedelta(days=2) == to_timedelta(dt)
     raises(TypeError, lambda: to_timedelta("x"))
     assert timedelta() == to_timedelta(0)
@@ -399,3 +400,19 @@ def dummy_for_test():
 class __Dummy__:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+
+def test_to_timedelta_legacy_aliases():
+    assert to_timedelta("1T") == timedelta(minutes=1)
+    assert to_timedelta("1L") == timedelta(milliseconds=1)
+    assert to_timedelta("1U") == timedelta(microseconds=1)
+    assert to_timedelta("1N") == timedelta(0)
+    assert to_timedelta("1H") == timedelta(hours=1)
+    assert to_timedelta("1S") == timedelta(seconds=1)
+    assert to_timedelta("2d1m") == timedelta(days=2, minutes=1)
+    assert to_timedelta("2 day 1 min") == timedelta(days=2, minutes=1)
+    assert to_timedelta("5ms") == timedelta(milliseconds=5)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        to_timedelta("2d")
+        to_timedelta("1H")
