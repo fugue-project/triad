@@ -1077,6 +1077,8 @@ def test_replace_type_map_keys_sorted():
 
 
 def test_schemas_equal_ignore_keeps_metadata():
-    a = pa.schema([pa.field("a", pa.large_string())], metadata={"m": "1"})
-    b = pa.schema([pa.field("a", pa.string())], metadata={"m": "2"})
-    assert not schemas_equal(a, b, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
+    a = pa.schema([pa.field("a", pa.large_string())], metadata={"m": "n"})
+    b = pa.schema([pa.field("a", pa.string())], metadata={"m": "n"})
+    assert schemas_equal(a, b, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
+    c = pa.schema([pa.field("a", pa.string())], metadata={"m": "2"})
+    assert not schemas_equal(a, c, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
