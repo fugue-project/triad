@@ -1,6 +1,6 @@
 import json
 import warnings
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -1174,3 +1174,17 @@ def test_to_pa_datatype_string_dtypes():
     assert to_pa_datatype(pd.StringDtype("pyarrow")) == pa.string()
     if hasattr(pd.StringDtype(), "na_value") and version.parse(pd.__version__) >= version.parse("2.3"):
         assert to_pa_datatype(pd.StringDtype(na_value=np.nan)) == pa.string()
+
+
+def test_cast_pa_array_mixed_offsets_to_tz():
+    arr = pa.array(["2024-01-01 10:00:00+01:00", "2024-01-01 10:00:00+02:00", None])
+    res = cast_pa_array(arr, pa.timestamp("us", "UTC"))
+    assert res.to_pylist() == [
+        datetime(2024, 1, 1, 9, tzinfo=timezone.utc),
+        datetime(2024, 1, 1, 8, tzinfo=timezone.utc),
+        None,
+    ]
+    single = cast_pa_array(pa.array(["2024-01-01 10:00:00+01:00"]), pa.timestamp("us", "Asia/Tokyo"))
+    assert single.to_pylist()[0].astimezone(timezone.utc) == datetime(2024, 1, 1, 9, tzinfo=timezone.utc)
+    naive = cast_pa_array(pa.array(["2024-01-01 10:00:00"]), pa.timestamp("us", "UTC"))
+    assert naive.to_pylist()[0] == datetime(2024, 1, 1, 10, tzinfo=timezone.utc)

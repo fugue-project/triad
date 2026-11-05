@@ -374,8 +374,11 @@ def cast_pa_array(col: pa.Array, new_type: pa.DataType) -> pa.Array:  # noqa: C9
                 s = s.dt.tz_localize(to_tz)
             else:
                 s = s.dt.tz_convert(to_tz)
-        else:
+        elif new_type.tz is None:
             s = pd.to_datetime(col.to_pandas())
+        else:
+            # utc=True handles mixed offsets, then convert to the target tz
+            s = pd.to_datetime(col.to_pandas(), utc=True).dt.tz_convert(new_type.tz)
         return pa.Array.from_pandas(s, type=new_type)
     elif pa.types.is_integer(new_type):
         if PYARROW_VERSION.major < 9:  # pragma: no cover
