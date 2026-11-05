@@ -8,7 +8,6 @@ import pyarrow as pa
 from triad.utils.convert import to_size
 
 from .iter import slice_iterable
-from .pandas_like import PD_UTILS
 
 T = TypeVar("T")
 
@@ -150,7 +149,7 @@ class PandasBatchReslicer(BatchReslicer[pd.DataFrame]):
     def concat(self, batches: List[pd.DataFrame]) -> pd.DataFrame:
         if len(batches) == 1:
             return batches[0]
-        return PD_UTILS.concat_dfs(*batches)
+        return pd.concat(batches)
 
 
 class ArrowTableBatchReslicer(BatchReslicer[pa.Table]):
@@ -315,7 +314,7 @@ class PandasSortedBatchReslicer(SortedBatchReslicer[pd.DataFrame]):
         return batch.iloc[start : start + length]
 
     def concat(self, batches: List[pd.DataFrame]) -> pd.DataFrame:
-        return PD_UTILS.concat_dfs(*batches)
+        return pd.concat(batches)
 
 
 class ArrowTableSortedBatchReslicer(SortedBatchReslicer[pa.Table]):

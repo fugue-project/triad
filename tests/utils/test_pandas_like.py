@@ -1,4 +1,3 @@
-import json
 import pickle
 from datetime import date, datetime
 
@@ -25,8 +24,9 @@ def test_to_schema():
     df = pd.DataFrame([[1.0, 2], [2.0, 3]], columns=["x", "y"])
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
     df = pd.DataFrame([["a", 2], ["b", 3]], columns=["x", "y"])
-    assert list(normalize_large_types(pa.Schema.from_pandas(df))
-                ) == list(PD_UTILS.to_schema(df))
+    assert list(normalize_large_types(pa.Schema.from_pandas(df))) == list(
+        PD_UTILS.to_schema(df)
+    )
     df = pd.DataFrame([], columns=["x", "y"])
     df = df.astype(dtype={"x": np.int32, "y": np.dtype("object")})
     assert [pa.field("x", pa.int32()), pa.field("y", pa.string())] == list(
@@ -657,10 +657,19 @@ def test_cast_df_empty_matches_non_empty_str_dtype():
     assert empty.dtypes["a"] == full.dtypes["a"]
 
 
-def test_union_ignores_empty_frame_dtype():
-    e = pd.DataFrame({"a": pd.Series([], dtype=object)})
-    f = pd.DataFrame({"a": [1.0, 2.0]})
-    assert PD_UTILS.union(e, f, unique=False).dtypes["a"] == np.float64
+def test_union_with_empty_frame_cast_from_schema():
+    schema = pa.schema([pa.field("a", pa.string()), pa.field("b", pa.int64())])
+    e = PD_UTILS.cast_df(
+        pd.DataFrame(
+            {"a": pd.Series([], dtype=object), "b": pd.Series([], dtype=object)}
+        ),
+        schema,
+        use_extension_types=False,
+    )
+    f = PD_UTILS.cast_df(
+        pd.DataFrame({"a": ["x"], "b": [1]}), schema, use_extension_types=False
+    )
+    assert PD_UTILS.union(e, f, unique=False).dtypes.to_dict() == f.dtypes.to_dict()
 
 
 def test_cast_df_large_string_keeps_index_pandas2():
@@ -673,14 +682,12 @@ def test_cast_df_large_string_keeps_index_pandas2():
     assert list(res.index) == [5, 6]
 
 
-def test_concat_dfs_all_empty():
-    e1 = pd.DataFrame({"a": pd.Series([], dtype=object)})
-    e2 = pd.DataFrame({"a": pd.Series([], dtype=object)})
-    res = PD_UTILS.concat_dfs(e1, e2)
-    assert len(res) == 0 and list(res.columns) == ["a"]
-    assert res is not e1
-    eb = pd.DataFrame({"b": pd.Series([], dtype=object)})
-    assert list(PD_UTILS.concat_dfs(e1, eb).columns) == ["a", "b"]
+def test_concat_dfs_keeps_empty_frame_columns():
+    e = pd.DataFrame(
+        {"a": pd.Series([], dtype=object), "c": pd.Series([], dtype=object)}
+    )
+    f = pd.DataFrame({"b": [1], "a": [2]})
+    assert list(PD_UTILS.concat_dfs(e, f).columns) == ["a", "c", "b"]
 
 
 def test_as_array_iterable_missing_str_is_none():

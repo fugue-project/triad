@@ -474,11 +474,7 @@ class PandasUtils(PandasLikeUtils[pd.DataFrame, pd.Series]):
     """A collection of pandas utils"""
 
     def concat_dfs(self, *dfs: DataFrame) -> DataFrame:
-        # filtering empty frames assumes all frames share the same columns
-        non_empty = [df for df in dfs if len(df) > 0]
-        if len(non_empty) == 0:
-            return pd.concat(list(dfs))
-        return pd.concat(non_empty)
+        return pd.concat(list(dfs))
 
 
 PD_UTILS = PandasUtils()
