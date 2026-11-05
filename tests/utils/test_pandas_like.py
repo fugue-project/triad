@@ -15,7 +15,7 @@ from triad.utils.pyarrow import (
     pa_table_to_pandas,
 )
 
-from .._utils import assert_df_eq
+from .._utils import PANDAS3, assert_df_eq
 
 
 def test_to_schema():
@@ -672,10 +672,10 @@ def test_union_with_empty_frame_cast_from_schema():
     assert PD_UTILS.union(e, f, unique=False).dtypes.to_dict() == f.dtypes.to_dict()
 
 
+@pytest.mark.skipif(
+    PANDAS3, reason="object != str dtype on pandas 3, so the cast rebuilds the frame"
+)
 def test_cast_df_large_string_keeps_index_pandas2():
-    # on pandas 3 object != str dtype, so the cast legitimately rebuilds the frame
-    if pd.Series(["x"]).dtype != np.dtype(object):
-        return
     df = pd.DataFrame({"a": pd.Series(["x", "y"], dtype=object)}, index=[5, 6])
     schema = pa.schema([pa.field("a", pa.large_string())])
     res = PD_UTILS.cast_df(df, schema, use_extension_types=False)

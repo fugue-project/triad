@@ -1,6 +1,6 @@
 import json
 import warnings
-from datetime import UTC, date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import numpy as np
 import pandas as pd
@@ -1206,11 +1206,11 @@ def test_normalize_large_types_in_table():
 def test_normalize_large_types_in_table_empty():
     tb = pa.Table.from_pandas(pd.DataFrame(dict(a=pd.Series([], dtype=object))))
     tb = tb.cast(tb.schema.set(0, pa.field("a", pa.large_string())))
+    assert b"pandas" in tb.schema.metadata
     res = normalize_large_types_in_table(tb)
     assert res.schema.field("a").type == pa.string()
     assert res.schema.metadata == tb.schema.metadata
     assert res.num_rows == 0
-    assert b"pandas" in tb.schema.metadata
 
 
 def test_to_pa_datatype_string_dtypes():
@@ -1228,9 +1228,14 @@ def test_cast_pa_array_mixed_offsets_to_tz():
         datetime(2024, 1, 1, 8, tzinfo=UTC),
         None,
     ]
-    single = cast_pa_array(
-        pa.array(["2024-01-01 10:00:00+01:00"]), pa.timestamp("us", "Asia/Tokyo")
+    tokyo = cast_pa_array(
+        pa.array(["2024-01-01 10:00:00+01:00", "2024-01-01 10:00:00+02:00"]),
+        pa.timestamp("us", "Asia/Tokyo"),
     )
-    assert single.to_pylist()[0].astimezone(UTC) == datetime(2024, 1, 1, 9, tzinfo=UTC)
+    assert tokyo.type == pa.timestamp("us", "Asia/Tokyo")
+    assert [(x.hour, x.minute, str(x.tzinfo)) for x in tokyo.to_pylist()] == [
+        (18, 0, "Asia/Tokyo"),
+        (17, 0, "Asia/Tokyo"),
+    ]
     naive = cast_pa_array(pa.array(["2024-01-01 10:00:00"]), pa.timestamp("us", "UTC"))
     assert naive.to_pylist()[0] == datetime(2024, 1, 1, 10, tzinfo=UTC)
