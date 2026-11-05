@@ -111,6 +111,7 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
     pa.float32(): pd.Float32Dtype(),
     pa.float64(): pd.Float64Dtype(),
     pa.string(): pd.StringDtype(),
+    pa.large_string(): pd.StringDtype(),
     pa.bool_(): pd.BooleanDtype(),
 }
 
@@ -535,8 +536,6 @@ def to_single_pandas_dtype(
     use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
     if pa.types.is_nested(pa_type) and not use_arrow_dtype:
         return np.dtype(object)
-    if use_extension_types and pa.types.is_large_string(pa_type):
-        return pd.StringDtype()
     tp = to_pandas_types_mapper(
         pa_type,
         use_extension_types=use_extension_types,

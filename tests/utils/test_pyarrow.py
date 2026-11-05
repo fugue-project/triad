@@ -243,9 +243,21 @@ def test_to_single_pandas_dtype_default_str():
 def test_to_single_pandas_dtype_large_string_extension():
     assert to_single_pandas_dtype(pa.large_string(), True) == pd.StringDtype()
     assert to_single_pandas_dtype(pa.string(), True) == pd.StringDtype()
+    # declared and produced dtypes agree, in every flag combination
+    for arrow in (False, True):
+        for t in (pa.string(), pa.large_string()):
+            tb = pa.table({"a": pa.array(["x", None], t)})
+            res = pa_table_to_pandas(
+                tb, use_extension_types=True, use_arrow_dtype=arrow
+            )
+            assert res.dtypes["a"] == pd.StringDtype()
+            assert res.dtypes["a"] == to_single_pandas_dtype(t, True, arrow)
 
 
-@pytest.mark.skipif(PANDAS3, reason="future.infer_string is deprecated on pandas 3")
+@pytest.mark.skipif(
+    not (version.parse("2.3") <= version.parse(pd.__version__) < version.parse("3")),
+    reason="future.infer_string only changes the str dtype on pandas 2.3",
+)
 def test_to_single_pandas_dtype_follows_infer_string_option():
     with pd.option_context("future.infer_string", True):
         expected = pd.StringDtype(na_value=np.nan)

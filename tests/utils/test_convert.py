@@ -416,6 +416,8 @@ class __Dummy__:
 def test_to_timedelta_legacy_aliases():
     # removed in pandas 3, mapped by triad
     assert to_timedelta("2T") == timedelta(minutes=2)
+    assert to_timedelta("1T5ms") == timedelta(minutes=1, milliseconds=5)
+    assert to_timedelta("1h30T") == timedelta(hours=1, minutes=30)
     assert to_timedelta("2L") == timedelta(milliseconds=2)
     assert to_timedelta("2U") == timedelta(microseconds=2)
     assert to_timedelta("2000N") == pd.Timedelta(2000, "ns").to_pytimedelta()

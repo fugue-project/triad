@@ -211,6 +211,20 @@ def test_cast_df():
     assert len(res) == 0
 
 
+def test_cast_df_large_string_default_args():
+    schema = pa.schema([pa.field("a", pa.large_string())])
+    df = pd.DataFrame({"a": ["x", "y"]}, index=[5, 6])
+    res = PD_UTILS.cast_df(df, schema)
+    assert res.a.dtype == pd.StringDtype()
+    assert res.a.tolist() == ["x", "y"]
+    empty = PD_UTILS.cast_df(df.iloc[:0], schema)
+    assert empty.a.dtype == res.a.dtype == pd.StringDtype()
+    assert len(empty) == 0
+    # already-matching input short-circuits and keeps its index
+    sdf = df.astype({"a": pd.StringDtype()})
+    assert sdf is PD_UTILS.cast_df(sdf, schema)
+
+
 def test_boolean_enforce():
     df = DF([[1, True], [2, False], [3, None]], "b:int,c:bool", True)
     arr = df.as_array(type_safe=True)

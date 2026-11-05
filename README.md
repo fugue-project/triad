@@ -27,6 +27,7 @@ pip install triad
 * `schemas_equal(ignore=...)` respects metadata on both sides
 * pandas 3 fixes: `to_pa_datatype` for every `StringDtype`, string dtype of empty frames, `as_array_iterable` returns None for missing strings, mixed-offset strings cast to tz-aware timestamps, `to_timedelta` accepts legacy unit aliases
 * On pandas 3, `cast_df(..., use_extension_types=False)` returns the input frame unchanged (keeping its index) when dtypes already match
+* On both pandas versions, `large_string` now maps to pandas `StringDtype` when `use_extension_types=True` (with or without `use_arrow_dtype`), consistent with `string`, in `to_pandas_dtype`, `pa_table_to_pandas` and `cast_df`
 
 ### 1.0.3
 
