@@ -685,10 +685,10 @@ def replace_types_in_schema(
             fields.append(f)
         else:
             changed = True
-            fields.append(pa.field(f.name, new_type))
+            fields.append(f.with_type(new_type))
     if not changed:
         return schema
-    return pa.schema(fields)
+    return pa.schema(fields, metadata=schema.metadata)
 
 
 def replace_type(  # noqa: C901
@@ -738,7 +738,7 @@ def replace_type(  # noqa: C901
             )
             if k is old_k and v is old_v:
                 return current_type
-            return pa.map_(k, v)
+            return pa.map_(k, v, keys_sorted=current_type.keys_sorted)
     return current_type
 
 

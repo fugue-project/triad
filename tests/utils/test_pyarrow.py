@@ -22,6 +22,7 @@ from triad.utils.pyarrow import (
     get_alter_func,
     get_eq_func,
     is_supported,
+    normalize_large_types,
     pa_batch_to_dicts,
     pa_datatypes_equal,
     pa_schemas_equal,
@@ -497,9 +498,16 @@ def test_schemas_equal():
     assert not schemas_equal(a, c)
     assert schemas_equal(a, c, check_order=False)
 
-    assert schemas_equal(a, d, ignore=[(pa.int32(), pa.int64())])
+    # ignore must not drop metadata, so a (with metadata) != d (without)
+    assert not schemas_equal(a, d, ignore=[(pa.int32(), pa.int64())])
     assert schemas_equal(
-        a, d, ignore=[(pa.int32(), pa.int16()), (pa.int64(), pa.int16())]
+        a, d, check_metadata=False, ignore=[(pa.int32(), pa.int64())]
+    )
+    assert schemas_equal(
+        a,
+        d,
+        check_metadata=False,
+        ignore=[(pa.int32(), pa.int16()), (pa.int64(), pa.int16())],
     )
 
 
@@ -1032,3 +1040,43 @@ def _assert_from_expr(expr, expected=None):
     out_expr = schema_to_expression(schema)
     expected = expected or expr
     assert expected == out_expr
+
+
+def test_normalize_large_types_schema():
+    schema = pa.schema(
+        [
+            pa.field("a", pa.large_string(), nullable=False, metadata={"k": "v"}),
+            pa.field("b", pa.int64()),
+            pa.field("c", pa.large_list(pa.large_string())),
+            pa.field("d", pa.struct([pa.field("x", pa.large_binary())])),
+            pa.field("e", pa.map_(pa.large_string(), pa.large_list(pa.int32()))),
+        ],
+        metadata={"m": "n"},
+    )
+    res = normalize_large_types(schema)
+    assert res == pa.schema(
+        [
+            pa.field("a", pa.string(), nullable=False),
+            pa.field("b", pa.int64()),
+            pa.field("c", pa.list_(pa.string())),
+            pa.field("d", pa.struct([pa.field("x", pa.binary())])),
+            pa.field("e", pa.map_(pa.string(), pa.list_(pa.int32()))),
+        ]
+    )
+    assert res.field("a").metadata == {b"k": b"v"}
+    assert res.metadata == {b"m": b"n"}
+    small = pa.schema([pa.field("a", pa.string()), pa.field("b", pa.int64())])
+    assert normalize_large_types(small) is small
+
+
+def test_replace_type_map_keys_sorted():
+    t = pa.map_(pa.large_string(), pa.int64(), keys_sorted=True)
+    res = normalize_large_types(pa.schema([pa.field("m", t)])).field("m").type
+    assert res == pa.map_(pa.string(), pa.int64(), keys_sorted=True)
+    assert res.keys_sorted
+
+
+def test_schemas_equal_ignore_keeps_metadata():
+    a = pa.schema([pa.field("a", pa.large_string())], metadata={"m": "1"})
+    b = pa.schema([pa.field("a", pa.string())], metadata={"m": "2"})
+    assert not schemas_equal(a, b, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
