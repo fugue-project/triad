@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import builtins
-import warnings
 import urllib  # must keep for testing purpose
 import urllib.request  # must keep for testing purpose
+import warnings
 from datetime import date, datetime, timedelta
 
 from typing import Any, Callable, Dict, List, Union, get_type_hints
@@ -413,6 +413,6 @@ def test_to_timedelta_legacy_aliases():
     assert to_timedelta("2 day 1 min") == timedelta(days=2, minutes=1)
     assert to_timedelta("5ms") == timedelta(milliseconds=5)
     with warnings.catch_warnings():
-        warnings.simplefilter("error", FutureWarning)
+        warnings.filterwarnings("error", message=r".*'[dH]' is deprecated")
         to_timedelta("2d")
         to_timedelta("1H")

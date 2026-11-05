@@ -394,7 +394,15 @@ def to_datetime(obj: Any) -> datetime.datetime:
 
 
 _TD_LEGACY_UNIT = re.compile(r"(\d\s*)(T|L|U|N|H|S|d)(?![A-Za-z])")
-_TD_UNIT_MAP = {"T": "min", "L": "ms", "U": "us", "N": "ns", "H": "h", "S": "s", "d": "D"}
+_TD_UNIT_MAP = {
+    "T": "min",
+    "L": "ms",
+    "U": "us",
+    "N": "ns",
+    "H": "h",
+    "S": "s",
+    "d": "D",
+}
 
 
 def to_timedelta(obj: Any) -> datetime.timedelta:
