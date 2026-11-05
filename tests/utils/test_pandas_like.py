@@ -668,3 +668,13 @@ def test_concat_dfs_all_empty():
     e2 = pd.DataFrame({"a": pd.Series([], dtype=object)})
     res = PD_UTILS.concat_dfs(e1, e2)
     assert len(res) == 0 and list(res.columns) == ["a"]
+
+
+def test_as_array_iterable_missing_str_is_none():
+    df = pd.DataFrame({"a": ["x", None], "b": [1.0, None]})
+    rows = list(PD_UTILS.as_array_iterable(df, type_safe=False))
+    assert rows[0] == ["x", 1.0]
+    assert rows[1][0] is None
+    assert np.isnan(rows[1][1])
+    rows = list(PD_UTILS.as_array_iterable(df, columns=["b", "a"], type_safe=False))
+    assert rows[1][1] is None and np.isnan(rows[1][0])
