@@ -1124,8 +1124,41 @@ def test_get_alter_func_nullability_only_change():
 def test_get_alter_func_non_null_violation():
     tb = pa.table({"a": [1, None]})
     to = pa.schema([pa.field("a", pa.int64(), nullable=False)])
-    with raises(ValueError, match="a is not nullable"):
+    with raises(ValueError, match="'a' with null values to non-nullable"):
         get_alter_func(tb.schema, to, safe=True)(tb)
+
+
+def test_get_alter_func_identity():
+    tb = pa.table({"a": [1, 2], "b": ["x", "y"]})
+    same = pa.schema([pa.field("a", pa.int64()), pa.field("b", pa.string())])
+    assert get_alter_func(tb.schema, same, safe=True)(tb) is tb
+
+
+def test_get_alter_func_metadata_only_change():
+    tb = pa.table({"a": [1, 2]})
+    to = pa.schema([pa.field("a", pa.int64(), metadata={"k": "v"})])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema.field("a").metadata == {b"k": b"v"}
+    to = pa.schema([pa.field("a", pa.int64())], metadata={"m": "n"})
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema.metadata == {b"m": b"n"}
+
+
+def test_get_alter_func_prefix_subset():
+    tb = pa.Table.from_pandas(pd.DataFrame({"a": [1, 2], "b": ["x", "y"]}))
+    assert b"pandas" in tb.schema.metadata
+    to = pa.schema([pa.field("a", pa.int64())])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.column_names == ["a"]
+    assert res.schema.metadata is None
+
+
+def test_get_alter_func_duplicate_target_names():
+    tb = pa.table({"a": [1, 2], "b": ["x", "y"]})
+    to = pa.schema([pa.field("a", pa.int64()), pa.field("a", pa.int32())])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema == to
+    assert res.column(1).to_pylist() == [1, 2]
 
 
 def test_get_alter_func_reorder_drops_source_pandas_metadata():
@@ -1188,8 +1221,6 @@ def test_cast_pa_array_mixed_offsets_to_tz():
     single = cast_pa_array(
         pa.array(["2024-01-01 10:00:00+01:00"]), pa.timestamp("us", "Asia/Tokyo")
     )
-    assert single.to_pylist()[0].astimezone(UTC) == datetime(
-        2024, 1, 1, 9, tzinfo=UTC
-    )
+    assert single.to_pylist()[0].astimezone(UTC) == datetime(2024, 1, 1, 9, tzinfo=UTC)
     naive = cast_pa_array(pa.array(["2024-01-01 10:00:00"]), pa.timestamp("us", "UTC"))
     assert naive.to_pylist()[0] == datetime(2024, 1, 1, 10, tzinfo=UTC)

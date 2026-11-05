@@ -627,37 +627,15 @@ def get_alter_func(
         ``from_schema``, the outout will be in ``to_schema``'s order
         and types
     """
-    params: List[Tuple[pa.Field, int, bool, bool]] = []
-    same = True
-    for i, f in enumerate(to_schema):
+    if from_schema.equals(to_schema, check_metadata=True):
+        return lambda x: x
+    pos: List[int] = []
+    for f in to_schema:
         j = from_schema.get_field_index(f.name)
         if j < 0:
             raise KeyError(f"{f.name} is not in {from_schema}")
-        other = from_schema.field(j)
-        pos_same, type_same = (i == j), (f.type == other.type)
-        null_same = f.nullable == other.nullable
-        same &= pos_same & type_same & null_same
-        params.append((f, j, type_same, other.nullable and not f.nullable))
-
-    def _alter(
-        df: pa.Table, params: List[Tuple[pa.Field, int, bool, bool]]
-    ) -> pa.Table:
-        cols: List[pa.ChunkedArray] = []
-        for field, pos, same, check_null in params:
-            col = df.column(pos)
-            if check_null and col.null_count > 0:
-                raise ValueError(
-                    f"column {field.name} is not nullable but contains nulls"
-                )
-            if not same:
-                col = col.cast(field.type, safe=safe)
-            cols.append(col)
-
-        return pa.Table.from_arrays(cols, schema=to_schema)
-
-    if same:
-        return lambda x: x
-    return partial(_alter, params=params)
+        pos.append(j)
+    return lambda df: df.select(pos).cast(to_schema, safe=safe)
 
 
 def replace_types_in_table(
