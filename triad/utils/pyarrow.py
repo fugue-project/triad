@@ -19,13 +19,6 @@ from .json import loads_no_dup
 from .schema import move_to_unquoted, quote_name, unquote_name
 from .assertion import assert_or_throw
 
-# ponytail: computed at import time; toggling infer_string later on pandas 2
-# isn't picked up
-_INFERRED_STR_DTYPE = pd.Series(["x"]).dtype
-_DEFAULT_PD_STR_DTYPE = (
-    np.dtype(str) if _INFERRED_STR_DTYPE == np.dtype(object) else _INFERRED_STR_DTYPE
-)
-
 PYARROW_VERSION = version.parse(pa.__version__)
 TRIAD_DEFAULT_TIMESTAMP_UNIT = "us"
 TRIAD_DEFAULT_TIMESTAMP = pa.timestamp(TRIAD_DEFAULT_TIMESTAMP_UNIT)
@@ -542,6 +535,8 @@ def to_single_pandas_dtype(
     use_arrow_dtype = use_arrow_dtype and hasattr(pd, "ArrowDtype")
     if pa.types.is_nested(pa_type) and not use_arrow_dtype:
         return np.dtype(object)
+    if use_extension_types and pa.types.is_large_string(pa_type):
+        return pd.StringDtype()
     tp = to_pandas_types_mapper(
         pa_type,
         use_extension_types=use_extension_types,
@@ -549,18 +544,14 @@ def to_single_pandas_dtype(
     )
     if tp is not None:
         return tp
-    if (
-        not use_extension_types
-        and not use_arrow_dtype
-        and (
-            pa.types.is_string(pa_type)
-            or (
-                pa.types.is_large_string(pa_type)
-                and _DEFAULT_PD_STR_DTYPE != np.dtype(str)
-            )
-        )
-    ):
-        return _DEFAULT_PD_STR_DTYPE
+    if not use_extension_types and not use_arrow_dtype:
+        # np.dtype(str) on pandas 2, the default StringDtype on pandas 3
+        # (or with future.infer_string on pandas 2)
+        str_dtype = pd.api.types.pandas_dtype("str")
+        if pa.types.is_string(pa_type) or (
+            pa.types.is_large_string(pa_type) and str_dtype != np.dtype(str)
+        ):
+            return str_dtype
     return pa_type.to_pandas_dtype()
 
 

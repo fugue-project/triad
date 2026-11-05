@@ -9,6 +9,7 @@ import pytest
 from packaging import version
 from pytest import raises
 
+from tests._utils import PANDAS3, PD_STR
 from triad.utils.pyarrow import (
     LARGE_TYPES_REPLACEMENT,
     PYARROW_VERSION,
@@ -229,19 +230,28 @@ def test_pa_schema_eq():
     assert not pa_schemas_equal(s1, s5)
 
 
-_x = pd.Series(["x"]).dtype
-_PD_STR = np.dtype(str) if _x == np.dtype(object) else _x
-
-
 def test_to_single_pandas_dtype_default_str():
-    expected = _PD_STR
-    assert to_single_pandas_dtype(pa.string(), False) == expected
+    assert to_single_pandas_dtype(pa.string(), False) == PD_STR
     # pandas 2 keeps main's behavior: large_string -> object
-    large_expected = expected if expected != np.dtype(str) else np.dtype(object)
+    large_expected = PD_STR if PANDAS3 else np.object_
     assert to_single_pandas_dtype(pa.large_string(), False) == large_expected
     s = pd.Series(["x", None]).astype(to_single_pandas_dtype(pa.string(), False))
-    if expected != np.dtype(str):  # pandas 3: missing must stay missing, not "nan"
+    if PANDAS3:  # missing must stay missing, not "nan"
         assert pd.isna(s.iloc[1])
+
+
+def test_to_single_pandas_dtype_large_string_extension():
+    assert to_single_pandas_dtype(pa.large_string(), True) == pd.StringDtype()
+    assert to_single_pandas_dtype(pa.string(), True) == pd.StringDtype()
+
+
+@pytest.mark.skipif(PANDAS3, reason="future.infer_string is deprecated on pandas 3")
+def test_to_single_pandas_dtype_follows_infer_string_option():
+    with pd.option_context("future.infer_string", True):
+        expected = pd.StringDtype(na_value=np.nan)
+        assert to_single_pandas_dtype(pa.string(), False) == expected
+        assert to_single_pandas_dtype(pa.large_string(), False) == expected
+    assert to_single_pandas_dtype(pa.string(), False) == np.dtype(str)
 
 
 def test_to_single_pandas_dtype():
@@ -249,7 +259,7 @@ def test_to_single_pandas_dtype():
     assert np.int16 == to_single_pandas_dtype(pa.int16(), False)
     assert np.uint32 == to_single_pandas_dtype(pa.uint32(), False)
     assert np.float32 == to_single_pandas_dtype(pa.float32(), False)
-    assert _PD_STR == to_single_pandas_dtype(pa.string(), False)
+    assert PD_STR == to_single_pandas_dtype(pa.string(), False)
     assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), False)
 
     assert pd.BooleanDtype() == to_single_pandas_dtype(pa.bool_(), True)
@@ -294,7 +304,7 @@ def test_to_pandas_dtype():
     assert np.bool_ == res["a"]
     assert np.int32 == res["b"]
     assert np.float64 == res["c"]
-    assert _PD_STR == res["d"]
+    assert PD_STR == res["d"]
     # should be us, but arrow<13 has a bug
     assert np.dtype("<M8[ns]") == res["e"] or np.dtype("<M8[us]") == res["e"]
     res = to_pandas_dtype(schema, True)

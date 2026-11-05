@@ -1,17 +1,14 @@
-import math
 from collections import OrderedDict
 from datetime import date, datetime
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from pandas.core.dtypes.common import is_integer_dtype
 from pytest import raises
-from triad.collections.schema import Schema, SchemaError
-from triad.exceptions import InvalidOperationError, NoneArgumentError
 
-_x = pd.Series(["x"]).dtype
-_PD_STR = np.dtype(str) if _x == np.dtype(object) else _x
+from tests._utils import PANDAS3, PD_STR
+from triad.collections.schema import Schema, SchemaError
+from triad.exceptions import NoneArgumentError
 
 
 def test_schema_init():
@@ -67,7 +64,7 @@ def test_schema_properties():
     assert s.pandas_dtype == s.pd_dtype
 
     s = Schema("a:str,b:[bool]")
-    assert s.to_pandas_dtype() == {"a": _PD_STR, "b": np.dtype(object)}
+    assert s.to_pandas_dtype() == {"a": PD_STR, "b": np.dtype(object)}
     assert s.to_pandas_dtype(use_extension_types=True) == {
         "a": pd.StringDtype(),
         "b": np.dtype(object),
@@ -369,7 +366,7 @@ def test_create_empty_tables():
     assert df.shape == (0, 2)
     assert df.dtypes["a"] == np.dtype("int64")
     # pandas 2 keeps object for empty string columns
-    assert df.dtypes["b"] == (np.dtype(object) if _PD_STR == np.dtype(str) else _PD_STR)
+    assert df.dtypes["b"] == (PD_STR if PANDAS3 else np.dtype(object))
     df = schema.create_empty_pandas_df(use_extension_types=True, use_arrow_dtype=False)
     assert df.shape == (0, 2)
     assert df.dtypes["a"] == pd.Int64Dtype()
