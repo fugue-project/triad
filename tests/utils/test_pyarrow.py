@@ -1082,3 +1082,42 @@ def test_schemas_equal_ignore_keeps_metadata():
     assert schemas_equal(a, b, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
     c = pa.schema([pa.field("a", pa.string())], metadata={"m": "2"})
     assert not schemas_equal(a, c, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
+
+
+def test_get_alter_func_keeps_to_schema():
+    tb = pa.table({"a": [1, 2], "b": ["x", "y"]})
+    to = pa.schema(
+        [
+            pa.field("b", pa.string(), nullable=False, metadata={"k": "v"}),
+            pa.field("a", pa.int32()),
+        ],
+        metadata={"m": "n"},
+    )
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema == to
+    assert res.schema.field("b").metadata == {b"k": b"v"}
+    assert res.schema.metadata == {b"m": b"n"}
+
+
+def test_get_alter_func_nullability_only_change():
+    tb = pa.table({"a": [1, 2]})
+    to = pa.schema([pa.field("a", pa.int64(), nullable=False)])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res is not tb
+    assert not res.schema.field("a").nullable
+
+
+def test_get_alter_func_non_null_violation():
+    tb = pa.table({"a": [1, None]})
+    to = pa.schema([pa.field("a", pa.int64(), nullable=False)])
+    with raises(ValueError, match="a"):
+        get_alter_func(tb.schema, to, safe=True)(tb)
+
+
+def test_get_alter_func_reorder_drops_source_pandas_metadata():
+    pdf = pd.DataFrame({"a": [1, 2], "b": ["x", "y"]}, index=[3, 4])
+    tb = pa.Table.from_pandas(pdf)
+    to = pa.schema([pa.field("b", pa.string()), pa.field("a", pa.int64())])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema.metadata is None
+    assert res.to_pandas()["b"].tolist() == ["x", "y"]

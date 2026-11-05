@@ -596,7 +596,7 @@ def get_alter_func(
         ``from_schema``, the outout will be in ``to_schema``'s order
         and types
     """
-    params: List[Tuple[pa.Field, int, bool]] = []
+    params: List[Tuple[pa.Field, int, bool, bool]] = []
     same = True
     for i, f in enumerate(to_schema):
         j = from_schema.get_field_index(f.name)
@@ -604,20 +604,25 @@ def get_alter_func(
             raise KeyError(f"{f.name} is not in {from_schema}")
         other = from_schema.field(j)
         pos_same, type_same = (i == j), (f.type == other.type)
-        same &= pos_same & type_same
-        params.append((f, j, type_same))
+        null_same = f.nullable == other.nullable
+        same &= pos_same & type_same & null_same
+        params.append((f, j, type_same, other.nullable and not f.nullable))
 
-    def _alter(df: pa.Table, params: List[Tuple[pa.Field, int, bool]]) -> pa.Table:
+    def _alter(
+        df: pa.Table, params: List[Tuple[pa.Field, int, bool, bool]]
+    ) -> pa.Table:
         cols: List[pa.ChunkedArray] = []
-        names: List[str] = []
-        for field, pos, same in params:
-            names.append(field.name)
+        for field, pos, same, check_null in params:
             col = df.column(pos)
+            if check_null and col.null_count > 0:
+                raise ValueError(
+                    f"{field.name} is not nullable in {to_schema} but contains nulls"
+                )
             if not same:
                 col = col.cast(field.type, safe=safe)
             cols.append(col)
 
-        return pa.Table.from_arrays(cols, names=names)
+        return pa.Table.from_arrays(cols, schema=to_schema)
 
     if same:
         return lambda x: x
