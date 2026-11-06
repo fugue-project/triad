@@ -1,6 +1,11 @@
 from typing import Any
 
+import numpy as np
 import pandas as pd
+
+PANDAS3 = int(pd.__version__.split(".")[0]) >= 3
+# default pandas dtype for pa.string() when no extension/arrow dtypes are requested
+PD_STR = pd.StringDtype(na_value=np.nan) if PANDAS3 else np.dtype(str)
 
 
 def assert_df_eq(
@@ -20,14 +25,14 @@ def assert_df_eq(
     cols = list(df1.columns)
     try:
         if not check_col_order:
-            assert sorted(cols) == sorted(
-                df2.columns
-            ), f"columns mismatch {sorted(cols)}, {sorted(df2.columns)}"
+            assert sorted(cols) == sorted(df2.columns), (
+                f"columns mismatch {sorted(cols)}, {sorted(df2.columns)}"
+            )
             df2 = df2[cols]
         else:
-            assert cols == list(
-                df2.columns
-            ), f"columns mismatch {cols}, {list(df2.columns)}"
+            assert cols == list(df2.columns), (
+                f"columns mismatch {cols}, {list(df2.columns)}"
+            )
         assert df1.shape == df2.shape, f"shape mismatch {df1.shape}, {df2.shape}"
 
         if not check_content:

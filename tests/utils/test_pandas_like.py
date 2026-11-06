@@ -1,4 +1,3 @@
-import json
 import pickle
 from datetime import date, datetime
 
@@ -16,7 +15,7 @@ from triad.utils.pyarrow import (
     pa_table_to_pandas,
 )
 
-from .._utils import assert_df_eq
+from .._utils import PANDAS3, assert_df_eq
 
 
 def test_to_schema():
@@ -25,8 +24,9 @@ def test_to_schema():
     df = pd.DataFrame([[1.0, 2], [2.0, 3]], columns=["x", "y"])
     assert list(pa.Schema.from_pandas(df)) == list(PD_UTILS.to_schema(df))
     df = pd.DataFrame([["a", 2], ["b", 3]], columns=["x", "y"])
-    assert list(normalize_large_types(pa.Schema.from_pandas(df))
-                ) == list(PD_UTILS.to_schema(df))
+    assert list(normalize_large_types(pa.Schema.from_pandas(df))) == list(
+        PD_UTILS.to_schema(df)
+    )
     df = pd.DataFrame([], columns=["x", "y"])
     df = df.astype(dtype={"x": np.int32, "y": np.dtype("object")})
     assert [pa.field("x", pa.int32()), pa.field("y", pa.string())] == list(
@@ -209,6 +209,20 @@ def test_cast_df():
     assert isinstance(res.a.dtype, pd.Int64Dtype)
     assert isinstance(res.b.dtype, pd.StringDtype)
     assert len(res) == 0
+
+
+def test_cast_df_large_string_default_args():
+    schema = pa.schema([pa.field("a", pa.large_string())])
+    df = pd.DataFrame({"a": ["x", "y"]}, index=[5, 6])
+    res = PD_UTILS.cast_df(df, schema)
+    assert res.a.dtype == pd.StringDtype()
+    assert res.a.tolist() == ["x", "y"]
+    empty = PD_UTILS.cast_df(df.iloc[:0], schema)
+    assert empty.a.dtype == res.a.dtype == pd.StringDtype()
+    assert len(empty) == 0
+    # already-matching input short-circuits and keeps its index
+    sdf = df.astype({"a": pd.StringDtype()})
+    assert sdf is PD_UTILS.cast_df(sdf, schema)
 
 
 def test_boolean_enforce():
@@ -642,3 +656,59 @@ class DF:  # This is a mock
 
     def assert_eq(self, df):
         pd.testing.assert_frame_equal(self.native, df, check_dtype=False)
+
+
+def test_cast_df_empty_matches_non_empty_str_dtype():
+    schema = pa.schema([pa.field("a", pa.string())])
+    empty = PD_UTILS.cast_df(
+        pd.DataFrame({"a": pd.Series([], dtype=object)}),
+        schema,
+        use_extension_types=False,
+    )
+    full = PD_UTILS.cast_df(
+        pd.DataFrame({"a": ["x"]}), schema, use_extension_types=False
+    )
+    assert empty.dtypes["a"] == full.dtypes["a"]
+
+
+def test_union_with_empty_frame_cast_from_schema():
+    schema = pa.schema([pa.field("a", pa.string()), pa.field("b", pa.int64())])
+    e = PD_UTILS.cast_df(
+        pd.DataFrame(
+            {"a": pd.Series([], dtype=object), "b": pd.Series([], dtype=object)}
+        ),
+        schema,
+        use_extension_types=False,
+    )
+    f = PD_UTILS.cast_df(
+        pd.DataFrame({"a": ["x"], "b": [1]}), schema, use_extension_types=False
+    )
+    assert PD_UTILS.union(e, f, unique=False).dtypes.to_dict() == f.dtypes.to_dict()
+
+
+@pytest.mark.skipif(
+    PANDAS3, reason="object != str dtype on pandas 3, so the cast rebuilds the frame"
+)
+def test_cast_df_large_string_keeps_index_pandas2():
+    df = pd.DataFrame({"a": pd.Series(["x", "y"], dtype=object)}, index=[5, 6])
+    schema = pa.schema([pa.field("a", pa.large_string())])
+    res = PD_UTILS.cast_df(df, schema, use_extension_types=False)
+    assert list(res.index) == [5, 6]
+
+
+def test_concat_dfs_keeps_empty_frame_columns():
+    e = pd.DataFrame(
+        {"a": pd.Series([], dtype=object), "c": pd.Series([], dtype=object)}
+    )
+    f = pd.DataFrame({"b": [1], "a": [2]})
+    assert list(PD_UTILS.concat_dfs(e, f).columns) == ["a", "c", "b"]
+
+
+def test_as_array_iterable_missing_str_is_none():
+    df = pd.DataFrame({"a": ["x", None], "b": [1.0, None]})
+    rows = list(PD_UTILS.as_array_iterable(df, type_safe=False))
+    assert rows[0] == ["x", 1.0]
+    assert rows[1][0] is None
+    assert np.isnan(rows[1][1])
+    rows = list(PD_UTILS.as_array_iterable(df, columns=["b", "a"], type_safe=False))
+    assert rows[1][1] is None and np.isnan(rows[1][0])

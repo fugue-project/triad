@@ -1,6 +1,6 @@
 import json
 import warnings
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import numpy as np
 import pandas as pd
@@ -9,6 +9,7 @@ import pytest
 from packaging import version
 from pytest import raises
 
+from tests._utils import PANDAS3, PD_STR
 from triad.utils.pyarrow import (
     LARGE_TYPES_REPLACEMENT,
     PYARROW_VERSION,
@@ -22,6 +23,8 @@ from triad.utils.pyarrow import (
     get_alter_func,
     get_eq_func,
     is_supported,
+    normalize_large_types,
+    normalize_large_types_in_table,
     pa_batch_to_dicts,
     pa_datatypes_equal,
     pa_schemas_equal,
@@ -227,12 +230,48 @@ def test_pa_schema_eq():
     assert not pa_schemas_equal(s1, s5)
 
 
+def test_to_single_pandas_dtype_default_str():
+    assert to_single_pandas_dtype(pa.string(), False) == PD_STR
+    # pandas 2 keeps main's behavior: large_string -> object
+    large_expected = PD_STR if PANDAS3 else np.object_
+    assert to_single_pandas_dtype(pa.large_string(), False) == large_expected
+    s = pd.Series(["x", None]).astype(to_single_pandas_dtype(pa.string(), False))
+    if PANDAS3:  # missing must stay missing, not "nan"
+        assert pd.isna(s.iloc[1])
+
+
+def test_to_single_pandas_dtype_large_string_extension():
+    assert to_single_pandas_dtype(pa.large_string(), True) == pd.StringDtype()
+    assert to_single_pandas_dtype(pa.string(), True) == pd.StringDtype()
+    # declared and produced dtypes agree, in every flag combination
+    for arrow in (False, True):
+        for t in (pa.string(), pa.large_string()):
+            tb = pa.table({"a": pa.array(["x", None], t)})
+            res = pa_table_to_pandas(
+                tb, use_extension_types=True, use_arrow_dtype=arrow
+            )
+            assert res.dtypes["a"] == pd.StringDtype()
+            assert res.dtypes["a"] == to_single_pandas_dtype(t, True, arrow)
+
+
+@pytest.mark.skipif(
+    not (version.parse("2.3") <= version.parse(pd.__version__) < version.parse("3")),
+    reason="future.infer_string only changes the str dtype on pandas 2.3",
+)
+def test_to_single_pandas_dtype_follows_infer_string_option():
+    with pd.option_context("future.infer_string", True):
+        expected = pd.StringDtype(na_value=np.nan)
+        assert to_single_pandas_dtype(pa.string(), False) == expected
+        assert to_single_pandas_dtype(pa.large_string(), False) == expected
+    assert to_single_pandas_dtype(pa.string(), False) == np.dtype(str)
+
+
 def test_to_single_pandas_dtype():
     assert np.bool_ == to_single_pandas_dtype(pa.bool_(), False)
     assert np.int16 == to_single_pandas_dtype(pa.int16(), False)
     assert np.uint32 == to_single_pandas_dtype(pa.uint32(), False)
     assert np.float32 == to_single_pandas_dtype(pa.float32(), False)
-    assert np.dtype(str) == to_single_pandas_dtype(pa.string(), False)
+    assert PD_STR == to_single_pandas_dtype(pa.string(), False)
     assert np.dtype("<M8[ns]") == to_single_pandas_dtype(pa.timestamp("ns"), False)
 
     assert pd.BooleanDtype() == to_single_pandas_dtype(pa.bool_(), True)
@@ -277,7 +316,7 @@ def test_to_pandas_dtype():
     assert np.bool_ == res["a"]
     assert np.int32 == res["b"]
     assert np.float64 == res["c"]
-    assert np.dtype("<U") == res["d"]
+    assert PD_STR == res["d"]
     # should be us, but arrow<13 has a bug
     assert np.dtype("<M8[ns]") == res["e"] or np.dtype("<M8[us]") == res["e"]
     res = to_pandas_dtype(schema, True)
@@ -497,9 +536,14 @@ def test_schemas_equal():
     assert not schemas_equal(a, c)
     assert schemas_equal(a, c, check_order=False)
 
-    assert schemas_equal(a, d, ignore=[(pa.int32(), pa.int64())])
+    # ignore must not drop metadata, so a (with metadata) != d (without)
+    assert not schemas_equal(a, d, ignore=[(pa.int32(), pa.int64())])
+    assert schemas_equal(a, d, check_metadata=False, ignore=[(pa.int32(), pa.int64())])
     assert schemas_equal(
-        a, d, ignore=[(pa.int32(), pa.int16()), (pa.int64(), pa.int16())]
+        a,
+        d,
+        check_metadata=False,
+        ignore=[(pa.int32(), pa.int16()), (pa.int64(), pa.int16())],
     )
 
 
@@ -1032,3 +1076,178 @@ def _assert_from_expr(expr, expected=None):
     out_expr = schema_to_expression(schema)
     expected = expected or expr
     assert expected == out_expr
+
+
+def test_normalize_large_types_schema():
+    schema = pa.schema(
+        [
+            pa.field("a", pa.large_string(), nullable=False, metadata={"k": "v"}),
+            pa.field("b", pa.int64()),
+            pa.field("c", pa.large_list(pa.large_string())),
+            pa.field("d", pa.struct([pa.field("x", pa.large_binary())])),
+            pa.field("e", pa.map_(pa.large_string(), pa.large_list(pa.int32()))),
+        ],
+        metadata={"m": "n"},
+    )
+    res = normalize_large_types(schema)
+    assert res == pa.schema(
+        [
+            pa.field("a", pa.string(), nullable=False),
+            pa.field("b", pa.int64()),
+            pa.field("c", pa.list_(pa.string())),
+            pa.field("d", pa.struct([pa.field("x", pa.binary())])),
+            pa.field("e", pa.map_(pa.string(), pa.list_(pa.int32()))),
+        ]
+    )
+    assert res.field("a").metadata == {b"k": b"v"}
+    assert res.metadata == {b"m": b"n"}
+    small = pa.schema([pa.field("a", pa.string()), pa.field("b", pa.int64())])
+    assert normalize_large_types(small) is small
+
+
+def test_replace_type_map_keys_sorted():
+    t = pa.map_(pa.large_string(), pa.int64(), keys_sorted=True)
+    res = normalize_large_types(pa.schema([pa.field("m", t)])).field("m").type
+    assert res == pa.map_(pa.string(), pa.int64(), keys_sorted=True)
+    assert res.keys_sorted
+
+
+def test_schemas_equal_ignore_keeps_metadata():
+    a = pa.schema([pa.field("a", pa.large_string())], metadata={"m": "n"})
+    b = pa.schema([pa.field("a", pa.string())], metadata={"m": "n"})
+    assert schemas_equal(a, b, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
+    c = pa.schema([pa.field("a", pa.string())], metadata={"m": "2"})
+    assert not schemas_equal(a, c, check_metadata=True, ignore=LARGE_TYPES_REPLACEMENT)
+
+
+def test_get_alter_func_keeps_to_schema():
+    tb = pa.table({"a": [1, 2], "b": ["x", "y"]})
+    to = pa.schema(
+        [
+            pa.field("b", pa.string(), nullable=False, metadata={"k": "v"}),
+            pa.field("a", pa.int32()),
+        ],
+        metadata={"m": "n"},
+    )
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema == to
+    assert res.schema.field("b").metadata == {b"k": b"v"}
+    assert res.schema.metadata == {b"m": b"n"}
+
+
+def test_get_alter_func_nullability_only_change():
+    tb = pa.table({"a": [1, 2]})
+    to = pa.schema([pa.field("a", pa.int64(), nullable=False)])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res is not tb
+    assert not res.schema.field("a").nullable
+
+
+def test_get_alter_func_non_null_violation():
+    tb = pa.table({"a": [1, None]})
+    to = pa.schema([pa.field("a", pa.int64(), nullable=False)])
+    with raises(ValueError, match="'a' with null values to non-nullable"):
+        get_alter_func(tb.schema, to, safe=True)(tb)
+
+
+def test_get_alter_func_identity():
+    tb = pa.table({"a": [1, 2], "b": ["x", "y"]})
+    same = pa.schema([pa.field("a", pa.int64()), pa.field("b", pa.string())])
+    assert get_alter_func(tb.schema, same, safe=True)(tb) is tb
+
+
+def test_get_alter_func_metadata_only_change():
+    tb = pa.table({"a": [1, 2]})
+    to = pa.schema([pa.field("a", pa.int64(), metadata={"k": "v"})])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema.field("a").metadata == {b"k": b"v"}
+    to = pa.schema([pa.field("a", pa.int64())], metadata={"m": "n"})
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema.metadata == {b"m": b"n"}
+
+
+def test_get_alter_func_prefix_subset():
+    tb = pa.Table.from_pandas(pd.DataFrame({"a": [1, 2], "b": ["x", "y"]}))
+    assert b"pandas" in tb.schema.metadata
+    to = pa.schema([pa.field("a", pa.int64())])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.column_names == ["a"]
+    assert res.schema.metadata is None
+
+
+def test_get_alter_func_duplicate_target_names():
+    tb = pa.table({"a": [1, 2], "b": ["x", "y"]})
+    to = pa.schema([pa.field("a", pa.int64()), pa.field("a", pa.int32())])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema == to
+    assert res.column(1).to_pylist() == [1, 2]
+
+
+def test_get_alter_func_reorder_drops_source_pandas_metadata():
+    pdf = pd.DataFrame({"a": [1, 2], "b": ["x", "y"]}, index=[3, 4])
+    tb = pa.Table.from_pandas(pdf)
+    to = pa.schema([pa.field("b", pa.string()), pa.field("a", pa.int64())])
+    res = get_alter_func(tb.schema, to, safe=True)(tb)
+    assert res.schema.metadata is None
+    assert res.to_pandas()["b"].tolist() == ["x", "y"]
+
+
+def test_normalize_large_types_in_table():
+    tb = pa.Table.from_pandas(pd.DataFrame(dict(a=["x", None]), index=[3, 4]))
+    tb = tb.cast(tb.schema.set(0, pa.field("a", pa.large_string())))
+    assert tb.schema.metadata is not None
+    res = normalize_large_types_in_table(tb)
+    assert res.schema.field("a").type == pa.string()
+    assert res.schema.metadata == tb.schema.metadata
+    assert res.to_pandas().index.tolist() == [3, 4]
+    assert normalize_large_types_in_table(res) is res
+
+    tb = pa.Table.from_pandas(
+        pd.DataFrame(dict(a=["x", "y"]), index=pd.RangeIndex(10, 12))
+    )
+    tb = tb.cast(tb.schema.set(0, pa.field("a", pa.large_string())))
+    assert normalize_large_types_in_table(tb).to_pandas().index.tolist() == [10, 11]
+
+    nn = pa.table(
+        [pa.array(["x"], pa.large_string())],
+        schema=pa.schema([pa.field("a", pa.large_string(), nullable=False)]),
+    )
+    assert not normalize_large_types_in_table(nn).schema.field("a").nullable
+
+
+def test_normalize_large_types_in_table_empty():
+    tb = pa.Table.from_pandas(pd.DataFrame(dict(a=pd.Series([], dtype=object))))
+    tb = tb.cast(tb.schema.set(0, pa.field("a", pa.large_string())))
+    assert b"pandas" in tb.schema.metadata
+    res = normalize_large_types_in_table(tb)
+    assert res.schema.field("a").type == pa.string()
+    assert res.schema.metadata == tb.schema.metadata
+    assert res.num_rows == 0
+
+
+def test_to_pa_datatype_string_dtypes():
+    assert to_pa_datatype(pd.StringDtype("python")) == pa.string()
+    assert to_pa_datatype(pd.StringDtype("pyarrow")) == pa.string()
+    if version.parse(pd.__version__) >= version.parse("2.3"):
+        assert to_pa_datatype(pd.StringDtype(na_value=np.nan)) == pa.string()
+
+
+def test_cast_pa_array_mixed_offsets_to_tz():
+    arr = pa.array(["2024-01-01 10:00:00+01:00", "2024-01-01 10:00:00+02:00", None])
+    res = cast_pa_array(arr, pa.timestamp("us", "UTC"))
+    assert res.to_pylist() == [
+        datetime(2024, 1, 1, 9, tzinfo=UTC),
+        datetime(2024, 1, 1, 8, tzinfo=UTC),
+        None,
+    ]
+    tokyo = cast_pa_array(
+        pa.array(["2024-01-01 10:00:00+01:00", "2024-01-01 10:00:00+02:00"]),
+        pa.timestamp("us", "Asia/Tokyo"),
+    )
+    assert tokyo.type == pa.timestamp("us", "Asia/Tokyo")
+    assert [(x.hour, x.minute, str(x.tzinfo)) for x in tokyo.to_pylist()] == [
+        (18, 0, "Asia/Tokyo"),
+        (17, 0, "Asia/Tokyo"),
+    ]
+    naive = cast_pa_array(pa.array(["2024-01-01 10:00:00"]), pa.timestamp("us", "UTC"))
+    assert naive.to_pylist()[0] == datetime(2024, 1, 1, 10, tzinfo=UTC)

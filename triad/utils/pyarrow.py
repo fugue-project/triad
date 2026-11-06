@@ -111,6 +111,7 @@ _PA_TO_PANDAS_EXTENSION_TYPE_MAP: Dict[pa.DataType, ExtensionDtype] = {
     pa.float32(): pd.Float32Dtype(),
     pa.float64(): pd.Float64Dtype(),
     pa.string(): pd.StringDtype(),
+    pa.large_string(): pd.StringDtype(),
     pa.bool_(): pd.BooleanDtype(),
 }
 
@@ -127,6 +128,17 @@ def normalize_large_types(schema: pa.Schema) -> pa.Schema:
     :return: a new schema with large types replaced by regular types
     """
     return replace_types_in_schema(schema, LARGE_TYPES_REPLACEMENT, recursive=True)
+
+
+def normalize_large_types_in_table(df: pa.Table) -> pa.Table:
+    """Normalize a table by converting large types to their regular counterparts,
+    keeping the schema metadata (such as the pandas index information).
+
+    :param df: the pyarrow table to normalize
+    :return: the table itself if it has no large types, otherwise a new table
+        with large types replaced by regular types
+    """
+    return replace_types_in_table(df, LARGE_TYPES_REPLACEMENT, recursive=True)
 
 
 def expression_to_schema(expr: str) -> pa.Schema:
@@ -202,11 +214,11 @@ def to_pa_datatype(obj: Any) -> pa.DataType:  # noqa: C901
     if isinstance(obj, ExtensionDtype):
         if obj in _PANDAS_EXTENSION_TYPE_TO_PA_MAP:
             return _PANDAS_EXTENSION_TYPE_TO_PA_MAP[obj]
+        if isinstance(obj, pd.StringDtype):
+            return pa.string()
         if hasattr(pd, "ArrowDtype"):
             if isinstance(obj, pd.ArrowDtype):
                 return obj.pyarrow_dtype
-            if obj == pd.StringDtype("pyarrow"):  # pragma: no cover
-                return pa.string()
     if type(obj) is type and issubclass(obj, datetime):
         return TRIAD_DEFAULT_TIMESTAMP
     if type(obj) is type and issubclass(obj, date):
@@ -357,8 +369,11 @@ def cast_pa_array(col: pa.Array, new_type: pa.DataType) -> pa.Array:  # noqa: C9
                 s = s.dt.tz_localize(to_tz)
             else:
                 s = s.dt.tz_convert(to_tz)
-        else:
+        elif new_type.tz is None:
             s = pd.to_datetime(col.to_pandas())
+        else:
+            # utc=True handles mixed offsets, then convert to the target tz
+            s = pd.to_datetime(col.to_pandas(), utc=True).dt.tz_convert(new_type.tz)
         return pa.Array.from_pandas(s, type=new_type)
     elif pa.types.is_integer(new_type):
         if PYARROW_VERSION.major < 9:  # pragma: no cover
@@ -528,8 +543,14 @@ def to_single_pandas_dtype(
     )
     if tp is not None:
         return tp
-    if pa.types.is_string(pa_type) and not use_extension_types and not use_arrow_dtype:
-        return np.dtype(str)
+    if not use_extension_types and not use_arrow_dtype:
+        # np.dtype(str) on pandas 2, the default StringDtype on pandas 3
+        # (or with future.infer_string on pandas 2)
+        str_dtype = pd.api.types.pandas_dtype("str")
+        if pa.types.is_string(pa_type) or (
+            pa.types.is_large_string(pa_type) and str_dtype != np.dtype(str)
+        ):
+            return str_dtype
     return pa_type.to_pandas_dtype()
 
 
@@ -596,32 +617,15 @@ def get_alter_func(
         ``from_schema``, the outout will be in ``to_schema``'s order
         and types
     """
-    params: List[Tuple[pa.Field, int, bool]] = []
-    same = True
-    for i, f in enumerate(to_schema):
+    if from_schema.equals(to_schema, check_metadata=True):
+        return lambda x: x
+    pos: List[int] = []
+    for f in to_schema:
         j = from_schema.get_field_index(f.name)
         if j < 0:
             raise KeyError(f"{f.name} is not in {from_schema}")
-        other = from_schema.field(j)
-        pos_same, type_same = (i == j), (f.type == other.type)
-        same &= pos_same & type_same
-        params.append((f, j, type_same))
-
-    def _alter(df: pa.Table, params: List[Tuple[pa.Field, int, bool]]) -> pa.Table:
-        cols: List[pa.ChunkedArray] = []
-        names: List[str] = []
-        for field, pos, same in params:
-            names.append(field.name)
-            col = df.column(pos)
-            if not same:
-                col = col.cast(field.type, safe=safe)
-            cols.append(col)
-
-        return pa.Table.from_arrays(cols, names=names)
-
-    if same:
-        return lambda x: x
-    return partial(_alter, params=params)
+        pos.append(j)
+    return lambda df: df.select(pos).cast(to_schema, safe=safe)
 
 
 def replace_types_in_table(
@@ -685,10 +689,10 @@ def replace_types_in_schema(
             fields.append(f)
         else:
             changed = True
-            fields.append(pa.field(f.name, new_type))
+            fields.append(f.with_type(new_type))
     if not changed:
         return schema
-    return pa.schema(fields)
+    return pa.schema(fields, metadata=schema.metadata)
 
 
 def replace_type(  # noqa: C901
@@ -738,7 +742,7 @@ def replace_type(  # noqa: C901
             )
             if k is old_k and v is old_v:
                 return current_type
-            return pa.map_(k, v)
+            return pa.map_(k, v, keys_sorted=current_type.keys_sorted)
     return current_type
 
 

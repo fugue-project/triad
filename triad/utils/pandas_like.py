@@ -80,8 +80,23 @@ class PandasLikeUtils(Generic[T, ColT]):
             df = df[columns]
             schema = pa.schema([schema.field(n) for n in columns])
         if not type_safe:
-            for arr in df.itertuples(index=False, name=None):
-                yield list(arr)
+            # pandas 3 default str dtype uses NaN as missing; return None instead
+            sidx = [
+                i
+                for i, t in enumerate(df.dtypes)
+                if isinstance(t, pd.StringDtype)
+                and isinstance(getattr(t, "na_value", None), float)
+            ]
+            if len(sidx) == 0:
+                for arr in df.itertuples(index=False, name=None):
+                    yield list(arr)
+            else:
+                for arr in df.itertuples(index=False, name=None):
+                    row = list(arr)
+                    for i in sidx:
+                        if row[i] != row[i]:  # NaN
+                            row[i] = None
+                    yield row
         else:
             p = self.as_arrow(df, schema)
             d = p.to_pydict()
