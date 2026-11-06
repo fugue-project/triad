@@ -252,6 +252,7 @@ def test_to_timedelta():
     dt = pd.Timedelta("2D")
     assert timedelta(days=2) == to_timedelta(dt)
     raises(TypeError, lambda: to_timedelta("x"))
+    raises(TypeError, lambda: to_timedelta("P1Q"))  # bad ISO, not rewritten
     assert timedelta() == to_timedelta(0)
     assert timedelta(seconds=2.5) == to_timedelta(2.5)
     assert timedelta(seconds=2.1) == to_timedelta(np.float64(2.1))

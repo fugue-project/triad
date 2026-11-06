@@ -39,3 +39,11 @@ jobs:
 
     - name: Test
       run: make test
+
+    - name: "Upload coverage to Codecov"
+      if: matrix.python-version == '3.11' && matrix.pandas-version == '>=3'
+      uses: codecov/codecov-action@v4
+      with:
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
